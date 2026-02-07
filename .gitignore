@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Data files (large, regeneratable)
+scripts/github_museum_details.json
+scripts/github_museum_candidates.json
+
+# IDE
+.vscode/
+.idea/
