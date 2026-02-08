@@ -8,6 +8,7 @@ scripts/github_museum_details.json
 scripts/github_museum_candidates.json
 scripts/github_activity.json
 scripts/github_activity_enriched.json
+scripts/scored_newsletter_content.json
 
 # IDE
 .vscode/
