@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Musemaniac — Museum Tech Newsletter</title>
+  <!--[if mso]>
+  <style type="text/css">
+    table { border-collapse: collapse; }
+    td { font-family: Arial, sans-serif; }
+  </style>
+  <![endif]-->
+  <style type="text/css">
+    a.link:hover { color: #50623C !important; }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#F8D57A;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#3E492C;">
+
+{# ============================================================
+   SHARED STYLES
+   ============================================================ #}
+{% set dot_border = "background-image:repeating-linear-gradient(to right,#50623C 0,#50623C 2px,transparent 2px,transparent 6px);background-size:100% 1px;background-position:bottom;background-repeat:no-repeat;" %}
+
+{# ============================================================
+   MACROS
+   ============================================================ #}
+
+{% macro dotline() %}
+<tr>
+  <td style="padding:0 40px;font-size:0;line-height:0;height:1px;">
+    <div style="height:1px;background-image:repeating-linear-gradient(to right,#50623C 0,#50623C 2px,transparent 2px,transparent 6px);"></div>
+  </td>
+</tr>
+{% endmacro %}
+
+{% macro section_header(title) %}
+<tr>
+  <td style="padding:48px 40px 24px 40px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+      <tr>
+        <td style="font-size:20px;font-weight:bold;color:#3E492C;letter-spacing:-1px;padding-bottom:16px;border-bottom:3px solid #3E492C;">
+          {{ title|safe }}
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+{% endmacro %}
+
+{% macro event_t1(event) %}
+<tr>
+  <td style="padding:20px 40px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+      <tr>
+        <td>
+          <a href="{{ event.url }}" class="link" style="font-size:16px;font-weight:bold;color:#3E492C;text-decoration:underline;text-underline-offset:3px;">{{ event.repo.split('/')[1] }}</a>
+          <span style="font-size:14px;color:#50623C;padding-left:6px;">&rarr;</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="font-size:13px;color:#50623C;padding-top:6px;">
+          {{ event.org_name }}
+          {% if event.repo_meta and event.repo_meta.language %}
+            &nbsp;&middot;&nbsp;{{ event.repo_meta.language }}
+          {% endif %}
+          {% if event.repo_meta and event.repo_meta.stars %}
+            &nbsp;&middot;&nbsp;&#9733; {{ event.repo_meta.stars }}
+          {% endif %}
+        </td>
+      </tr>
+      {% if event.score and event.score.summary %}
+      <tr>
+        <td style="font-size:14px;color:#3E492C;padding-top:10px;line-height:1.6;">
+          {{ event.score.summary }}
+        </td>
+      </tr>
+      {% endif %}
+    </table>
+  </td>
+</tr>
+{% endmacro %}
+
+{% macro event_t2(event) %}
+<tr>
+  <td style="padding:0 40px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+      <tr>
+        <td style="padding:10px 0;">
+          <a href="{{ event.url }}" class="link" style="font-size:16px;font-weight:bold;color:#3E492C;text-decoration:underline;text-underline-offset:3px;">{{ event.repo.split('/')[1] }}</a>
+          {% if event.details and event.details.tag is defined %}
+            <span style="font-size:13px;color:#50623C;">&nbsp;&middot;&nbsp;{{ event.details.tag }}</span>
+          {% endif %}
+          <br>
+          <span style="font-size:13px;color:#50623C;line-height:2.2;">{{ event.org_name }}</span>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+{% endmacro %}
+
+{# ============================================================
+   OUTER WRAPPER
+   ============================================================ #}
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#F8D57A" style="background-color:#F8D57A;">
+  <tr>
+    <td align="center" style="padding:0;">
+
+      {# Inner container — 600px max #}
+      <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#F8D57A" style="max-width:600px;width:100%;background-color:#F8D57A;">
+
+        {# ========== HEADER ========== #}
+        <tr>
+          <td style="padding:48px 40px 40px 40px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+              <tr>
+                <td style="font-size:78px;font-weight:bold;color:#3E492C;letter-spacing:-5.5px;">
+                  Musemaniac
+                </td>
+              </tr>
+              <tr>
+                <td style="font-size:13px;color:#50623C;padding-top:6px;letter-spacing:0.5px;">
+                  Museum Tech Newsletter &middot; {{ generation_date }}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        {{ dotline() }}
+
+        {# ========== SPOTLIGHT ========== #}
+        <tr>
+          <td style="padding:36px 40px 32px 40px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+              <tr>
+                <td style="font-size:20px;font-weight:bold;color:#3E492C;letter-spacing:-1px;padding-bottom:16px;border-bottom:3px solid #3E492C;">
+                  &#9967; Spotlight
+                </td>
+              </tr>
+              <tr>
+                <td style="padding-top:24px;">
+                  <a href="https://github.com/{{ spotlight.event.repo }}" class="link" style="font-size:18px;font-weight:bold;color:#3E492C;text-decoration:underline;text-underline-offset:3px;">
+                    {{ spotlight.event.repo.split('/')[1] if spotlight.event.repo else '' }}
+                  </a>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding-top:6px;font-size:13px;color:#50623C;">
+                  {{ spotlight.event.org_name }}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding-top:16px;font-size:14px;color:#3E492C;line-height:1.7;">
+                  {{ spotlight.writeup }}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding-top:16px;">
+                  <a href="https://github.com/{{ spotlight.event.repo }}" class="link" style="font-size:13px;color:#3E492C;text-decoration:underline;text-underline-offset:2px;">View on GitHub</a>
+                  <span style="font-size:13px;color:#50623C;padding-left:4px;">&rarr;</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        {{ dotline() }}
+
+        {# ========== STATS BAR ========== #}
+        <tr>
+          <td style="padding:32px 40px 28px 40px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+              <tr>
+                <td colspan="5" style="font-size:20px;font-weight:bold;color:#3E492C;letter-spacing:-1px;white-space:nowrap;padding-bottom:20px;text-align:center;">
+                  Activity This Week
+                </td>
+              </tr>
+              <tr>
+                {% for stat in [
+                  ("Active Orgs", stats.active_orgs),
+                  ("Pushes", stats.total_pushes),
+                  ("Repos", stats.unique_repos),
+                  ("New Projects", stats.new_projects),
+                  ("Releases", stats.releases),
+                ] %}
+                <td align="center" width="20%" style="padding:4px 2px;">
+                  <span style="display:block;font-size:24px;font-weight:bold;color:#3E492C;">{{ stat[1] }}</span>
+                  <span style="display:block;font-size:10px;color:#50623C;text-transform:uppercase;letter-spacing:0.5px;padding-top:4px;">{{ stat[0] }}</span>
+                </td>
+                {% endfor %}
+              </tr>
+            </table>
+          </td>
+        </tr>
+        {{ dotline() }}
+
+        {# ========== NEW REPOS ========== #}
+        {% if has_new_repos %}
+        {{ section_header("&#10022; New Repositories") }}
+        {% for event in sections.new_repos %}
+          {% if event.score.tier == 1 %}
+            {{ event_t1(event) }}
+          {% else %}
+            {{ event_t2(event) }}
+          {% endif %}
+        {% endfor %}
+        {% endif %}
+
+        {# ========== RELEASES ========== #}
+        {% if has_releases %}
+        {{ section_header("&#9787; Releases") }}
+        {% for event in sections.releases %}
+          {% if event.score.tier == 1 %}
+            {{ event_t1(event) }}
+          {% else %}
+            {{ event_t2(event) }}
+          {% endif %}
+        {% endfor %}
+        {% endif %}
+
+        {# ========== NOTABLE PUSHES ========== #}
+        {% if has_pushes %}
+        {{ section_header("&#9752; Notable Pushes") }}
+        {% for event in sections.pushes %}
+          {% if event.score.tier == 1 %}
+            {{ event_t1(event) }}
+          {% else %}
+            {{ event_t2(event) }}
+          {% endif %}
+        {% endfor %}
+        {% endif %}
+
+        {# ========== MOST ACTIVE REPOS ========== #}
+        {{ section_header("&#9733; Most Active Repos") }}
+        <tr>
+          <td style="padding:0 40px 36px 40px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+              {% for repo in most_active %}
+              <tr>
+                <td style="padding:16px 0;{% if not loop.last %}{{ dot_border }}{% endif %}">
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+                    <tr>
+                      <td width="28" valign="top" style="font-size:14px;font-weight:bold;color:#3E492C;padding-right:8px;">
+                        {{ loop.index }}.
+                      </td>
+                      <td>
+                        <a href="https://github.com/{{ repo.repo }}" class="link" style="font-size:14px;font-weight:600;color:#3E492C;text-decoration:underline;text-underline-offset:2px;">{{ repo.repo.split('/')[1] }}</a>
+                        <span style="font-size:13px;color:#50623C;">&nbsp;&mdash;&nbsp;{{ repo.repo.split('/')[0] }}</span>
+                        <br>
+                        <span style="font-size:12px;color:#50623C;padding-top:2px;">
+                          {{ repo.total_commits }} commit{{ 's' if repo.total_commits != 1 else '' }},
+                          {{ repo.files_changed }} file{{ 's' if repo.files_changed != 1 else '' }} changed
+                        </span>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              {% endfor %}
+            </table>
+          </td>
+        </tr>
+
+      </table>
+      {# /Inner container #}
+
+    </td>
+  </tr>
+</table>
+
+{# ========== FOOTER — full width ========== #}
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#3E492C" style="background-color:#3E492C;">
+  <tr>
+    <td align="center" style="padding:80px 40px;">
+      <span style="font-size:16px;color:#F8D57A;">
+        Powered by <a href="https://github.com/calle482/musemaniac" style="color:#F8D57A;text-decoration:underline;text-underline-offset:2px;">musemaniac</a>
+        &nbsp;&middot;&nbsp;Generated {{ generation_date }}
+      </span>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>
