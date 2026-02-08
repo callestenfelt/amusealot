@@ -6,6 +6,8 @@ __pycache__/
 # Data files (large, regeneratable)
 scripts/github_museum_details.json
 scripts/github_museum_candidates.json
+scripts/github_activity.json
+scripts/github_activity_enriched.json
 
 # IDE
 .vscode/
