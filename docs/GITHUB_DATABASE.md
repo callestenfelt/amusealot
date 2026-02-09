@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Baserow Museums table (745) at http://77.42.40.207/database/195/table/745/ has been enriched with GitHub account data for museums worldwide.
+The Baserow Museums table has been enriched with GitHub account data for museums worldwide.
 
 ## Fields
 
