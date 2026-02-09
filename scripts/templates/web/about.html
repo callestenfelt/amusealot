@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}About — AmuseAlot{% endblock %}
+
+{% block body %}
+<div class="container">
+  <div class="backnav"><a href="/">&larr; Subscribe</a></div>
+  <h1>AmuseAlot <span class="beta-chip">BETA</span></h1>
+  <div class="subtitle">Museum Tech Newsletter</div>
+
+  <h2>How it works</h2>
+  <p>
+    AmuseAlot is an automated newsletter that tracks what museums and cultural
+    heritage organizations are building on GitHub. It monitors over 130 organizations
+    worldwide and delivers a digest every Wednesday of new projects, releases,
+    and notable development activity.
+  </p>
+
+  <div class="dotline"></div>
+
+  <h3 style="font-size:16px;font-weight:bold;margin-bottom:8px;">Data collection</h3>
+  <p>
+    Every Wednesday, the pipeline scans public GitHub activity from museums,
+    national libraries, archives, and other cultural heritage organizations.
+    It collects push events, new repositories, and releases, then enriches
+    each event with repository metadata like language, stars, and descriptions.
+  </p>
+
+  <h3 style="font-size:16px;font-weight:bold;margin-bottom:8px;">AI-assisted curation</h3>
+  <p>
+    An AI model (Llama 3.3 via Groq) reads each event and scores it for
+    relevance to the museum tech community. It assigns a tier (featured,
+    mentioned, or skipped), writes a short summary, and selects a spotlight
+    project for each issue. The summaries you read in the newsletter are
+    AI-generated based on commit messages, release notes, and README files.
+  </p>
+
+  <h3 style="font-size:16px;font-weight:bold;margin-bottom:8px;">Open source</h3>
+  <p>
+    The entire pipeline is open source. You can see how it works, suggest
+    improvements, or run your own version:
+    <a href="https://github.com/callestenfelt/musemaniac">github.com/callestenfelt/musemaniac</a>
+  </p>
+
+  <h3 style="font-size:16px;font-weight:bold;margin-bottom:8px;">Inspiration</h3>
+  <p>
+    This project is inspired by
+    <a href="https://github.com/heripo-lab/heripo-research-radar">heripo-research-radar</a>,
+    an AI-powered newsletter for Korean cultural heritage research.
+  </p>
+</div>
+{% endblock %}

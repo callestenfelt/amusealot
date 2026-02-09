@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block title %}AmuseAlot — Museum Tech Newsletter{% endblock %}
-
 {% block body %}
 <div class="container">
-  <h1>AmuseAlot</h1>
+  <h1>AmuseAlot <span class="beta-chip">BETA</span></h1>
   <div class="subtitle">Museum Tech Newsletter</div>
 
   <h2>Stay in the loop</h2>
   <p>
-    A weekly digest of what's happening in museum technology on GitHub &mdash;
-    new projects, releases, and notable developments from museums worldwide.
+    A digest of what's happening in museum technology on GitHub, delivered
+    every Wednesday &mdash; new projects, releases, and notable developments
+    from museums worldwide.
   </p>
 
   <div class="dotline"></div>
@@ -24,6 +24,10 @@
   <p style="font-size:13px;color:#080229;">
     We use double opt-in. You'll receive a confirmation email before any newsletters are sent.
     No tracking, no cookies, no spam. Read our <a href="/privacy">privacy policy</a>.
+  </p>
+  <p style="font-size:13px;color:#080229;">
+    Content is gathered and summarized with AI and may contain mistakes.
+    <a href="/about">Read more about how it works</a>.
   </p>
 </div>
 {% endblock %}
