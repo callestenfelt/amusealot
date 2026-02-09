@@ -51,7 +51,7 @@ def find_latest_newsletter(script_dir):
 
 
 def get_confirmed_subscribers():
-    """Fetch all confirmed subscribers from Baserow."""
+    """Fetch all subscribers from Baserow, filter to confirmed in code."""
     subscribers = []
     page = 1
 
@@ -62,7 +62,6 @@ def get_confirmed_subscribers():
                 "size": 200,
                 "page": page,
                 "user_field_names": "true",
-                "filter__field_status__equal": "confirmed",
             },
             headers=BASEROW_HEADERS,
         )
@@ -74,7 +73,9 @@ def get_confirmed_subscribers():
             break
         page += 1
 
-    return subscribers
+    # Filter in code — Baserow single_select API filters are unreliable with text values
+    confirmed = [s for s in subscribers if (s.get("status") or {}).get("value") == "confirmed"]
+    return confirmed
 
 
 def personalize_html(html, subscriber):
