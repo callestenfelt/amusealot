@@ -20,7 +20,7 @@ import io
 import os
 import re
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 
@@ -123,7 +123,7 @@ def send_confirmation_email(email, confirm_url):
         json={
             "from": RESEND_FROM,
             "to": [email],
-            "subject": "Confirm your Musemaniac subscription",
+            "subject": "Confirm your AmuseAlot subscription",
             "html": html,
         },
     )
@@ -171,7 +171,7 @@ def _subscribe():
             # Re-subscribe: generate new tokens, set to pending
             confirm_token = secrets.token_urlsafe(32)
             unsubscribe_token = existing.get("unsubscribe_token") or secrets.token_urlsafe(32)
-            now = datetime.now(timezone.utc).isoformat()
+            now = date.today().isoformat()
             baserow_update_row(existing["id"], {
                 "status": "pending",
                 "subscribed_at": now,
@@ -191,7 +191,7 @@ def _subscribe():
     # New subscriber
     confirm_token = secrets.token_urlsafe(32)
     unsubscribe_token = secrets.token_urlsafe(32)
-    now = datetime.now(timezone.utc).isoformat()
+    now = date.today().isoformat()
 
     baserow_create_row({
         "email": email,
@@ -236,7 +236,7 @@ def confirm():
     if status_value != "pending":
         return render_template("confirm_error.html"), 400
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = date.today().isoformat()
     baserow_update_row(row["id"], {
         "status": "confirmed",
         "confirmed_at": now,
@@ -264,7 +264,7 @@ def unsubscribe():
     if status_value == "unsubscribed":
         return render_template("unsubscribe_success.html")
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = date.today().isoformat()
     baserow_update_row(row["id"], {
         "status": "unsubscribed",
         "unsubscribed_at": now,

@@ -95,7 +95,7 @@ def send_email(to_email, html, unsub_url):
         json={
             "from": RESEND_FROM,
             "to": [to_email],
-            "subject": "Musemaniac — Museum Tech Newsletter",
+            "subject": "AmuseAlot — Museum Tech Newsletter",
             "html": html,
             "headers": {
                 "List-Unsubscribe": f"<{unsub_url}>",
