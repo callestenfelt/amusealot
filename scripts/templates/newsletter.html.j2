@@ -14,7 +14,7 @@
   <![endif]-->
   <style type="text/css">
     :root { color-scheme: light only; }
-    a.link:hover { color: #3c3175 !important; }
+    a.link:hover { color: #080229 !important; }
     [data-ogsc] body, [data-ogsb] body { background-color: #fbfbfb !important; color: #080229 !important; }
   </style>
 </head>
@@ -23,7 +23,7 @@
 {# ============================================================
    SHARED STYLES
    ============================================================ #}
-{% set dot_border = "background-image:repeating-linear-gradient(to right,#3c3175 0,#3c3175 2px,transparent 2px,transparent 6px);background-size:100% 1px;background-position:bottom;background-repeat:no-repeat;" %}
+{% set dot_border = "background-image:repeating-linear-gradient(to right,#080229 0,#080229 2px,transparent 2px,transparent 6px);background-size:100% 1px;background-position:bottom;background-repeat:no-repeat;" %}
 
 {# ============================================================
    MACROS
@@ -32,7 +32,7 @@
 {% macro dotline() %}
 <tr>
   <td style="padding:0 40px;font-size:0;line-height:0;height:1px;">
-    <div style="height:1px;background-image:repeating-linear-gradient(to right,#3c3175 0,#3c3175 2px,transparent 2px,transparent 6px);"></div>
+    <div style="height:1px;background-image:repeating-linear-gradient(to right,#080229 0,#080229 2px,transparent 2px,transparent 6px);"></div>
   </td>
 </tr>
 {% endmacro %}
@@ -58,11 +58,11 @@
       <tr>
         <td>
           <a href="{{ event.url }}" class="link" style="font-size:16px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">{{ event.repo.split('/')[1] }}</a>
-          <span style="font-size:14px;color:#3c3175;padding-left:6px;">&rarr;</span>
+          <span style="font-size:14px;color:#080229;padding-left:6px;">&rarr;</span>
         </td>
       </tr>
       <tr>
-        <td style="font-size:13px;color:#3c3175;padding-top:6px;">
+        <td style="font-size:13px;color:#080229;padding-top:6px;">
           {{ event.org_name }}
           {% if event.repo_meta and event.repo_meta.language %}
             &nbsp;&middot;&nbsp;{{ event.repo_meta.language }}
@@ -92,10 +92,10 @@
         <td style="padding:10px 0;">
           <a href="{{ event.url }}" class="link" style="font-size:16px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">{{ event.repo.split('/')[1] }}</a>
           {% if event.details and event.details.tag is defined %}
-            <span style="font-size:13px;color:#3c3175;">&nbsp;&middot;&nbsp;{{ event.details.tag }}</span>
+            <span style="font-size:13px;color:#080229;">&nbsp;&middot;&nbsp;{{ event.details.tag }}</span>
           {% endif %}
           <br>
-          <span style="font-size:13px;color:#3c3175;line-height:2.2;">{{ event.org_name }}</span>
+          <span style="font-size:13px;color:#080229;line-height:2.2;">{{ event.org_name }}</span>
         </td>
       </tr>
     </table>
@@ -124,7 +124,7 @@
                 </td>
               </tr>
               <tr>
-                <td style="font-size:13px;color:#3c3175;padding-top:6px;letter-spacing:0.5px;">
+                <td style="font-size:13px;color:#080229;padding-top:6px;letter-spacing:0.5px;">
                   Museum Tech Newsletter &middot; {{ generation_date }}
                 </td>
               </tr>
@@ -150,7 +150,7 @@
                 </td>
               </tr>
               <tr>
-                <td style="padding-top:6px;font-size:13px;color:#3c3175;">
+                <td style="padding-top:6px;font-size:13px;color:#080229;">
                   {{ spotlight.event.org_name }}
                 </td>
               </tr>
@@ -162,7 +162,7 @@
               <tr>
                 <td style="padding-top:16px;">
                   <a href="https://github.com/{{ spotlight.event.repo }}" class="link" style="font-size:13px;color:#080229;text-decoration:underline;text-underline-offset:2px;">View on GitHub</a>
-                  <span style="font-size:13px;color:#3c3175;padding-left:4px;">&rarr;</span>
+                  <span style="font-size:13px;color:#080229;padding-left:4px;">&rarr;</span>
                 </td>
               </tr>
             </table>
@@ -189,7 +189,7 @@
                 ] %}
                 <td align="center" width="20%" style="padding:4px 2px;">
                   <span style="display:block;font-size:24px;font-weight:bold;color:#080229;">{{ stat[1] }}</span>
-                  <span style="display:block;font-size:10px;color:#3c3175;text-transform:uppercase;letter-spacing:0.5px;padding-top:4px;">{{ stat[0] }}</span>
+                  <span style="display:block;font-size:10px;color:#080229;text-transform:uppercase;letter-spacing:0.5px;padding-top:4px;">{{ stat[0] }}</span>
                 </td>
                 {% endfor %}
               </tr>
@@ -249,9 +249,9 @@
                       </td>
                       <td>
                         <a href="https://github.com/{{ repo.repo }}" class="link" style="font-size:14px;font-weight:600;color:#080229;text-decoration:underline;text-underline-offset:2px;">{{ repo.repo.split('/')[1] }}</a>
-                        <span style="font-size:13px;color:#3c3175;">&nbsp;&mdash;&nbsp;{{ repo.repo.split('/')[0] }}</span>
+                        <span style="font-size:13px;color:#080229;">&nbsp;&mdash;&nbsp;{{ repo.repo.split('/')[0] }}</span>
                         <br>
-                        <span style="font-size:12px;color:#3c3175;padding-top:2px;">
+                        <span style="font-size:12px;color:#080229;padding-top:2px;">
                           {{ repo.total_commits }} commit{{ 's' if repo.total_commits != 1 else '' }},
                           {{ repo.files_changed }} file{{ 's' if repo.files_changed != 1 else '' }} changed
                         </span>
