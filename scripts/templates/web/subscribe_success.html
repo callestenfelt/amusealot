@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Check Your Email — Musemaniac{% endblock %}
+
+{% block body %}
+<div class="container">
+  <h1>Musemaniac</h1>
+  <div class="subtitle">Museum Tech Newsletter</div>
+
+  {% if error %}
+  <h2>Oops</h2>
+  <p class="error">{{ error }}</p>
+  <p><a href="/">Try again</a></p>
+  {% else %}
+  <h2>Check your email</h2>
+  <p>
+    We've sent a confirmation link to your inbox.
+    Click the link to complete your subscription.
+  </p>
+  <div class="dotline"></div>
+  <p style="font-size:13px;color:#50623C;">
+    Didn't receive it? Check your spam folder, or
+    <a href="/">try subscribing again</a>.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

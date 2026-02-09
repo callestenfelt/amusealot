@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Musemaniac — Museum Tech Newsletter{% endblock %}
+
+{% block body %}
+<div class="container">
+  <h1>Musemaniac</h1>
+  <div class="subtitle">Museum Tech Newsletter</div>
+
+  <h2>Stay in the loop</h2>
+  <p>
+    A weekly digest of what's happening in museum technology on GitHub &mdash;
+    new projects, releases, and notable developments from museums worldwide.
+  </p>
+
+  <div class="dotline"></div>
+
+  <form method="post" action="/subscribe">
+    <input type="email" name="email" placeholder="your@email.com" required autocomplete="email">
+    <button type="submit" class="btn">Subscribe</button>
+  </form>
+
+  <div class="dotline"></div>
+
+  <p style="font-size:13px;color:#50623C;">
+    We use double opt-in. You'll receive a confirmation email before any newsletters are sent.
+    No tracking, no cookies, no spam. Read our <a href="/privacy">privacy policy</a>.
+  </p>
+</div>
+{% endblock %}

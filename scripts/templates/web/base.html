@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Musemaniac{% endblock %}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+      background-color: #F8D57A;
+      color: #3E492C;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 60px 24px;
+      flex: 1;
+    }
+    h1 {
+      font-size: 64px;
+      font-weight: bold;
+      letter-spacing: -4px;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #50623C;
+      letter-spacing: 0.5px;
+      margin-bottom: 48px;
+    }
+    h2 {
+      font-size: 22px;
+      font-weight: bold;
+      letter-spacing: -0.5px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 3px solid #3E492C;
+    }
+    p {
+      font-size: 15px;
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+    a {
+      color: #3E492C;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    a:hover {
+      color: #50623C;
+    }
+    .dotline {
+      height: 1px;
+      background-image: repeating-linear-gradient(to right, #50623C 0, #50623C 2px, transparent 2px, transparent 6px);
+      margin: 32px 0;
+    }
+    .footer {
+      background-color: #3E492C;
+      padding: 40px 24px;
+      text-align: center;
+    }
+    .footer span, .footer a {
+      font-size: 14px;
+      color: #F8D57A;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #3E492C;
+      color: #F8D57A;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 14px 32px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      letter-spacing: 0.5px;
+    }
+    .btn:hover {
+      background-color: #50623C;
+      color: #F8D57A;
+    }
+    input[type="email"] {
+      width: 100%;
+      font-size: 16px;
+      padding: 14px 16px;
+      border: 2px solid #3E492C;
+      background: transparent;
+      color: #3E492C;
+      font-family: inherit;
+      margin-bottom: 16px;
+    }
+    input[type="email"]::placeholder {
+      color: #50623C;
+      opacity: 0.6;
+    }
+    input[type="email"]:focus {
+      outline: none;
+      border-color: #50623C;
+    }
+    .error {
+      color: #8B0000;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  {% block body %}{% endblock %}
+  <div class="footer">
+    <span>
+      <a href="/">Musemaniac</a>
+      &middot;
+      <a href="/privacy">Privacy Policy</a>
+    </span>
+  </div>
+</body>
+</html>
