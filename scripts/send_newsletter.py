@@ -79,7 +79,7 @@ def get_confirmed_subscribers():
 
 def personalize_html(html, subscriber):
     """Replace %%UNSUBSCRIBE_URL%% with the subscriber's personal link."""
-    unsub_token = subscriber.get("unsubscribe_token", "")
+    unsub_token = subscriber.get("unsubscribe_token") or ""
     unsub_url = f"{BASE_URL}/unsubscribe?token={unsub_token}"
     return html.replace("%%UNSUBSCRIBE_URL%%", unsub_url)
 
@@ -147,7 +147,7 @@ def main():
         print("\n--- DRY RUN ---")
         for sub in subscribers:
             email = sub.get("email", "?")
-            token = sub.get("unsubscribe_token", "")[:8]
+            token = (sub.get("unsubscribe_token") or "")[:8]
             print(f"  Would send to: {email}  (unsub token: {token}...)")
         print(f"\nTotal: {len(subscribers)} email(s) would be sent")
         print("Pass --apply to actually send.")
@@ -164,7 +164,7 @@ def main():
             print(f"  SKIP: row {sub.get('id')} has no email")
             continue
 
-        unsub_token = sub.get("unsubscribe_token", "")
+        unsub_token = sub.get("unsubscribe_token") or ""
         unsub_url = f"{BASE_URL}/unsubscribe?token={unsub_token}"
         personalized = personalize_html(base_html, sub)
 
