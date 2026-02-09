@@ -25,7 +25,7 @@ except ImportError:
 
 
 def prepare_sections(scored_events):
-    """Group T1/T2 events by section, sorted by relevance desc within each tier."""
+    """Group T1/T2 events by section, deduplicate per repo, sorted by relevance."""
     sections = {"new_repos": [], "releases": [], "pushes": []}
 
     for event in scored_events:
@@ -36,10 +36,18 @@ def prepare_sections(scored_events):
         if tier <= 2 and section in sections:
             sections[section].append(event)
 
-    # Sort each section: T1 first, then by relevance desc
+    # Deduplicate: keep only the highest-relevance event per repo in each section
     for key in sections:
-        sections[key].sort(key=lambda e: (-e["score"]["tier"] == 1, -e["score"]["relevance"]))
-        # Proper sort: tier 1 before tier 2, then by relevance descending
+        seen = {}
+        for event in sections[key]:
+            repo = event.get("repo", "")
+            relevance = event.get("score", {}).get("relevance", 0)
+            if repo not in seen or relevance > seen[repo].get("score", {}).get("relevance", 0):
+                seen[repo] = event
+        sections[key] = list(seen.values())
+
+    # Sort each section: tier 1 before tier 2, then by relevance descending
+    for key in sections:
         sections[key].sort(key=lambda e: (e["score"]["tier"], -e["score"]["relevance"]))
 
     return sections
