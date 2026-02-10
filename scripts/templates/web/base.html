@@ -8,6 +8,7 @@
   <style>
     :root { color-scheme: light only; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow-x: clip; }
     body {
       font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
       background-color: #fbfbfb;
@@ -18,15 +19,18 @@
     }
     .container {
       max-width: 520px;
+      width: 100%;
       margin: 0 auto;
       padding: 60px 24px;
       flex: 1;
     }
     h1 {
-      font-size: 64px;
+      font-size: clamp(48px, 13vw, 64px);
       font-weight: bold;
       letter-spacing: -4px;
       margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
     }
     .subtitle {
       font-size: 14px;
@@ -53,7 +57,7 @@
       text-underline-offset: 3px;
     }
     a:hover {
-      color: #080229;
+      color: #12084E;
     }
     .dotline {
       height: 1px;
@@ -69,8 +73,12 @@
       font-size: 14px;
       color: #fbfbfb;
     }
+    .footer a:hover {
+      color: #C4BBF6;
+    }
     .btn {
-      display: inline-block;
+      display: block;
+      width: 100%;
       background-color: #080229;
       color: #fbfbfb;
       font-size: 16px;
@@ -82,7 +90,7 @@
       letter-spacing: 0.5px;
     }
     .btn:hover {
-      background-color: #080229;
+      background-color: #12084E;
       color: #fbfbfb;
     }
     input[type="email"] {
@@ -123,14 +131,14 @@
       display: inline-block;
       background-color: #080229;
       color: #fbfbfb;
-      font-size: 11px;
+      font-size: clamp(9px, 2vw, 11px);
       font-weight: bold;
       letter-spacing: -0.2px;
       padding: 5px 10px;
       border-radius: 7px;
       vertical-align: middle;
       position: relative;
-      top: -12px;
+      top: -0.2em;
       margin-left: 4px;
     }
     @media (prefers-color-scheme: dark) {
