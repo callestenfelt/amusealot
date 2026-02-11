@@ -19,6 +19,7 @@ import sys
 import io
 import os
 import re
+import glob
 import secrets
 from datetime import datetime, timezone, date
 
@@ -128,6 +129,43 @@ def send_confirmation_email(email, confirm_url):
         },
     )
     resp.raise_for_status()
+    return resp.json()
+
+
+def send_welcome_email(email, unsubscribe_token):
+    """Send the latest newsletter as a welcome email to a newly confirmed subscriber."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    pattern = os.path.join(script_dir, "newsletter_*.html")
+    files = sorted(glob.glob(pattern), reverse=True)
+    if not files:
+        print(f"No newsletter files found, skipping welcome email for {email}")
+        return
+
+    with open(files[0], "r", encoding="utf-8") as f:
+        html = f.read()
+
+    unsub_url = f"{BASE_URL}/unsubscribe?token={unsubscribe_token}"
+    html = html.replace("%%UNSUBSCRIBE_URL%%", unsub_url)
+
+    resp = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "from": RESEND_FROM,
+            "to": [email],
+            "subject": "Welcome to AmuseAlot \u2014 here's our latest issue",
+            "html": html,
+            "headers": {
+                "List-Unsubscribe": f"<{unsub_url}>",
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click-Unsubscribe",
+            },
+        },
+    )
+    resp.raise_for_status()
+    print(f"Welcome email sent to {email}")
     return resp.json()
 
 
@@ -241,6 +279,11 @@ def confirm():
         "status": "confirmed",
         "confirmed_at": now,
     })
+
+    try:
+        send_welcome_email(row.get("email", ""), row.get("unsubscribe_token", ""))
+    except Exception as e:
+        print(f"ERROR sending welcome email to {row.get('email', '')}: {e}")
 
     return render_template("confirm_success.html")
 

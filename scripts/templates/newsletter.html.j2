@@ -143,7 +143,7 @@
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
                 <td style="font-size:20px;font-weight:bold;color:#080229;letter-spacing:-1px;padding-bottom:16px;border-bottom:3px solid #080229;">
-                  &#9967; Spotlight
+                  🌟 Spotlight
                 </td>
               </tr>
               <tr>
@@ -180,7 +180,7 @@
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
                 <td colspan="5" style="font-size:20px;font-weight:bold;color:#080229;letter-spacing:-1px;white-space:nowrap;padding-bottom:20px;text-align:center;">
-                  Activity This Week
+                  ⚡ Activity This Week
                 </td>
               </tr>
               <tr>
@@ -204,7 +204,7 @@
 
         {# ========== NEW REPOS ========== #}
         {% if has_new_repos %}
-        {{ section_header("&#10022; New Repositories") }}
+        {{ section_header("🥚 New Repositories") }}
         {% for event in sections.new_repos %}
           {% if event.score.tier == 1 %}
             {{ event_t1(event) }}
@@ -216,7 +216,7 @@
 
         {# ========== RELEASES ========== #}
         {% if has_releases %}
-        {{ section_header("&#9787; Releases") }}
+        {{ section_header("🚀 Releases") }}
         {% for event in sections.releases %}
           {% if event.score.tier == 1 %}
             {{ event_t1(event) }}
@@ -226,22 +226,10 @@
         {% endfor %}
         {% endif %}
 
-        {# ========== NOTABLE PUSHES ========== #}
-        {% if has_pushes %}
-        {{ section_header("&#9752; Notable Pushes") }}
-        {% for event in sections.pushes %}
-          {% if event.score.tier == 1 %}
-            {{ event_t1(event) }}
-          {% else %}
-            {{ event_t2(event) }}
-          {% endif %}
-        {% endfor %}
-        {% endif %}
-
         {# ========== MOST ACTIVE REPOS ========== #}
-        {{ section_header("&#9733; Most Active Repos") }}
+        {{ section_header("🔥 Most Active Repos") }}
         <tr>
-          <td style="padding:0 40px 36px 40px;">
+          <td style="padding:0 40px 0 40px;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               {% for repo in most_active %}
               <tr>
@@ -268,6 +256,19 @@
             </table>
           </td>
         </tr>
+
+        {# ========== NOTABLE PUSHES ========== #}
+        {% if has_pushes %}
+        {{ section_header("🤖 Notable Pushes") }}
+        {% for event in sections.pushes %}
+          {% if event.score.tier == 1 %}
+            {{ event_t1(event) }}
+          {% else %}
+            {{ event_t2(event) }}
+          {% endif %}
+        {% endfor %}
+        <tr><td style="height:100px;"></td></tr>
+        {% endif %}
 
       </table>
       {# /Inner container #}
