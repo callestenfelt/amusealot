@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Archive — AmuseAlot{% endblock %}
+
+{% block body %}
+<div class="container">
+  <div class="backnav"><a href="/">&larr; Subscribe</a></div>
+  <h1>AmuseAlot <span class="beta-chip">BETA</span></h1>
+  <div class="subtitle">Museum Tech Newsletter</div>
+
+  <h2>Archive</h2>
+
+  {% if error %}
+    <p>{{ error }}</p>
+  {% elif not editions %}
+    <p>No editions yet. The first issue is coming soon!</p>
+  {% else %}
+    {% for ed in editions %}
+      <a href="/archive/{{ ed.edition_date }}" style="text-decoration:none;display:block;">
+        <div style="padding:20px 0;">
+          <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:6px;">
+            {% if ed.edition_number %}
+              <span style="font-size:13px;font-weight:bold;letter-spacing:-0.3px;">#{{ ed.edition_number }}</span>
+            {% endif %}
+            <span style="font-size:16px;font-weight:bold;">{{ ed.display_date }}</span>
+          </div>
+          {% if ed.spotlight_repo %}
+            <div style="font-size:14px;margin-bottom:4px;">
+              Spotlight: {{ ed.spotlight_repo.split('/')[1] if '/' in (ed.spotlight_repo or '') else ed.spotlight_repo }}
+              {% if ed.spotlight_org %}
+                <span style="opacity:0.6;">&mdash; {{ ed.spotlight_org }}</span>
+              {% endif %}
+            </div>
+          {% endif %}
+          <div style="font-size:13px;opacity:0.6;">
+            {% set parts = [] %}
+            {% if ed.stats_active_orgs %}{% set _ = parts.append(ed.stats_active_orgs|string ~ " orgs") %}{% endif %}
+            {% if ed.stats_unique_repos %}{% set _ = parts.append(ed.stats_unique_repos|string ~ " repos") %}{% endif %}
+            {% if ed.stats_releases %}{% set _ = parts.append(ed.stats_releases|string ~ " releases") %}{% endif %}
+            {{ parts|join(" · ") }}
+          </div>
+        </div>
+      </a>
+      {% if not loop.last %}
+        <div class="dotline" style="margin:0;"></div>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

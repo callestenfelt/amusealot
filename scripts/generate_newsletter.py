@@ -13,7 +13,7 @@ import io
 import os
 import json
 import argparse
-from datetime import date
+from datetime import date, datetime, timezone
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 
@@ -59,6 +59,7 @@ def build_context(data):
 
     return {
         "generation_date": date.today().strftime("%B %d, %Y"),
+        "generation_date_iso": date.today().isoformat(),
         "stats": data["stats"],
         "most_active": data["most_active"],
         "spotlight": data["spotlight"],
@@ -82,15 +83,66 @@ def render_newsletter(context):
     return template.render(context)
 
 
+def register_edition(context, file_name):
+    """Register this edition in the Baserow editions table. Gracefully skips if not configured."""
+    baserow_url = os.environ.get("BASEROW_URL")
+    baserow_token = os.environ.get("BASEROW_TOKEN")
+    edition_table_id = os.environ.get("EDITION_TABLE_ID")
+
+    if not all([baserow_url, baserow_token, edition_table_id]):
+        print("\nEdition registration skipped (EDITION_TABLE_ID not set)")
+        return
+
+    try:
+        import requests
+    except ImportError:
+        print("\nEdition registration skipped (requests not installed)")
+        return
+
+    headers = {
+        "Authorization": f"Token {baserow_token}",
+        "Content-Type": "application/json",
+    }
+
+    spotlight = context.get("spotlight", {})
+    spotlight_event = spotlight.get("event", {})
+    stats = context.get("stats", {})
+
+    row_data = {
+        "edition_date": context["generation_date_iso"],
+        "spotlight_repo": spotlight_event.get("repo", ""),
+        "spotlight_org": spotlight_event.get("org_name", ""),
+        "spotlight_summary": spotlight.get("writeup", ""),
+        "stats_active_orgs": stats.get("active_orgs", 0),
+        "stats_total_pushes": stats.get("total_pushes", 0),
+        "stats_unique_repos": stats.get("unique_repos", 0),
+        "stats_new_projects": stats.get("new_projects", 0),
+        "stats_releases": stats.get("releases", 0),
+        "file_name": file_name,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    try:
+        url = f"{baserow_url}/api/database/rows/table/{edition_table_id}/"
+        resp = requests.post(url, json=row_data, params={"user_field_names": "true"}, headers=headers)
+        resp.raise_for_status()
+        print(f"\nEdition registered in Baserow (row {resp.json().get('id')})")
+    except Exception as e:
+        print(f"\nWARNING: Failed to register edition in Baserow: {e}")
+
+
 def main():
     script_dir = os.path.dirname(__file__)
-    default_output = os.path.join(script_dir, f"newsletter_{date.today().isoformat()}.html")
+    editions_dir = os.path.join(script_dir, "editions")
+    os.makedirs(editions_dir, exist_ok=True)
+    file_name = f"newsletter_{date.today().isoformat()}.html"
+    default_output = os.path.join(editions_dir, file_name)
 
     parser = argparse.ArgumentParser(description="Generate HTML newsletter from scored content")
     parser.add_argument("--input", default=os.path.join(script_dir, "scored_newsletter_content.json"),
                         help="Input scored JSON (default: scripts/scored_newsletter_content.json)")
     parser.add_argument("--output", default=default_output,
-                        help="Output HTML file (default: scripts/newsletter_YYYY-MM-DD.html)")
+                        help="Output HTML file (default: scripts/editions/newsletter_YYYY-MM-DD.html)")
     args = parser.parse_args()
 
     # Load scored data
@@ -118,6 +170,10 @@ def main():
     size_kb = os.path.getsize(args.output) / 1024
     print(f"\nNewsletter written to {args.output}")
     print(f"  Size: {size_kb:.1f} KB {'(OK)' if size_kb < 102 else '(WARNING: exceeds Gmail 102KB limit)'}")
+
+    # Register edition in Baserow
+    output_file_name = os.path.basename(args.output)
+    register_edition(context, output_file_name)
 
 
 if __name__ == "__main__":

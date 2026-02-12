@@ -42,7 +42,7 @@ SEND_DELAY = 1  # seconds between sends
 
 def find_latest_newsletter(script_dir):
     """Find the most recent newsletter_*.html file."""
-    pattern = os.path.join(script_dir, "newsletter_*.html")
+    pattern = os.path.join(script_dir, "editions", "newsletter_*.html")
     files = sorted(glob.glob(pattern), reverse=True)
     if not files:
         print("ERROR: No newsletter_*.html files found")

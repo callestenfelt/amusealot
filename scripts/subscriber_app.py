@@ -43,6 +43,7 @@ RESEND_API_KEY = os.environ["RESEND_API_KEY"]
 RESEND_FROM = os.environ["RESEND_FROM"]
 BASE_URL = os.environ["MUSEMANIAC_BASE_URL"]  # e.g. https://amusealot.com
 SUBSCRIBER_TABLE_ID = os.environ["SUBSCRIBER_TABLE_ID"]
+EDITION_TABLE_ID = os.environ.get("EDITION_TABLE_ID")  # optional, needed for /archive
 
 BASEROW_HEADERS = {
     "Authorization": f"Token {BASEROW_TOKEN}",
@@ -135,7 +136,7 @@ def send_confirmation_email(email, confirm_url):
 def send_welcome_email(email, unsubscribe_token):
     """Send the latest newsletter as a welcome email to a newly confirmed subscriber."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    pattern = os.path.join(script_dir, "newsletter_*.html")
+    pattern = os.path.join(script_dir, "editions", "newsletter_*.html")
     files = sorted(glob.glob(pattern), reverse=True)
     if not files:
         print(f"No newsletter files found, skipping welcome email for {email}")
@@ -324,6 +325,101 @@ def privacy():
 @app.route("/about")
 def about():
     return render_template("about.html")
+
+
+# --- Archive routes ---
+
+def get_editions():
+    """Fetch all editions from Baserow, sorted by date descending."""
+    if not EDITION_TABLE_ID:
+        return []
+    editions = []
+    page = 1
+    while True:
+        resp = requests.get(
+            f"{BASEROW_URL}/api/database/rows/table/{EDITION_TABLE_ID}/",
+            params={
+                "size": 200,
+                "page": page,
+                "user_field_names": "true",
+                "order_by": "-edition_date",
+            },
+            headers=BASEROW_HEADERS,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        editions.extend(data.get("results", []))
+        if not data.get("next"):
+            break
+        page += 1
+    return editions
+
+
+def find_edition_by_date(edition_date):
+    """Find a single edition by date string (YYYY-MM-DD)."""
+    if not EDITION_TABLE_ID:
+        return None
+    editions = get_editions()
+    for ed in editions:
+        if ed.get("edition_date") == edition_date:
+            return ed
+    return None
+
+
+@app.route("/archive")
+def archive():
+    editions = get_editions()
+    # Format dates for display
+    for ed in editions:
+        raw = ed.get("edition_date", "")
+        if raw:
+            try:
+                dt = datetime.strptime(raw, "%Y-%m-%d")
+                ed["display_date"] = dt.strftime("%B %d, %Y")
+            except ValueError:
+                ed["display_date"] = raw
+        else:
+            ed["display_date"] = ""
+    return render_template("archive.html", editions=editions)
+
+
+@app.route("/archive/<edition_date>")
+def archive_edition(edition_date):
+    # Validate date format
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", edition_date):
+        return render_template("archive.html", editions=[], error="Invalid date format."), 404
+
+    edition = find_edition_by_date(edition_date)
+    file_name = edition.get("file_name", "") if edition else ""
+    if not file_name:
+        file_name = f"newsletter_{edition_date}.html"
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(script_dir, "editions", file_name)
+
+    if not os.path.exists(file_path):
+        return render_template("archive.html", editions=[], error="Edition not found."), 404
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    # Replace unsubscribe placeholder with generic landing page link
+    html = html.replace("%%UNSUBSCRIBE_URL%%", f"{BASE_URL}/unsubscribe")
+
+    # Inject back-to-archive nav bar at the top of <body>
+    nav_bar = (
+        '<div style="background-color:#080229;padding:12px 24px;text-align:center;">'
+        '<a href="/archive" style="color:#fbfbfb;font-size:14px;text-decoration:none;font-family:Arial,sans-serif;">'
+        '&larr; Back to Archive</a></div>'
+    )
+    # Insert after the first > that closes the <body> tag
+    body_idx = html.find("<body")
+    if body_idx != -1:
+        close_idx = html.find(">", body_idx)
+        if close_idx != -1:
+            html = html[:close_idx + 1] + nav_bar + html[close_idx + 1:]
+
+    return html
 
 
 if __name__ == "__main__":
