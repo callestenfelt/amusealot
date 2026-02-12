@@ -15,6 +15,7 @@
   <style type="text/css">
     :root { color-scheme: light only; }
     a.link:hover { color: #080229 !important; }
+    .ehdr img { padding-bottom: 5px !important; }
     [data-ogsc] body, [data-ogsb] body { background-color: #fbfbfb !important; color: #080229 !important; }
     [data-ogsc] table, [data-ogsb] table { background-color: #fbfbfb !important; }
     [data-ogsc] td, [data-ogsb] td { color: #080229 !important; }
@@ -41,13 +42,14 @@
 </tr>
 {% endmacro %}
 
-{% macro section_header(title) %}
+{% macro section_header(emoji, text) %}
 <tr>
   <td style="padding:48px 40px 24px 40px;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
       <tr>
         <td style="font-size:20px;font-weight:bold;color:#080229;letter-spacing:-1px;padding-bottom:16px;border-bottom:3px solid #080229;">
-          {{ title|safe }}
+          <span class="ehdr" style="font-size:22px;vertical-align:middle;letter-spacing:0;">{{ emoji }}</span>
+          <span style="vertical-align:middle;">{{ text }}</span>
         </td>
       </tr>
     </table>
@@ -143,7 +145,8 @@
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
                 <td style="font-size:20px;font-weight:bold;color:#080229;letter-spacing:-1px;padding-bottom:16px;border-bottom:3px solid #080229;">
-                  🌟 Spotlight
+                  <span class="ehdr" style="font-size:22px;vertical-align:middle;letter-spacing:0;">🌟</span>
+                  <span style="vertical-align:middle;">Spotlight</span>
                 </td>
               </tr>
               <tr>
@@ -180,7 +183,8 @@
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
                 <td colspan="5" style="font-size:20px;font-weight:bold;color:#080229;letter-spacing:-1px;white-space:nowrap;padding-bottom:20px;text-align:center;">
-                  ⚡ Activity This Week
+                  <span class="ehdr" style="font-size:22px;vertical-align:middle;letter-spacing:0;">⚡</span>
+                  <span style="vertical-align:middle;">Activity This Week</span>
                 </td>
               </tr>
               <tr>
@@ -204,7 +208,7 @@
 
         {# ========== NEW REPOS ========== #}
         {% if has_new_repos %}
-        {{ section_header("🥚 New Repositories") }}
+        {{ section_header("🥚", "New Repositories") }}
         {% for event in sections.new_repos %}
           {% if event.score.tier == 1 %}
             {{ event_t1(event) }}
@@ -216,7 +220,7 @@
 
         {# ========== RELEASES ========== #}
         {% if has_releases %}
-        {{ section_header("🚀 Releases") }}
+        {{ section_header("🚀", "Releases") }}
         {% for event in sections.releases %}
           {% if event.score.tier == 1 %}
             {{ event_t1(event) }}
@@ -227,7 +231,7 @@
         {% endif %}
 
         {# ========== MOST ACTIVE REPOS ========== #}
-        {{ section_header("🔥 Most Active Repos") }}
+        {{ section_header("🔥", "Most Active Repos") }}
         <tr>
           <td style="padding:0 40px 0 40px;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
@@ -259,7 +263,7 @@
 
         {# ========== NOTABLE PUSHES ========== #}
         {% if has_pushes %}
-        {{ section_header("🤖 Notable Pushes") }}
+        {{ section_header("🤖", "Notable Pushes") }}
         {% for event in sections.pushes %}
           {% if event.score.tier == 1 %}
             {{ event_t1(event) }}
