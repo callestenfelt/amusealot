@@ -41,13 +41,18 @@ SEND_DELAY = 1  # seconds between sends
 
 
 def find_latest_newsletter(script_dir):
-    """Find the most recent newsletter_*.html file."""
-    pattern = os.path.join(script_dir, "editions", "newsletter_*.html")
-    files = sorted(glob.glob(pattern), reverse=True)
-    if not files:
-        print("ERROR: No newsletter_*.html files found")
-        sys.exit(1)
-    return files[0]
+    """Find the most recent email newsletter, falling back to full version."""
+    editions = os.path.join(script_dir, "editions")
+    # Prefer email (truncated) version
+    email_files = sorted(glob.glob(os.path.join(editions, "newsletter_email_*.html")), reverse=True)
+    if email_files:
+        return email_files[0]
+    # Fallback to full version (old editions before email split)
+    full_files = sorted(glob.glob(os.path.join(editions, "newsletter_*.html")), reverse=True)
+    if full_files:
+        return full_files[0]
+    print("ERROR: No newsletter_*.html files found")
+    sys.exit(1)
 
 
 def get_confirmed_subscribers():

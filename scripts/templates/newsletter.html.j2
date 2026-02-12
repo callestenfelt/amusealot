@@ -265,12 +265,22 @@
         {% if has_pushes %}
         {{ section_header("🤖", "Notable Pushes") }}
         {% for event in sections.pushes %}
-          {% if event.score.tier == 1 %}
-            {{ event_t1(event) }}
+          {% if max_pushes and loop.index > max_pushes %}
           {% else %}
-            {{ event_t2(event) }}
+            {% if event.score.tier == 1 %}
+              {{ event_t1(event) }}
+            {% else %}
+              {{ event_t2(event) }}
+            {% endif %}
           {% endif %}
         {% endfor %}
+        {% if max_pushes and sections.pushes|length > max_pushes %}
+        <tr>
+          <td style="padding:20px 40px 0 40px;">
+            <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">See all {{ sections.pushes|length }} pushes in the full edition &rarr;</a>
+          </td>
+        </tr>
+        {% endif %}
         <tr><td style="height:100px;"></td></tr>
         {% endif %}
 

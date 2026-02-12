@@ -2,10 +2,14 @@
 """
 Generate an HTML newsletter from scored museum tech GitHub activity.
 
-Usage:
-  python generate_newsletter.py [--input scored_newsletter_content.json] [--output newsletter_YYYY-MM-DD.html]
+Produces two files per edition:
+  - Full version (archive): newsletter_YYYY-MM-DD.html
+  - Email version (truncated pushes): newsletter_email_YYYY-MM-DD.html
 
-No environment variables needed.
+Usage:
+  python generate_newsletter.py [--input scored_newsletter_content.json] [--test]
+
+No environment variables needed (except for Baserow registration in non-test mode).
 """
 
 import sys
@@ -53,11 +57,11 @@ def prepare_sections(scored_events):
     return sections
 
 
-def build_context(data):
+def build_context(data, max_pushes=None):
     """Assemble full template context from scored newsletter data."""
     sections = prepare_sections(data["scored_events"])
 
-    return {
+    ctx = {
         "generation_date": date.today().strftime("%B %d, %Y"),
         "generation_date_iso": date.today().isoformat(),
         "stats": data["stats"],
@@ -67,7 +71,9 @@ def build_context(data):
         "has_new_repos": len(sections["new_repos"]) > 0,
         "has_releases": len(sections["releases"]) > 0,
         "has_pushes": len(sections["pushes"]) > 0,
+        "max_pushes": max_pushes,
     }
+    return ctx
 
 
 def render_newsletter(context):
@@ -136,20 +142,14 @@ def main():
     script_dir = os.path.dirname(__file__)
     editions_dir = os.path.join(script_dir, "editions")
     os.makedirs(editions_dir, exist_ok=True)
-    file_name = f"newsletter_{date.today().isoformat()}.html"
-    default_output = os.path.join(editions_dir, file_name)
+    today_iso = date.today().isoformat()
 
     parser = argparse.ArgumentParser(description="Generate HTML newsletter from scored content")
     parser.add_argument("--input", default=os.path.join(script_dir, "scored_newsletter_content.json"),
                         help="Input scored JSON (default: scripts/scored_newsletter_content.json)")
-    parser.add_argument("--output", default=default_output,
-                        help="Output HTML file (default: scripts/editions/newsletter_YYYY-MM-DD.html)")
     parser.add_argument("--test", action="store_true",
                         help="Test mode: write to newsletter_test.html, skip Baserow registration")
     args = parser.parse_args()
-
-    if args.test:
-        args.output = os.path.join(script_dir, "newsletter_test.html")
 
     # Load scored data
     with open(args.input, "r", encoding="utf-8") as f:
@@ -159,7 +159,7 @@ def main():
     print(f"  Events: {len(data['scored_events'])}")
     print(f"  Stats: {data['stats']}")
 
-    # Build context and render
+    # Build context (shared between both renders)
     context = build_context(data)
 
     print(f"\nSections:")
@@ -167,22 +167,42 @@ def main():
     print(f"  Releases:  {len(context['sections']['releases'])} events")
     print(f"  Pushes:    {len(context['sections']['pushes'])} events")
 
-    html = render_newsletter(context)
+    # --- Full version (archive) ---
+    full_html = render_newsletter(context)
 
-    # Write output
-    with open(args.output, "w", encoding="utf-8") as f:
-        f.write(html)
+    if args.test:
+        full_path = os.path.join(script_dir, "newsletter_test.html")
+    else:
+        full_path = os.path.join(editions_dir, f"newsletter_{today_iso}.html")
 
-    size_kb = os.path.getsize(args.output) / 1024
-    print(f"\nNewsletter written to {args.output}")
-    print(f"  Size: {size_kb:.1f} KB {'(OK)' if size_kb < 102 else '(WARNING: exceeds Gmail 102KB limit)'}")
+    with open(full_path, "w", encoding="utf-8") as f:
+        f.write(full_html)
 
-    # Register edition in Baserow (skip in test mode)
+    full_kb = os.path.getsize(full_path) / 1024
+    print(f"\nFull newsletter written to {full_path}")
+    print(f"  Size: {full_kb:.1f} KB")
+
+    # --- Truncated version (email) ---
+    email_context = build_context(data, max_pushes=6)
+    email_html = render_newsletter(email_context)
+
+    if args.test:
+        email_path = os.path.join(script_dir, "newsletter_email_test.html")
+    else:
+        email_path = os.path.join(editions_dir, f"newsletter_email_{today_iso}.html")
+
+    with open(email_path, "w", encoding="utf-8") as f:
+        f.write(email_html)
+
+    email_kb = os.path.getsize(email_path) / 1024
+    print(f"Email newsletter written to {email_path}")
+    print(f"  Size: {email_kb:.1f} KB {'(OK)' if email_kb < 102 else '(WARNING: exceeds Gmail 102KB limit)'}")
+
+    # Register edition in Baserow (skip in test mode) — archive version only
     if args.test:
         print("\nTest mode: skipping Baserow registration")
     else:
-        output_file_name = os.path.basename(args.output)
-        register_edition(context, output_file_name)
+        register_edition(context, os.path.basename(full_path))
 
 
 if __name__ == "__main__":
