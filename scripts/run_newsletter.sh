@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# End-to-end newsletter pipeline: collect → enrich → score → generate → send
+# End-to-end newsletter pipeline: collect → enrich → score → generate → send → remind
 #
 # Usage:
 #   ./run_newsletter.sh          # Dry run (shows what would be sent)
@@ -20,28 +20,33 @@ echo "========================================"
 
 # Step 1: Collect GitHub activity
 echo ""
-echo "[1/5] Collecting GitHub activity..."
+echo "[1/6] Collecting GitHub activity..."
 python3 "$SCRIPT_DIR/collect_github_activity.py"
 
 # Step 2: Enrich events
 echo ""
-echo "[2/5] Enriching events..."
+echo "[2/6] Enriching events..."
 python3 "$SCRIPT_DIR/enrich_github_activity.py"
 
 # Step 3: Score with LLM
 echo ""
-echo "[3/5] Scoring content..."
+echo "[3/6] Scoring content..."
 python3 "$SCRIPT_DIR/score_newsletter_content.py"
 
 # Step 4: Generate HTML
 echo ""
-echo "[4/5] Generating newsletter..."
+echo "[4/6] Generating newsletter..."
 python3 "$SCRIPT_DIR/generate_newsletter.py"
 
 # Step 5: Send (passes --apply through if provided)
 echo ""
-echo "[5/5] Sending newsletter..."
+echo "[5/6] Sending newsletter..."
 python3 "$SCRIPT_DIR/send_newsletter.py" "$@"
+
+# Step 6: Send confirmation reminders to pending subscribers
+echo ""
+echo "[6/6] Sending confirmation reminders..."
+python3 "$SCRIPT_DIR/send_reminders.py" "$@"
 
 echo ""
 echo "========================================"
