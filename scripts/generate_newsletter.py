@@ -144,7 +144,12 @@ def main():
                         help="Input scored JSON (default: scripts/scored_newsletter_content.json)")
     parser.add_argument("--output", default=default_output,
                         help="Output HTML file (default: scripts/editions/newsletter_YYYY-MM-DD.html)")
+    parser.add_argument("--test", action="store_true",
+                        help="Test mode: write to newsletter_test.html, skip Baserow registration")
     args = parser.parse_args()
+
+    if args.test:
+        args.output = os.path.join(script_dir, "newsletter_test.html")
 
     # Load scored data
     with open(args.input, "r", encoding="utf-8") as f:
@@ -172,9 +177,12 @@ def main():
     print(f"\nNewsletter written to {args.output}")
     print(f"  Size: {size_kb:.1f} KB {'(OK)' if size_kb < 102 else '(WARNING: exceeds Gmail 102KB limit)'}")
 
-    # Register edition in Baserow
-    output_file_name = os.path.basename(args.output)
-    register_edition(context, output_file_name)
+    # Register edition in Baserow (skip in test mode)
+    if args.test:
+        print("\nTest mode: skipping Baserow registration")
+    else:
+        output_file_name = os.path.basename(args.output)
+        register_edition(context, output_file_name)
 
 
 if __name__ == "__main__":
