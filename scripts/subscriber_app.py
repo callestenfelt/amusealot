@@ -478,6 +478,7 @@ def _feedback_post():
     rating_str = request.form.get("rating", "").strip()
     feedback_text = request.form.get("feedback_text", "").strip()
     suggest_org = request.form.get("suggest_org", "").strip()
+    email = request.form.get("email", "").strip()
 
     # Validate rating (required)
     try:
@@ -500,6 +501,7 @@ def _feedback_post():
         "rating": rating,
         "feedback_text": feedback_text,
         "suggest_org": suggest_org,
+        "email": email,
         "created_at": now,
         "ip_address": ip,
     }
