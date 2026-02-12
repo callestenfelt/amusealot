@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Feedback — AmuseAlot{% endblock %}
+
+{% block body %}
+<div class="container">
+  <div class="backnav"><a href="/archive">&larr; Archive</a></div>
+  <h1>AmuseAlot <span class="beta-chip">BETA</span></h1>
+  <div class="subtitle">Museum Tech Newsletter</div>
+
+  <h2>How was this edition?</h2>
+
+  {% if error %}
+  <p class="error">{{ error }}</p>
+  {% endif %}
+
+  <form method="POST" action="/feedback">
+    <input type="hidden" name="edition" value="{{ edition }}">
+    <input type="hidden" name="rating" id="rating-value" value="{{ rating or '' }}">
+
+    {% set options = [
+      (5, "Excellent"),
+      (4, "Very Good"),
+      (3, "Good"),
+      (2, "Fair"),
+      (1, "Poor"),
+    ] %}
+
+    <div style="margin-bottom:32px;">
+      {% for value, label in options %}
+      <div class="rating-option{% if rating == value %} selected{% endif %}" data-value="{{ value }}" onclick="selectRating({{ value }})" style="display:flex;align-items:center;padding:14px 16px;border:2px solid #080229;margin-bottom:8px;cursor:pointer;font-size:16px;{% if rating == value %}background-color:#080229;color:#fbfbfb;{% endif %}">
+        <span style="margin-right:12px;font-size:18px;">{{ "★" * value }}{{ "☆" * (5 - value) }}</span>
+        <span style="font-weight:bold;">{{ label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="dotline"></div>
+
+    <label for="feedback_text" style="font-size:15px;font-weight:bold;display:block;margin-bottom:8px;">Additional feedback</label>
+    <textarea name="feedback_text" id="feedback_text" rows="4" placeholder="What did you think? Any topics you'd like to see covered?" style="width:100%;font-size:15px;padding:14px 16px;border:2px solid #080229;background:transparent;color:#080229;font-family:inherit;resize:vertical;margin-bottom:24px;"></textarea>
+
+    <label for="suggest_org" style="font-size:15px;font-weight:bold;display:block;margin-bottom:8px;">Know a museum or org we should track?</label>
+    <textarea name="suggest_org" id="suggest_org" rows="3" placeholder="Organization name, GitHub URL, or website" style="width:100%;font-size:15px;padding:14px 16px;border:2px solid #080229;background:transparent;color:#080229;font-family:inherit;resize:vertical;margin-bottom:24px;"></textarea>
+
+    <label for="email" style="font-size:15px;font-weight:bold;display:block;margin-bottom:4px;">Your email</label>
+    <span style="font-size:13px;color:#080229;opacity:0.6;display:block;margin-bottom:8px;">Only needed if you'd like us to get back to you</span>
+    <input type="email" name="email" id="email" placeholder="you@example.com" style="margin-bottom:24px;">
+
+    <button type="submit" class="btn">Submit Feedback</button>
+  </form>
+</div>
+
+<style>
+  .rating-option:hover {
+    background-color: #080229 !important;
+    color: #fbfbfb !important;
+  }
+  .rating-option.selected {
+    background-color: #080229;
+    color: #fbfbfb;
+  }
+  textarea:focus {
+    outline: none;
+    border-color: #080229;
+  }
+  textarea::placeholder {
+    color: #080229;
+    opacity: 0.6;
+  }
+  @media (prefers-color-scheme: dark) {
+    .rating-option:hover {
+      background-color: #080229 !important;
+      color: #fbfbfb !important;
+    }
+    .rating-option.selected {
+      background-color: #080229 !important;
+      color: #fbfbfb !important;
+    }
+    textarea {
+      border-color: #080229 !important;
+      color: #080229 !important;
+      background: transparent !important;
+    }
+  }
+</style>
+
+<script>
+function selectRating(value) {
+  document.getElementById('rating-value').value = value;
+  document.querySelectorAll('.rating-option').forEach(function(el) {
+    if (parseInt(el.dataset.value) === value) {
+      el.classList.add('selected');
+      el.style.backgroundColor = '#080229';
+      el.style.color = '#fbfbfb';
+    } else {
+      el.classList.remove('selected');
+      el.style.backgroundColor = '';
+      el.style.color = '';
+    }
+  });
+}
+</script>
+{% endblock %}

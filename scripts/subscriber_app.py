@@ -9,10 +9,12 @@ Routes:
   GET  /unsubscribe  — Unsubscribe via token
   POST /unsubscribe  — One-click unsubscribe (RFC 8058)
   GET  /privacy      — Privacy policy
+  GET  /feedback     — Feedback form
+  POST /feedback     — Submit feedback
 
 Requires environment variables:
   BASEROW_URL, BASEROW_TOKEN, RESEND_API_KEY, RESEND_FROM,
-  MUSEMANIAC_BASE_URL, SUBSCRIBER_TABLE_ID
+  MUSEMANIAC_BASE_URL, SUBSCRIBER_TABLE_ID, FEEDBACK_TABLE_ID
 """
 
 import sys
@@ -44,6 +46,7 @@ RESEND_FROM = os.environ["RESEND_FROM"]
 BASE_URL = os.environ["MUSEMANIAC_BASE_URL"]  # e.g. https://amusealot.com
 SUBSCRIBER_TABLE_ID = os.environ["SUBSCRIBER_TABLE_ID"]
 EDITION_TABLE_ID = os.environ.get("EDITION_TABLE_ID")  # optional, needed for /archive
+FEEDBACK_TABLE_ID = os.environ.get("FEEDBACK_TABLE_ID")  # optional, needed for /feedback
 
 BASEROW_HEADERS = {
     "Authorization": f"Token {BASEROW_TOKEN}",
@@ -420,6 +423,104 @@ def archive_edition(edition_date):
             html = html[:close_idx + 1] + nav_bar + html[close_idx + 1:]
 
     return html
+
+
+# --- Feedback routes ---
+
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def create_feedback_row(data):
+    """Create a row in the feedback table."""
+    if not FEEDBACK_TABLE_ID:
+        return None
+    url = f"{BASEROW_URL}/api/database/rows/table/{FEEDBACK_TABLE_ID}/"
+    params = {"user_field_names": "true"}
+    resp = requests.post(url, json=data, params=params, headers=BASEROW_HEADERS)
+    resp.raise_for_status()
+    return resp.json()
+
+
+feedback_get_route = app.route("/feedback", methods=["GET"])
+
+
+def _feedback_get():
+    if not FEEDBACK_TABLE_ID:
+        return "Feedback not configured", 503
+    edition = request.args.get("edition", "").strip()
+    rating = request.args.get("rating", "").strip()
+    # Validate edition if provided
+    if edition and not DATE_RE.match(edition):
+        edition = ""
+    # Validate rating if provided
+    try:
+        rating = int(rating) if rating else 0
+    except ValueError:
+        rating = 0
+    if rating < 1 or rating > 5:
+        rating = 0
+    return render_template("feedback.html", edition=edition, rating=rating)
+
+
+if HAS_LIMITER:
+    _feedback_get = limiter.limit("20/day")(_feedback_get)
+_feedback_get = feedback_get_route(_feedback_get)
+
+
+feedback_post_route = app.route("/feedback", methods=["POST"])
+
+
+def _feedback_post():
+    if not FEEDBACK_TABLE_ID:
+        return "Feedback not configured", 503
+
+    edition = request.form.get("edition", "").strip()
+    rating_str = request.form.get("rating", "").strip()
+    feedback_text = request.form.get("feedback_text", "").strip()
+    suggest_org = request.form.get("suggest_org", "").strip()
+    email = request.form.get("email", "").strip()
+
+    # Validate rating (required)
+    try:
+        rating = int(rating_str)
+    except (ValueError, TypeError):
+        return render_template("feedback.html", edition=edition, rating=0,
+                               error="Please select a rating."), 400
+    if rating < 1 or rating > 5:
+        return render_template("feedback.html", edition=edition, rating=0,
+                               error="Please select a rating."), 400
+
+    # Validate edition date if provided
+    if edition and not DATE_RE.match(edition):
+        edition = ""
+
+    # Build row data
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    ip = request.remote_addr or ""
+    row_data = {
+        "rating": rating,
+        "feedback_text": feedback_text,
+        "suggest_org": suggest_org,
+        "email": email,
+        "created_at": now,
+        "ip_address": ip,
+    }
+    if edition:
+        row_data["edition_date"] = edition
+
+    try:
+        create_feedback_row(row_data)
+    except Exception as e:
+        print(f"ERROR creating feedback row: {e}")
+        return render_template("feedback.html", edition=edition, rating=rating,
+                               error="Something went wrong. Please try again."), 500
+
+    return render_template("feedback_success.html")
+
+
+if HAS_LIMITER:
+    _feedback_post = limiter.limit("20/day")(_feedback_post)
+_feedback_post = feedback_post_route(_feedback_post)
 
 
 if __name__ == "__main__":
