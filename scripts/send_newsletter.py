@@ -116,6 +116,8 @@ def main():
                         help="Input HTML file (default: latest newsletter_*.html)")
     parser.add_argument("--apply", action="store_true",
                         help="Actually send emails (default: dry-run)")
+    parser.add_argument("--test", metavar="EMAIL",
+                        help="Send only to this email address (for testing)")
     args = parser.parse_args()
 
     # Resolve input file
@@ -136,15 +138,19 @@ def main():
         print("  Unsubscribe links will not be personalized")
 
     # Fetch subscribers
-    print("\nFetching confirmed subscribers from Baserow...")
-    subscribers = get_confirmed_subscribers()
-    print(f"  Found {len(subscribers)} confirmed subscriber(s)")
+    if args.test:
+        print(f"\n--- TEST MODE: sending only to {args.test} ---")
+        subscribers = [{"email": args.test, "unsubscribe_token": "test-token"}]
+    else:
+        print("\nFetching confirmed subscribers from Baserow...")
+        subscribers = get_confirmed_subscribers()
+        print(f"  Found {len(subscribers)} confirmed subscriber(s)")
 
     if not subscribers:
         print("\nNo subscribers to send to. Done.")
         return
 
-    if not args.apply:
+    if not args.apply and not args.test:
         print("\n--- DRY RUN ---")
         for sub in subscribers:
             email = sub.get("email", "?")
