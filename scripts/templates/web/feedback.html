@@ -7,7 +7,11 @@
   <h1>AmuseAlot <span class="beta-chip">BETA</span></h1>
   <div class="subtitle">Museum Tech Newsletter</div>
 
+  {% if edition %}
   <h2>How was this edition?</h2>
+  {% else %}
+  <h2>General Feedback</h2>
+  {% endif %}
 
   {% if error %}
   <p class="error">{{ error }}</p>
@@ -25,6 +29,7 @@
       (1, "Poor"),
     ] %}
 
+    {% if edition %}
     <div style="margin-bottom:32px;">
       {% for value, label in options %}
       <div class="rating-option{% if rating == value %} selected{% endif %}" data-value="{{ value }}" onclick="selectRating({{ value }})" style="display:flex;align-items:center;padding:14px 16px;border:2px solid #080229;margin-bottom:8px;cursor:pointer;font-size:16px;{% if rating == value %}background-color:#080229;color:#fbfbfb;{% endif %}">
@@ -35,9 +40,10 @@
     </div>
 
     <div class="dotline"></div>
+    {% endif %}
 
-    <label for="feedback_text" style="font-size:15px;font-weight:bold;display:block;margin-bottom:8px;">Additional feedback</label>
-    <textarea name="feedback_text" id="feedback_text" rows="4" placeholder="What did you think? Any topics you'd like to see covered?" style="width:100%;font-size:15px;padding:14px 16px;border:2px solid #080229;background:transparent;color:#080229;font-family:inherit;resize:vertical;margin-bottom:24px;"></textarea>
+    <label for="feedback_text" style="font-size:15px;font-weight:bold;display:block;margin-bottom:8px;">{% if edition %}Additional feedback{% else %}Your feedback{% endif %}</label>
+    <textarea name="feedback_text" id="feedback_text" rows="4" placeholder="{% if edition %}What did you think? Any topics you'd like to see covered?{% else %}Ideas, suggestions, or anything you'd like to tell us{% endif %}" style="width:100%;font-size:15px;padding:14px 16px;border:2px solid #080229;background:transparent;color:#080229;font-family:inherit;resize:vertical;margin-bottom:24px;"></textarea>
 
     <label for="suggest_org" style="font-size:15px;font-weight:bold;display:block;margin-bottom:8px;">Know a museum or org we should track?</label>
     <textarea name="suggest_org" id="suggest_org" rows="3" placeholder="Organization name, GitHub URL, or website" style="width:100%;font-size:15px;padding:14px 16px;border:2px solid #080229;background:transparent;color:#080229;font-family:inherit;resize:vertical;margin-bottom:24px;"></textarea>
