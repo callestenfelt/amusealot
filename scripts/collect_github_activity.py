@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Collect recent GitHub activity from museum organizations.
-Monitors 133+ museum GitHub accounts for:
+Monitors ~75 museum GitHub accounts for:
   - New repos created
   - New releases published
   - Significant pushes to default branches
