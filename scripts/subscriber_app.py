@@ -496,14 +496,12 @@ def _feedback_post():
 
     # Build row data
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    ip = request.remote_addr or ""
     row_data = {
         "rating": rating,
         "feedback_text": feedback_text,
         "suggest_org": suggest_org,
         "email": email,
         "created_at": now,
-        "ip_address": ip,
     }
     if edition:
         row_data["edition_date"] = edition
