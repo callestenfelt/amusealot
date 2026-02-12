@@ -64,7 +64,6 @@
       <tr>
         <td>
           <a href="{{ event.url }}" class="link" style="font-size:16px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">{{ event.repo.split('/')[1] }}</a>
-          <span style="font-size:14px;color:#080229;padding-left:6px;">&rarr;</span>
         </td>
       </tr>
       <tr>
@@ -130,7 +129,7 @@
                 </td>
               </tr>
               <tr>
-                <td style="font-size:13px;color:#080229;padding-top:6px;letter-spacing:0.5px;">
+                <td style="font-size:13px;color:#080229;padding-top:6px;letter-spacing:4.5px;text-transform:uppercase;">
                   Museum Tech Newsletter &middot; {{ generation_date }}
                 </td>
               </tr>
@@ -169,7 +168,6 @@
               <tr>
                 <td style="padding-top:16px;">
                   <a href="https://github.com/{{ spotlight.event.repo }}" class="link" style="font-size:13px;color:#080229;text-decoration:underline;text-underline-offset:2px;">View on GitHub</a>
-                  <span style="font-size:13px;color:#080229;padding-left:4px;">&rarr;</span>
                 </td>
               </tr>
             </table>
@@ -277,7 +275,7 @@
         {% if max_pushes and sections.pushes|length > max_pushes %}
         <tr>
           <td style="padding:20px 40px 0 40px;">
-            <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">See all {{ sections.pushes|length }} pushes in the full edition &rarr;</a>
+            <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">See all {{ sections.pushes|length }} pushes in the full edition</a>
           </td>
         </tr>
         {% endif %}

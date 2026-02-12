@@ -412,8 +412,8 @@ def archive_edition(edition_date):
     # Inject back-to-archive nav bar at the top of <body>
     nav_bar = (
         '<div style="background-color:#080229;padding:12px 24px;text-align:center;">'
-        '<a href="/archive" style="color:#fbfbfb;font-size:14px;text-decoration:none;font-family:Arial,sans-serif;">'
-        '&larr; Back to Archive</a></div>'
+        '<a href="/archive" style="color:#fbfbfb;font-size:14px;text-decoration:underline;text-underline-offset:3px;font-family:Arial,sans-serif;">'
+        'Back to Archive</a></div>'
     )
     # Insert after the first > that closes the <body> tag
     body_idx = html.find("<body")
