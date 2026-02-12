@@ -394,8 +394,38 @@ def main():
     print("SPOTLIGHT")
     print(f"{'='*60}")
 
-    # Pick highest-scored event
-    best = max(scored_events, key=lambda e: e["score"]["relevance"])
+    # Fetch past spotlight repos from Baserow to avoid repeats
+    past_spotlights = set()
+    baserow_url = os.environ.get("BASEROW_URL")
+    baserow_token = os.environ.get("BASEROW_TOKEN")
+    edition_table_id = os.environ.get("EDITION_TABLE_ID")
+    if all([baserow_url, baserow_token, edition_table_id]):
+        try:
+            resp = requests.get(
+                f"{baserow_url}/api/database/rows/table/{edition_table_id}/",
+                params={"size": 200, "user_field_names": "true"},
+                headers={"Authorization": f"Token {baserow_token}"},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            for row in resp.json().get("results", []):
+                repo = row.get("spotlight_repo")
+                if repo:
+                    past_spotlights.add(repo)
+            if past_spotlights:
+                print(f"  Excluding {len(past_spotlights)} past spotlight(s): {', '.join(past_spotlights)}")
+        except Exception as e:
+            print(f"  WARNING: Could not fetch past spotlights: {e}")
+
+    # Pick highest-scored event, preferring repos not previously spotlighted
+    candidates = sorted(scored_events, key=lambda e: e["score"]["relevance"], reverse=True)
+    best = candidates[0]  # fallback
+    for candidate in candidates:
+        if candidate["repo"] not in past_spotlights:
+            best = candidate
+            break
+    else:
+        print(f"  All top candidates were previously spotlighted, reusing top scorer")
     print(f"  Selected: {best['repo']} (relevance {best['score']['relevance']})")
 
     spotlight_writeup, error = generate_spotlight(best)
