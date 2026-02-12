@@ -109,6 +109,7 @@ def register_edition(context, file_name):
     stats = context.get("stats", {})
 
     row_data = {
+        "edition_label": f"Edition — {context['generation_date_iso']}",
         "edition_date": context["generation_date_iso"],
         "spotlight_repo": spotlight_event.get("repo", ""),
         "spotlight_org": spotlight_event.get("org_name", ""),
