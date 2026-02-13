@@ -10,10 +10,12 @@ The Baserow Museums table has been enriched with GitHub account data for museums
 |-------|----|------|-------------|
 | github | field_7222 | text | GitHub username/org login |
 | github_url | field_7223 | url | Full GitHub profile URL |
+| entity_type | field_7225 | single_select | museum, umbrella_org, other_org, individual |
+| tracked_repos | field_7261 | long_text | Specific repos to monitor (one owner/repo per line) |
 
 ## Current Data (2026-02-07)
 
-**Total museums with GitHub accounts: 133**
+**Total sources with GitHub accounts: 136** (133 museums + 2 orgs + 1 individual)
 
 ### By source
 

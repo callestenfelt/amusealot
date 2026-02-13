@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-Collect recent GitHub activity from museum organizations.
-Monitors 133+ museum GitHub accounts for:
+Collect recent GitHub activity from museums, cultural heritage orgs, and individuals.
+Monitors 130+ GitHub accounts for:
   - New repos created
   - New releases published
   - Significant pushes to default branches
+
+Supports two modes per entity:
+  - Org-wide monitoring (default): tracks all repos via /orgs/{login}/events
+  - Tracked repos: monitors only specific repos listed in tracked_repos field
 
 Usage:
   python collect_github_activity.py [--days 14] [--output github_activity.json]
@@ -38,6 +42,7 @@ GITHUB_HEADERS = {
 FIELDS = {
     "name": "field_7191",
     "github": "field_7222",
+    "tracked_repos": "field_7261",
 }
 
 # Bot authors to skip
@@ -57,10 +62,10 @@ def github_get(url, params=None):
     return resp
 
 
-def get_museum_orgs():
-    """Fetch all museum GitHub logins from Baserow."""
-    print("Fetching museum GitHub accounts from Baserow...")
-    orgs = []
+def get_sources():
+    """Fetch all GitHub-tracked entities from Baserow."""
+    print("Fetching GitHub accounts from Baserow...")
+    sources = []
     page = 1
 
     while True:
@@ -79,15 +84,17 @@ def get_museum_orgs():
         for row in data["results"]:
             github_login = row.get(FIELDS["github"], "").strip()
             name = row.get(FIELDS["name"], "")
+            tracked_repos_raw = row.get(FIELDS["tracked_repos"]) or ""
+            tracked_repos = [r.strip() for r in tracked_repos_raw.strip().splitlines() if r.strip()]
             if github_login:
-                orgs.append({"login": github_login, "name": name})
+                sources.append({"login": github_login, "name": name, "tracked_repos": tracked_repos})
 
         if not data["next"]:
             break
         page += 1
 
-    print(f"Found {len(orgs)} museums with GitHub accounts")
-    return orgs
+    print(f"Found {len(sources)} sources with GitHub accounts")
+    return sources
 
 
 def collect_new_repos(org_login, cutoff_date):
@@ -209,8 +216,87 @@ def collect_events(org_login, cutoff_date):
     return items
 
 
+def collect_repo_events(repo_full_name, entity_login, cutoff_date):
+    """Fetch events for a specific repo and extract releases and significant pushes."""
+    items = []
+    resp = github_get(f"{GITHUB_API}/repos/{repo_full_name}/events", {"per_page": 30})
+    if resp.status_code != 200:
+        return items
+
+    for event in resp.json():
+        event_date = event.get("created_at", "")
+        if not event_date:
+            continue
+        event_dt = datetime.fromisoformat(event_date.replace("Z", "+00:00"))
+        if event_dt < cutoff_date:
+            continue
+
+        actor = event.get("actor", {}).get("login", "")
+        if actor in BOT_AUTHORS:
+            continue
+
+        event_type = event.get("type")
+        payload = event.get("payload", {})
+
+        if event_type == "ReleaseEvent" and payload.get("action") == "published":
+            release = payload.get("release", {})
+            items.append({
+                "org": entity_login,
+                "event_type": "release",
+                "repo": repo_full_name,
+                "title": release.get("name") or release.get("tag_name", ""),
+                "description": (release.get("body") or "")[:300],
+                "url": release.get("html_url", ""),
+                "date": event_date[:10],
+                "details": {
+                    "tag": release.get("tag_name"),
+                    "prerelease": release.get("prerelease", False),
+                }
+            })
+
+        elif event_type == "PushEvent":
+            ref = payload.get("ref", "")
+            if not any(ref.endswith(b) for b in ("/main", "/master", "/develop")):
+                continue
+            commits = payload.get("commits", [])
+            num_commits = payload.get("size", len(commits))
+            if num_commits <= 1 and commits:
+                msg = commits[0].get("message", "")
+                if msg.startswith("Merge ") or msg.startswith("chore:"):
+                    continue
+
+            branch = ref.split("/")[-1]
+            commit_msgs = [c.get("message", "").split("\n")[0][:80] for c in commits[:5]]
+
+            head = payload.get("head", "")
+            before = payload.get("before", "")
+            if head and before:
+                url = f"https://github.com/{repo_full_name}/compare/{before[:7]}...{head[:7]}"
+            else:
+                url = f"https://github.com/{repo_full_name}/commits/{branch}"
+
+            title = f"{num_commits} commit(s) to {branch}" if num_commits > 0 else f"Push to {branch}"
+
+            items.append({
+                "org": entity_login,
+                "event_type": "push",
+                "repo": repo_full_name,
+                "title": title,
+                "description": "; ".join(commit_msgs) if commit_msgs else "",
+                "url": url,
+                "date": event_date[:10],
+                "details": {
+                    "branch": branch,
+                    "commit_count": num_commits,
+                    "distinct_count": payload.get("distinct_size", 0),
+                }
+            })
+
+    return items
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Collect GitHub activity from museum orgs")
+    parser = argparse.ArgumentParser(description="Collect GitHub activity from tracked sources")
     parser.add_argument("--days", type=int, default=14, help="Look back N days (default: 14)")
     parser.add_argument("--output", default=os.path.join(os.path.dirname(__file__), "github_activity.json"),
                         help="Output JSON file (default: scripts/github_activity.json)")
@@ -219,34 +305,44 @@ def main():
     cutoff = datetime.now(timezone.utc) - timedelta(days=args.days)
     print(f"Collecting GitHub activity from the last {args.days} days (since {cutoff.strftime('%Y-%m-%d')})")
 
-    # Get museum orgs from Baserow
-    orgs = get_museum_orgs()
+    # Get all tracked sources from Baserow
+    sources = get_sources()
 
     all_activity = []
-    orgs_with_activity = 0
+    sources_with_activity = 0
     api_calls = 0
 
-    print(f"\nScanning {len(orgs)} organizations...\n")
+    print(f"\nScanning {len(sources)} sources...\n")
 
-    for i, org in enumerate(orgs):
-        login = org["login"]
-        org_name = org["name"] or login
+    for i, src in enumerate(sources):
+        login = src["login"]
+        src_name = src["name"] or login
+        tracked_repos = src["tracked_repos"]
 
-        # Fetch repos + events (2 API calls per org)
-        new_repos = collect_new_repos(login, cutoff)
-        events = collect_events(login, cutoff)
-        api_calls += 2
+        if tracked_repos:
+            # Tracked repos mode: only fetch events for specific repos
+            items = []
+            for repo in tracked_repos:
+                items.extend(collect_repo_events(repo, login, cutoff))
+                api_calls += 1
+        else:
+            # Org-wide mode: fetch all repos + events (2 API calls)
+            new_repos = collect_new_repos(login, cutoff)
+            events = collect_events(login, cutoff)
+            api_calls += 2
+            items = new_repos + events
 
-        items = new_repos + events
         if items:
-            orgs_with_activity += 1
+            sources_with_activity += 1
             for item in items:
-                item["org_name"] = org_name
+                item["org_name"] = src_name
             all_activity.extend(items)
 
         # Progress
         if (i + 1) % 20 == 0 or items:
-            status = f"  [{i+1}/{len(orgs)}] {login}"
+            status = f"  [{i+1}/{len(sources)}] {login}"
+            if tracked_repos:
+                status += f" (tracked repos: {len(tracked_repos)})"
             if items:
                 status += f" -> {len(items)} event(s)"
             print(status)
@@ -280,8 +376,8 @@ def main():
     print(f"\n{'='*60}")
     print("COLLECTION SUMMARY")
     print(f"{'='*60}")
-    print(f"Organizations scanned: {len(orgs)}")
-    print(f"Organizations with activity: {orgs_with_activity}")
+    print(f"Sources scanned: {len(sources)}")
+    print(f"Sources with activity: {sources_with_activity}")
     print(f"API calls made: {api_calls}")
     print(f"Total events found: {len(deduped)}")
 
