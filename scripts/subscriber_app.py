@@ -550,15 +550,13 @@ def _feedback_post():
     suggest_org = request.form.get("suggest_org", "").strip()
     email = request.form.get("email", "").strip()
 
-    # Validate rating (required)
+    # Parse rating (optional)
     try:
         rating = int(rating_str)
+        if rating < 1 or rating > 5:
+            rating = 0
     except (ValueError, TypeError):
-        return render_template("feedback.html", edition=edition, rating=0,
-                               error="Please select a rating."), 400
-    if rating < 1 or rating > 5:
-        return render_template("feedback.html", edition=edition, rating=0,
-                               error="Please select a rating."), 400
+        rating = 0
 
     # Validate edition date if provided
     if edition and not DATE_RE.match(edition):
@@ -567,12 +565,13 @@ def _feedback_post():
     # Build row data
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     row_data = {
-        "rating": rating,
         "feedback_text": feedback_text,
         "suggest_org": suggest_org,
         "email": email,
         "created_at": now,
     }
+    if rating:
+        row_data["rating"] = rating
     if edition:
         row_data["edition_date"] = edition
 
