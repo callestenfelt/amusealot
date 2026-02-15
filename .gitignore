@@ -9,6 +9,8 @@ scripts/github_museum_candidates.json
 scripts/github_activity.json
 scripts/github_activity_enriched.json
 scripts/scored_newsletter_content.json
+scripts/newsletter_test.html
+scripts/newsletter_email_test.html
 scripts/editions/
 
 # IDE
