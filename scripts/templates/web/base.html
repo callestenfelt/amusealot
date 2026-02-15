@@ -139,6 +139,22 @@
       top: -0.2em;
       margin-left: 4px;
     }
+    .source-item { padding: 16px 0; }
+    .source-name { font-weight: bold; font-size: 15px; display: block; margin-bottom: 6px; }
+    .source-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      display: inline-block;
+      font-size: 13px;
+      font-weight: normal;
+      letter-spacing: 0;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+    .chip-type,
+    .chip-individual,
+    .chip-other_org,
+    .chip-umbrella_org,
+    .chip-country { background-color: transparent; color: #080229; border: 1.5px solid rgba(8, 2, 41, 0.4); }
     @media (prefers-color-scheme: dark) {
       body { background-color: #fbfbfb !important; color: #080229 !important; }
       .footer { background-color: #080229 !important; }
@@ -150,6 +166,11 @@
       h2 { border-bottom-color: #080229 !important; }
       input[type="email"] { border-color: #080229 !important; color: #080229 !important; background: transparent !important; }
       .dotline { background-image: repeating-linear-gradient(to right, #080229 0, #080229 2px, transparent 2px, transparent 6px) !important; }
+      .chip-type,
+      .chip-individual,
+      .chip-other_org,
+      .chip-umbrella_org,
+      .chip-country { background-color: transparent !important; color: #080229 !important; border-color: rgba(8, 2, 41, 0.4) !important; }
     }
   </style>
 </head>
@@ -164,6 +185,8 @@
       <a href="/feedback">Feedback</a>
       &middot;
       <a href="/about">About</a>
+      &middot;
+      <a href="/sources">Sources</a>
       &middot;
       <a href="/privacy">Privacy Policy</a>
     </span>

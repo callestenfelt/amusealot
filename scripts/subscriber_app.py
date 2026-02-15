@@ -9,12 +9,14 @@ Routes:
   GET  /unsubscribe  — Unsubscribe via token
   POST /unsubscribe  — One-click unsubscribe (RFC 8058)
   GET  /privacy      — Privacy policy
+  GET  /about        — About page
+  GET  /sources      — List tracked GitHub sources
   GET  /feedback     — Feedback form
   POST /feedback     — Submit feedback
 
 Requires environment variables:
   BASEROW_URL, BASEROW_TOKEN, RESEND_API_KEY, RESEND_FROM,
-  MUSEMANIAC_BASE_URL, SUBSCRIBER_TABLE_ID, FEEDBACK_TABLE_ID
+  MUSEMANIAC_BASE_URL, SUBSCRIBER_TABLE_ID, FEEDBACK_TABLE_ID, SOURCES_TABLE_ID
 """
 
 import sys
@@ -23,6 +25,7 @@ import os
 import re
 import glob
 import secrets
+import time
 from datetime import datetime, timezone, date
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
@@ -47,6 +50,7 @@ BASE_URL = os.environ["MUSEMANIAC_BASE_URL"]  # e.g. https://amusealot.com
 SUBSCRIBER_TABLE_ID = os.environ["SUBSCRIBER_TABLE_ID"]
 EDITION_TABLE_ID = os.environ.get("EDITION_TABLE_ID")  # optional, needed for /archive
 FEEDBACK_TABLE_ID = os.environ.get("FEEDBACK_TABLE_ID")  # optional, needed for /feedback
+SOURCES_TABLE_ID = os.environ.get("SOURCES_TABLE_ID")  # optional, needed for /sources
 
 BASEROW_HEADERS = {
     "Authorization": f"Token {BASEROW_TOKEN}",
@@ -328,6 +332,72 @@ def privacy():
 @app.route("/about")
 def about():
     return render_template("about.html")
+
+
+# --- Sources ---
+
+_sources_cache = {"data": None, "time": 0}
+SOURCES_CACHE_TTL = 3600  # 1 hour
+
+
+def get_sources():
+    """Fetch tracked sources from Baserow with a 1-hour TTL cache."""
+    now = time.time()
+    if _sources_cache["data"] is not None and now - _sources_cache["time"] < SOURCES_CACHE_TTL:
+        return _sources_cache["data"]
+
+    if not SOURCES_TABLE_ID:
+        return []
+
+    try:
+        sources = []
+        page = 1
+        while True:
+            resp = requests.get(
+                f"{BASEROW_URL}/api/database/rows/table/{SOURCES_TABLE_ID}/",
+                params={
+                    "size": 200,
+                    "page": page,
+                    "filter__field_7222__not_empty": "true",
+                },
+                headers=BASEROW_HEADERS,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            for row in data.get("results", []):
+                entity_type = row.get("field_7225")
+                if isinstance(entity_type, dict):
+                    entity_type = entity_type.get("value", "")
+                sources.append({
+                    "name": row.get("field_7191") or "",
+                    "github": row.get("field_7222") or "",
+                    "github_url": row.get("field_7223") or "",
+                    "entity_type": entity_type or "",
+                    "country": row.get("field_7192") or "",
+                })
+            if not data.get("next"):
+                break
+            page += 1
+
+        sources.sort(key=lambda s: s["name"].lower())
+        _sources_cache["data"] = sources
+        _sources_cache["time"] = now
+        return sources
+    except Exception as e:
+        print(f"ERROR fetching sources: {e}")
+        if _sources_cache["data"] is not None:
+            return _sources_cache["data"]
+        return []
+
+
+@app.route("/sources")
+def sources():
+    source_list = get_sources()
+    countries = set(s["country"] for s in source_list if s["country"])
+    return render_template("sources.html",
+                           sources=source_list,
+                           total=len(source_list),
+                           country_count=len(countries))
 
 
 # --- Archive routes ---

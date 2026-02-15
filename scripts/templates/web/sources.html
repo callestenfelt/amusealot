@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% block title %}Sources — AmuseAlot{% endblock %}
+
+{% block body %}
+<div class="container">
+  <div class="backnav"><a href="/">Subscribe</a></div>
+  <h1>AmuseAlot <span class="beta-chip">BETA</span></h1>
+  <div class="subtitle">Museum Tech Newsletter</div>
+
+  <h2>Sources</h2>
+
+  {% if sources %}
+
+  <div class="src-stats">
+    <div class="src-stat">
+      <div class="src-stat-num">{{ total }}</div>
+      <div class="src-stat-label">Sources</div>
+    </div>
+    <div class="src-stat">
+      <div class="src-stat-num">{{ country_count }}</div>
+      <div class="src-stat-label">Countries</div>
+    </div>
+  </div>
+
+  <p>
+    Every Wednesday, the pipeline scans public GitHub activity from these
+    organizations and individuals to find new projects, releases, and
+    noteworthy commits.
+  </p>
+
+  <div class="src-cta">
+    Missing an organization or repo?
+    <a href="/feedback">Suggest an addition</a>
+  </div>
+
+  <div class="src-filters">
+    <div class="src-filter-chips">
+      <button class="src-fchip active" data-type="all">All</button>
+      <button class="src-fchip" data-type="museum">Museum</button>
+      <button class="src-fchip" data-type="individual">Individual</button>
+      <button class="src-fchip" data-type="other_org">Other</button>
+    </div>
+    <input type="text" class="src-search" placeholder="Filter by name or country..." id="srcSearch">
+  </div>
+
+  <div class="src-count" id="srcCount">Showing {{ total }} sources</div>
+
+  <div id="srcList">
+    {% set ns = namespace(current_letter='') %}
+    {% for source in sources %}
+      {% set first = source.name[0]|upper if source.name else '?' %}
+      {% if first != ns.current_letter %}
+        {% set ns.current_letter = first %}
+        <div class="src-letter" data-letter="{{ first }}">{{ first }}</div>
+      {% endif %}
+      <div class="src-entry" data-type="{{ source.entity_type }}" data-name="{{ source.name|lower }}" data-handle="{{ source.github|lower }}" data-country="{{ source.country|lower }}">
+        <div class="src-entry-main">
+          <a class="src-entry-name" href="{{ source.github_url }}" target="_blank" rel="noopener">{{ source.name }}</a>
+          <span class="src-entry-handle">{{ source.github }}</span>
+        </div>
+        <div class="src-entry-chips">
+          {% if source.entity_type == "museum" %}
+            <span class="chip chip-type">Museum</span>
+          {% elif source.entity_type == "individual" %}
+            <span class="chip chip-individual">Individual</span>
+          {% elif source.entity_type == "other_org" %}
+            <span class="chip chip-other_org">Other Org</span>
+          {% elif source.entity_type == "umbrella_org" %}
+            <span class="chip chip-umbrella_org">Umbrella Org</span>
+          {% endif %}
+          {% if source.country %}
+            <span class="chip chip-country">{{ source.country }}</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="src-empty" id="srcEmpty" style="display:none;">
+    No sources match your filter.
+  </div>
+
+  {% else %}
+  <p>Source list temporarily unavailable. Please try again later.</p>
+  {% endif %}
+</div>
+
+<style>
+  .src-stats {
+    display: flex;
+    gap: 48px;
+    margin-bottom: 24px;
+  }
+  .src-stat-num {
+    font-size: 52px;
+    font-weight: bold;
+    letter-spacing: -3px;
+    line-height: 1.1;
+  }
+  .src-stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    opacity: 0.8;
+  }
+  .src-cta {
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 14px 18px;
+    border-left: 4px solid #C4BBF6;
+    background: rgba(196, 187, 246, 0.07);
+    margin-bottom: 32px;
+  }
+  .src-cta a {
+    font-weight: bold;
+  }
+  .src-filters {
+    margin-bottom: 12px;
+  }
+  .src-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .src-fchip {
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 6px 14px;
+    border-radius: 12px;
+    border: 1.5px solid rgba(8, 2, 41, 0.4);
+    background: transparent;
+    color: #080229;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .src-fchip:hover,
+  .src-fchip.active {
+    background: #080229;
+    color: #fbfbfb;
+    border-color: #080229;
+  }
+  .src-search {
+    width: 100%;
+    font-size: 14px;
+    padding: 10px 14px;
+    border: 2px solid #080229;
+    background: transparent;
+    color: #080229;
+    font-family: inherit;
+  }
+  .src-search::placeholder {
+    color: #080229;
+    opacity: 0.4;
+  }
+  .src-search:focus {
+    outline: none;
+  }
+  .src-count {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.8;
+    margin-bottom: 4px;
+  }
+  .src-letter {
+    font-size: 28px;
+    font-weight: bold;
+    letter-spacing: -1px;
+    padding: 24px 0 6px;
+  }
+  .src-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(8, 2, 41, 0.06);
+    transition: background-color 0.15s;
+  }
+  .src-entry:hover {
+    background-color: rgba(196, 187, 246, 0.06);
+  }
+  .src-entry:hover .src-entry-handle {
+    color: rgba(8, 2, 41, 0.95);
+  }
+  .src-entry-main {
+    min-width: 0;
+    flex: 1;
+  }
+  .src-entry-name {
+    font-weight: bold;
+    font-size: 15px;
+    display: block;
+    text-decoration: none;
+  }
+  .src-entry-name:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .src-entry-handle {
+    font-size: 13px;
+    color: rgba(8, 2, 41, 0.8);
+    display: block;
+    margin-top: 6px;
+    transition: color 0.15s;
+  }
+  .src-entry-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+  .src-empty {
+    padding: 48px 0;
+    text-align: center;
+    font-size: 14px;
+    opacity: 0.45;
+  }
+  @media (max-width: 480px) {
+    .src-entry {
+      flex-direction: column;
+      gap: 6px;
+    }
+    .src-stats {
+      gap: 32px;
+    }
+    .src-stat-num {
+      font-size: 44px;
+    }
+  }
+  @media (prefers-color-scheme: dark) {
+    .src-fchip { border-color: rgba(8, 2, 41, 0.4) !important; color: #080229 !important; background: transparent !important; }
+    .src-fchip:hover, .src-fchip.active { background: #080229 !important; color: #fbfbfb !important; border-color: #080229 !important; }
+    .src-search { border-color: #080229 !important; color: #080229 !important; background: transparent !important; }
+    .src-cta { border-left-color: #C4BBF6 !important; background: rgba(196, 187, 246, 0.07) !important; }
+    .src-entry { border-bottom-color: rgba(8, 2, 41, 0.06) !important; }
+    .src-entry:hover { background-color: rgba(196, 187, 246, 0.06) !important; }
+  }
+</style>
+
+<script>
+(function() {
+  var chips = document.querySelectorAll('.src-fchip');
+  var search = document.getElementById('srcSearch');
+  var entries = document.querySelectorAll('.src-entry');
+  var letters = document.querySelectorAll('.src-letter');
+  var countEl = document.getElementById('srcCount');
+  var emptyEl = document.getElementById('srcEmpty');
+  var activeType = 'all';
+
+  function applyFilters() {
+    var q = search.value.toLowerCase().trim();
+    var visible = 0;
+    var visibleLetters = {};
+
+    entries.forEach(function(el) {
+      var type = el.getAttribute('data-type');
+      var name = el.getAttribute('data-name');
+      var handle = el.getAttribute('data-handle');
+      var country = el.getAttribute('data-country');
+      var matchType = activeType === 'all' || type === activeType;
+      var matchSearch = !q || name.indexOf(q) !== -1 || handle.indexOf(q) !== -1 || country.indexOf(q) !== -1;
+      var show = matchType && matchSearch;
+      el.style.display = show ? '' : 'none';
+      if (show) {
+        visible++;
+        var prev = el.previousElementSibling;
+        while (prev && !prev.classList.contains('src-letter')) {
+          prev = prev.previousElementSibling;
+        }
+        if (prev) visibleLetters[prev.getAttribute('data-letter')] = true;
+      }
+    });
+
+    letters.forEach(function(el) {
+      el.style.display = visibleLetters[el.getAttribute('data-letter')] ? '' : 'none';
+    });
+
+    countEl.textContent = 'Showing ' + visible + ' source' + (visible !== 1 ? 's' : '');
+    emptyEl.style.display = visible === 0 ? '' : 'none';
+  }
+
+  chips.forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      chips.forEach(function(c) { c.classList.remove('active'); });
+      chip.classList.add('active');
+      activeType = chip.getAttribute('data-type');
+      applyFilters();
+    });
+  });
+
+  search.addEventListener('input', applyFilters);
+})();
+</script>
+{% endblock %}
