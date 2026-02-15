@@ -50,6 +50,7 @@ BASE_URL = os.environ["MUSEMANIAC_BASE_URL"]  # e.g. https://amusealot.com
 SUBSCRIBER_TABLE_ID = os.environ["SUBSCRIBER_TABLE_ID"]
 EDITION_TABLE_ID = os.environ.get("EDITION_TABLE_ID")  # optional, needed for /archive
 FEEDBACK_TABLE_ID = os.environ.get("FEEDBACK_TABLE_ID")  # optional, needed for /feedback
+NOTIFY_EMAIL = os.environ.get("NOTIFY_EMAIL")  # optional, feedback notifications
 SOURCES_TABLE_ID = os.environ.get("SOURCES_TABLE_ID")  # optional, needed for /sources
 
 BASEROW_HEADERS = {
@@ -581,6 +582,37 @@ def _feedback_post():
         print(f"ERROR creating feedback row: {e}")
         return render_template("feedback.html", edition=edition, rating=rating,
                                error="Something went wrong. Please try again."), 500
+
+    # Send notification email
+    if NOTIFY_EMAIL:
+        try:
+            parts = []
+            if rating:
+                parts.append(f"Rating: {'★' * rating}{'☆' * (5 - rating)}")
+            if edition:
+                parts.append(f"Edition: {edition}")
+            if feedback_text:
+                parts.append(f"Feedback: {feedback_text}")
+            if suggest_org:
+                parts.append(f"Suggested org: {suggest_org}")
+            if email:
+                parts.append(f"From: {email}")
+            body = "\n\n".join(parts) if parts else "(empty submission)"
+            requests.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {RESEND_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": RESEND_FROM,
+                    "to": [NOTIFY_EMAIL],
+                    "subject": "AmuseAlot: New feedback received",
+                    "text": body,
+                },
+            )
+        except Exception as e:
+            print(f"ERROR sending feedback notification: {e}")
 
     return render_template("feedback_success.html")
 
