@@ -4,6 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light only">
+  {% block meta_description %}<meta name="description" content="AmuseAlot is an AI-curated weekly newsletter tracking what museums, archives, and heritage organizations are building on GitHub.">{% endblock %}
+  {% block meta_robots %}{% endblock %}
+  <meta property="og:site_name" content="AmuseAlot">
+  <meta property="og:type" content="website">
+  {% block og_title %}<meta property="og:title" content="AmuseAlot — Museum Tech Newsletter">{% endblock %}
+  {% block og_description %}<meta property="og:description" content="An AI-curated weekly newsletter tracking what museums, archives, and heritage organizations are building on GitHub.">{% endblock %}
+  {% block og_url %}{% if canonical_url %}<meta property="og:url" content="{{ canonical_url }}">{% endif %}{% endblock %}
+  <meta property="og:image" content="https://amusealot.com/share.png">
+  <meta name="twitter:card" content="summary_large_image">
+  {% block twitter_title %}<meta name="twitter:title" content="AmuseAlot — Museum Tech Newsletter">{% endblock %}
+  {% block twitter_description %}<meta name="twitter:description" content="An AI-curated weekly newsletter tracking what museums, archives, and heritage organizations are building on GitHub.">{% endblock %}
+  <meta name="twitter:image" content="https://amusealot.com/share.png">
+  {% block canonical %}{% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}{% endblock %}
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="shortcut icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="AmuseAlot">
+  <link rel="manifest" href="/site.webmanifest">
   <title>{% block title %}AmuseAlot{% endblock %}</title>
   <style>
     :root { color-scheme: light only; }
@@ -173,6 +192,15 @@
       .chip-country { background-color: transparent !important; color: #080229 !important; border-color: rgba(8, 2, 41, 0.4) !important; }
     }
   </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "AmuseAlot",
+    "url": "https://amusealot.com",
+    "description": "An AI-curated weekly newsletter tracking museum technology on GitHub."
+  }
+  </script>
 </head>
 <body>
   {% block body %}{% endblock %}

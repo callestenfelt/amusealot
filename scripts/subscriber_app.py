@@ -31,7 +31,7 @@ from datetime import datetime, timezone, date
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 
 import requests
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, Response, send_from_directory
 
 try:
     from flask_limiter import Limiter
@@ -63,6 +63,8 @@ app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), "t
 
 if HAS_LIMITER:
     limiter = Limiter(get_remote_address, app=app, default_limits=[])
+
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
 
@@ -178,11 +180,71 @@ def send_welcome_email(email, unsubscribe_token):
     return resp.json()
 
 
+# --- Static files (favicon, share image, webmanifest) ---
+
+STATIC_FILES = {
+    "favicon.svg", "favicon.ico", "favicon-96x96.png",
+    "apple-touch-icon.png", "web-app-manifest-192x192.png",
+    "web-app-manifest-512x512.png", "site.webmanifest", "share.png",
+}
+
+
+@app.route("/<path:filename>")
+def static_root_files(filename):
+    if filename in STATIC_FILES:
+        return send_from_directory(STATIC_DIR, filename)
+    return render_template("landing.html", canonical_url=BASE_URL + "/"), 404
+
+
+# --- SEO routes ---
+
+@app.route("/robots.txt")
+def robots_txt():
+    body = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /subscribe\n"
+        "Disallow: /confirm\n"
+        "Disallow: /unsubscribe\n"
+        "\n"
+        "Sitemap: https://amusealot.com/sitemap.xml\n"
+    )
+    return Response(body, mimetype="text/plain")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    today = date.today().isoformat()
+    urls = [
+        (f"{BASE_URL}/", today),
+        (f"{BASE_URL}/about", today),
+        (f"{BASE_URL}/sources", today),
+        (f"{BASE_URL}/archive", today),
+        (f"{BASE_URL}/privacy", today),
+    ]
+    # Add archive editions
+    try:
+        editions = get_editions()
+        for ed in editions:
+            ed_date = ed.get("edition_date", "")
+            if ed_date:
+                urls.append((f"{BASE_URL}/archive/{ed_date}", ed_date))
+    except Exception as e:
+        print(f"ERROR building sitemap editions: {e}")
+
+    xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>']
+    xml_parts.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    for loc, lastmod in urls:
+        xml_parts.append(f"  <url><loc>{loc}</loc><lastmod>{lastmod}</lastmod></url>")
+    xml_parts.append("</urlset>")
+    return Response("\n".join(xml_parts), mimetype="application/xml")
+
+
 # --- Routes ---
 
 @app.route("/")
 def landing():
-    return render_template("landing.html")
+    return render_template("landing.html", canonical_url=BASE_URL + "/")
 
 
 subscribe_route = app.route("/subscribe", methods=["POST"])
@@ -327,12 +389,12 @@ def unsubscribe():
 
 @app.route("/privacy")
 def privacy():
-    return render_template("privacy.html")
+    return render_template("privacy.html", canonical_url=BASE_URL + "/privacy")
 
 
 @app.route("/about")
 def about():
-    return render_template("about.html")
+    return render_template("about.html", canonical_url=BASE_URL + "/about")
 
 
 # --- Sources ---
@@ -398,7 +460,8 @@ def sources():
     return render_template("sources.html",
                            sources=source_list,
                            total=len(source_list),
-                           country_count=len(countries))
+                           country_count=len(countries),
+                           canonical_url=BASE_URL + "/sources")
 
 
 # --- Archive routes ---
@@ -454,7 +517,7 @@ def archive():
                 ed["display_date"] = raw
         else:
             ed["display_date"] = ""
-    return render_template("archive.html", editions=editions)
+    return render_template("archive.html", editions=editions, canonical_url=BASE_URL + "/archive")
 
 
 @app.route("/archive/<edition_date>")
@@ -530,7 +593,7 @@ def _feedback_get():
         rating = 0
     if rating < 1 or rating > 5:
         rating = 0
-    return render_template("feedback.html", edition=edition, rating=rating)
+    return render_template("feedback.html", edition=edition, rating=rating, canonical_url=BASE_URL + "/feedback")
 
 
 if HAS_LIMITER:
