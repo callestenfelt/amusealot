@@ -192,6 +192,7 @@ def main():
 
     # --- Truncated version (email) ---
     email_context = build_context(data, max_pushes=6)
+    email_context["whats_new"] = whats_new
     email_html = render_newsletter(email_context)
 
     if args.test:

@@ -18,9 +18,15 @@
     .ehdr img { padding-bottom: 5px !important; }
     [data-ogsc] body, [data-ogsb] body { background-color: #fbfbfb !important; color: #080229 !important; }
     [data-ogsc] table, [data-ogsb] table { background-color: #fbfbfb !important; }
+    [data-ogsc] .wn-box, [data-ogsb] .wn-box { background-color: #1C1736 !important; }
+    [data-ogsc] .wn-box td, [data-ogsb] .wn-box td { color: #fbfbfb !important; }
     [data-ogsc] td, [data-ogsb] td { color: #080229 !important; }
     [data-ogsc] a, [data-ogsb] a { color: #080229 !important; }
     [data-ogsc] span, [data-ogsb] span { color: #080229 !important; }
+    @media (prefers-color-scheme: dark) {
+      .wn-box { background-color: #1C1736 !important; }
+      .wn-box td { color: #fbfbfb !important; }
+    }
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:#fbfbfb;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#080229;">
@@ -124,13 +130,18 @@
           <td style="padding:48px 40px 40px 40px;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
-                <td style="font-size:78px;font-weight:bold;color:#080229;letter-spacing:-5.5px;">
+                <td style="font-size:78px;font-weight:bold;color:#080229;letter-spacing:-5.5px;padding-bottom:0;">
                   AmuseAlot
                 </td>
               </tr>
               <tr>
-                <td style="font-size:13px;color:#080229;padding-top:6px;letter-spacing:4.5px;text-transform:uppercase;">
-                  Museum Tech Newsletter &middot; {{ generation_date }}
+                <td style="font-size:13px;color:#080229;letter-spacing:4.5px;text-transform:uppercase;">
+                  Museum Tech Newsletter
+                </td>
+              </tr>
+              <tr>
+                <td style="font-size:13px;color:#080229;padding-top:6px;">
+                  {{ generation_date }}
                 </td>
               </tr>
             </table>
@@ -143,7 +154,7 @@
           <td style="padding:0 40px 32px 40px;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
-                <td style="font-size:14px;color:#080229;line-height:1.7;">
+                <td style="font-size:16px;color:#080229;line-height:1.7;">
                   An AI-curated digest of what museums, archives, heritage organizations, and
                   individual researchers are building on GitHub &mdash; new projects, releases,
                   and notable developments delivered every Wednesday.
@@ -151,13 +162,19 @@
               </tr>
               {% if whats_new %}
               <tr>
-                <td style="padding-top:20px;font-size:14px;font-weight:bold;color:#080229;">What's new</td>
-              </tr>
-              <tr>
-                <td style="padding-top:8px;font-size:13px;color:#080229;line-height:1.8;">
-                  {% for item in whats_new %}
-                  &bull;&nbsp; {{ item | safe }}{% if not loop.last %}<br>{% endif %}
-                  {% endfor %}
+                <td style="padding-top:20px;">
+                  <table class="wn-box" width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color:#EDEBF5;border-radius:8px;">
+                    <tr>
+                      <td style="padding:20px;font-size:14px;font-weight:bold;color:#080229;">What's new</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:0 20px 20px 20px;font-size:13px;color:#080229;line-height:1.8;">
+                        {% for item in whats_new %}
+                        &bull;&nbsp; {{ item | safe }}{% if not loop.last %}<br>{% endif %}
+                        {% endfor %}
+                      </td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
               {% endif %}
