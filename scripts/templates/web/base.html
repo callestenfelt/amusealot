@@ -89,12 +89,32 @@
       padding: 40px 24px;
       text-align: center;
     }
-    .footer span, .footer a {
+    .footer a {
       font-size: 14px;
       color: #fbfbfb;
     }
     .footer a:hover {
       color: #C4BBF6;
+    }
+    .footer-nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px 24px;
+    }
+    .footer-social {
+      margin-top: 32px;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .footer-social a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .footer-social img {
+      height: 16px;
+      width: auto;
     }
     .btn {
       display: block;
@@ -177,7 +197,7 @@
     @media (prefers-color-scheme: dark) {
       body { background-color: #fbfbfb !important; color: #080229 !important; }
       .footer { background-color: #080229 !important; }
-      .footer span, .footer a { color: #fbfbfb !important; }
+      .footer a { color: #fbfbfb !important; }
       .footer a:hover { color: #C4BBF6 !important; }
       a:hover { color: #12084E !important; }
       .btn:hover { background-color: #12084E !important; }
@@ -205,19 +225,19 @@
 <body>
   {% block body %}{% endblock %}
   <div class="footer">
-    <span>
-      <a href="/">AmuseAlot</a>
-      &middot;
+    <a href="/" style="display:inline-block;margin-bottom:28px;text-decoration:none;">
+      <img src="/logo_footer.svg" alt="AmuseAlot" style="height:158px;width:auto;">
+    </a>
+    <div class="footer-nav">
       <a href="/archive">Archive</a>
-      &middot;
-      <a href="/feedback">Feedback</a>
-      &middot;
       <a href="/about">About</a>
-      &middot;
       <a href="/sources">Sources</a>
-      &middot;
-      <a href="/privacy">Privacy Policy</a>
-    </span>
+      <a href="/feedback">Feedback</a>
+      <a href="/privacy">Privacy</a>
+    </div>
+    <div class="footer-social">
+      <a href="https://bsky.app/profile/amusealot.bsky.social" target="_blank" rel="noopener"><img src="/bluesky.svg" alt=""> Bluesky</a>
+    </div>
   </div>
 </body>
 </html>
