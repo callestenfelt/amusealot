@@ -159,8 +159,16 @@ def main():
     print(f"  Events: {len(data['scored_events'])}")
     print(f"  Stats: {data['stats']}")
 
+    # Load optional "What's new" items
+    whats_new_path = os.path.join(script_dir, "whats_new.txt")
+    whats_new = []
+    if os.path.exists(whats_new_path):
+        with open(whats_new_path, "r", encoding="utf-8") as f:
+            whats_new = [line.strip() for line in f if line.strip()]
+
     # Build context (shared between both renders)
     context = build_context(data)
+    context["whats_new"] = whats_new
 
     print(f"\nSections:")
     print(f"  New Repos: {len(context['sections']['new_repos'])} events")

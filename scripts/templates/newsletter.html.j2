@@ -136,6 +136,34 @@
             </table>
           </td>
         </tr>
+
+
+        {# ========== INTRO ========== #}
+        <tr>
+          <td style="padding:0 40px 32px 40px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+              <tr>
+                <td style="font-size:14px;color:#080229;line-height:1.7;">
+                  An AI-curated digest of what museums, archives, heritage organizations, and
+                  individual researchers are building on GitHub &mdash; new projects, releases,
+                  and notable developments delivered every Wednesday.
+                </td>
+              </tr>
+              {% if whats_new %}
+              <tr>
+                <td style="padding-top:20px;font-size:14px;font-weight:bold;color:#080229;">What's new</td>
+              </tr>
+              <tr>
+                <td style="padding-top:8px;font-size:13px;color:#080229;line-height:1.8;">
+                  {% for item in whats_new %}
+                  &bull;&nbsp; {{ item | safe }}{% if not loop.last %}<br>{% endif %}
+                  {% endfor %}
+                </td>
+              </tr>
+              {% endif %}
+            </table>
+          </td>
+        </tr>
         {{ dotline() }}
 
         {# ========== SPOTLIGHT ========== #}
