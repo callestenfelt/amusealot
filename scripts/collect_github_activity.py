@@ -234,10 +234,16 @@ def collect_new_repos(org_login, cutoff_date):
     return items
 
 
-def collect_events(org_login, cutoff_date):
-    """Fetch org events and extract releases and significant pushes."""
+def collect_events(org_login, cutoff_date, is_individual=False):
+    """Fetch org/user events and extract releases and significant pushes."""
     items = []
-    resp = github_get(f"{GITHUB_API}/orgs/{org_login}/events", {"per_page": 30})
+    # Use different endpoint for individuals vs organizations
+    if is_individual:
+        endpoint = f"{GITHUB_API}/users/{org_login}/events/public"
+    else:
+        endpoint = f"{GITHUB_API}/orgs/{org_login}/events"
+
+    resp = github_get(endpoint, {"per_page": 30})
     if resp.status_code != 200:
         return items
 
@@ -422,6 +428,7 @@ def main():
         src_name = src["name"] or login
         tracked_repos = src["tracked_repos"]
         entity_type = src.get("entity_type")
+        is_individual = (entity_type == "individual")
 
         if tracked_repos:
             # Tracked repos mode: only fetch events for specific repos
@@ -430,10 +437,10 @@ def main():
                 items.extend(collect_repo_events(repo, login, cutoff))
                 api_calls += 1
         else:
-            # Org-wide mode: fetch all repos + events (2 API calls)
-            new_repos = collect_new_repos(login, cutoff)
-            events = collect_events(login, cutoff)
-            api_calls += 2
+            # Org-wide mode (or user-wide for individuals): fetch all repos + events (2 API calls)
+            new_repos = collect_new_repos(login, cutoff) if not is_individual else []
+            events = collect_events(login, cutoff, is_individual=is_individual)
+            api_calls += 2 if not is_individual else 1
             items = new_repos + events
 
         if items:
