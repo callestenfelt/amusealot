@@ -32,6 +32,7 @@ BASEROW_URL = os.environ["BASEROW_URL"]
 BASEROW_TOKEN = os.environ["BASEROW_TOKEN"]
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 TABLE_ID = 745
+TECHNOLOGIES_TABLE_ID = os.environ.get("TECHNOLOGIES_TABLE_ID")  # Optional
 
 GITHUB_API = "https://api.github.com"
 GITHUB_HEADERS = {
@@ -43,6 +44,14 @@ FIELDS = {
     "name": "field_7191",
     "github": "field_7222",
     "tracked_repos": "field_7261",
+}
+
+# Technology table field names (to be mapped to field IDs once table is created)
+TECH_FIELDS = {
+    "name": None,  # Will be set once table is created
+    "parent": None,
+    "tracked_repos": None,
+    "active": None,
 }
 
 # Bot authors to skip
@@ -95,6 +104,90 @@ def get_sources():
 
     print(f"Found {len(sources)} sources with GitHub accounts")
     return sources
+
+
+def get_technologies():
+    """Fetch active technologies from Baserow (if configured)."""
+    if not TECHNOLOGIES_TABLE_ID:
+        return []
+
+    print("Fetching technologies from Baserow...")
+    technologies = []
+    page = 1
+
+    # First, fetch table schema to get field IDs
+    try:
+        schema_resp = requests.get(
+            f"{BASEROW_URL}/api/database/fields/table/{TECHNOLOGIES_TABLE_ID}/",
+            headers={"Authorization": f"Token {BASEROW_TOKEN}"}
+        )
+        schema_resp.raise_for_status()
+        fields = schema_resp.json()
+
+        # Map field names to IDs
+        field_map = {}
+        for field in fields:
+            field_name = field.get("name", "").lower()
+            field_id = field.get("id")
+            if field_name in ["name", "parent", "tracked_repos", "active"]:
+                field_map[field_name] = f"field_{field_id}"
+
+        if "name" not in field_map or "tracked_repos" not in field_map:
+            print("  WARNING: Technologies table missing required fields (name, tracked_repos)")
+            return []
+
+    except Exception as e:
+        print(f"  WARNING: Could not fetch technologies table schema: {e}")
+        return []
+
+    # Now fetch rows
+    while True:
+        try:
+            response = requests.get(
+                f"{BASEROW_URL}/api/database/rows/table/{TECHNOLOGIES_TABLE_ID}/",
+                params={
+                    "size": 200,
+                    "page": page,
+                },
+                headers={"Authorization": f"Token {BASEROW_TOKEN}"}
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            for row in data["results"]:
+                # Check if active (default to True if field doesn't exist)
+                active = True
+                if "active" in field_map:
+                    active = row.get(field_map["active"], True)
+
+                if not active:
+                    continue
+
+                name = row.get(field_map["name"], "").strip()
+                tracked_repos_raw = row.get(field_map["tracked_repos"]) or ""
+                tracked_repos = [r.strip() for r in tracked_repos_raw.strip().splitlines() if r.strip()]
+
+                if name and tracked_repos:
+                    parent = ""
+                    if "parent" in field_map:
+                        parent = row.get(field_map["parent"], "").strip()
+
+                    technologies.append({
+                        "name": name,
+                        "parent": parent,
+                        "tracked_repos": tracked_repos,
+                    })
+
+            if not data["next"]:
+                break
+            page += 1
+
+        except Exception as e:
+            print(f"  WARNING: Error fetching technologies: {e}")
+            break
+
+    print(f"Found {len(technologies)} active technologies")
+    return technologies
 
 
 def collect_new_repos(org_login, cutoff_date):
@@ -307,9 +400,11 @@ def main():
 
     # Get all tracked sources from Baserow
     sources = get_sources()
+    technologies = get_technologies()
 
     all_activity = []
     sources_with_activity = 0
+    technologies_with_activity = 0
     api_calls = 0
 
     print(f"\nScanning {len(sources)} sources...\n")
@@ -336,6 +431,7 @@ def main():
             sources_with_activity += 1
             for item in items:
                 item["org_name"] = src_name
+                item["source_type"] = "source"
             all_activity.extend(items)
 
         # Progress
@@ -346,6 +442,43 @@ def main():
             if items:
                 status += f" -> {len(items)} event(s)"
             print(status)
+
+    # Collect from technologies
+    if technologies:
+        print(f"\nScanning {len(technologies)} technologies...\n")
+
+        for i, tech in enumerate(technologies):
+            tech_name = tech["name"]
+            tech_parent = tech["parent"]
+            tracked_repos = tech["tracked_repos"]
+            items = []
+
+            for repo in tracked_repos:
+                # Use repo owner as the "login" for API calls
+                repo_owner = repo.split("/")[0] if "/" in repo else repo
+                repo_events = collect_repo_events(repo, repo_owner, cutoff)
+                api_calls += 1
+                items.extend(repo_events)
+
+            if items:
+                technologies_with_activity += 1
+                for item in items:
+                    # Extract org name from repo if not already set
+                    if "org_name" not in item or not item["org_name"]:
+                        item["org_name"] = item["repo"].split("/")[0] if "/" in item["repo"] else ""
+                    item["source_type"] = "technology"
+                    item["technology_name"] = tech_name
+                    item["technology_parent"] = tech_parent
+                all_activity.extend(items)
+
+            # Progress
+            if (i + 1) % 10 == 0 or items:
+                status = f"  [{i+1}/{len(technologies)}] {tech_name}"
+                if tech_parent:
+                    status += f" (part of {tech_parent})"
+                if items:
+                    status += f" -> {len(items)} event(s)"
+                print(status)
 
     # Deduplicate: for push events, keep only the latest per repo+branch
     push_best = {}  # key: (repo, branch) -> most recent push
@@ -378,14 +511,26 @@ def main():
     print(f"{'='*60}")
     print(f"Sources scanned: {len(sources)}")
     print(f"Sources with activity: {sources_with_activity}")
+    if technologies:
+        print(f"Technologies scanned: {len(technologies)}")
+        print(f"Technologies with activity: {technologies_with_activity}")
     print(f"API calls made: {api_calls}")
     print(f"Total events found: {len(deduped)}")
 
     by_type = {}
+    by_source_type = {}
     for item in deduped:
         by_type[item["event_type"]] = by_type.get(item["event_type"], 0) + 1
+        source_type = item.get("source_type", "source")
+        by_source_type[source_type] = by_source_type.get(source_type, 0) + 1
+
     for t, c in sorted(by_type.items()):
         print(f"  {t}: {c}")
+
+    if len(by_source_type) > 1:
+        print(f"\nBy source type:")
+        for t, c in sorted(by_source_type.items()):
+            print(f"  {t}: {c}")
 
     print(f"\nSaved to {args.output}")
 

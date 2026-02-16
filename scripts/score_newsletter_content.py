@@ -33,6 +33,8 @@ SCORING_SYSTEM_PROMPT = """You are a museum technology analyst scoring GitHub ac
 
 Museum tech domains: IIIF, collection management (Specify, CollectiveAccess), digital preservation, Darwin Core, biodiversity informatics, linked open data, web archives, 3D digitization, accessibility, metadata standards (Dublin Core, MODS, EAD).
 
+Some events come from tracked museum/heritage organizations (source_type: "source"), while others come from tracked technologies/tools used by the sector (source_type: "technology", with technology_name and technology_parent fields).
+
 Scoring criteria:
 - Relevance to museum professionals (1-10)
 - Newsworthiness vs routine activity
@@ -95,6 +97,7 @@ def compute_stats(events):
     pushes = 0
     new_projects = 0
     releases = 0
+    technologies_active = set()
 
     for e in events:
         orgs.add(e.get("org", ""))
@@ -107,13 +110,24 @@ def compute_stats(events):
         elif etype == "release":
             releases += 1
 
-    return {
+        # Track active technologies
+        if e.get("source_type") == "technology":
+            tech_name = e.get("technology_name")
+            if tech_name:
+                technologies_active.add(tech_name)
+
+    stats = {
         "active_orgs": len(orgs),
         "total_pushes": pushes,
         "unique_repos": len(repos),
         "new_projects": new_projects,
         "releases": releases,
     }
+
+    if technologies_active:
+        stats["technologies_active"] = len(technologies_active)
+
+    return stats
 
 
 def compute_most_active(events, top_n=5):
@@ -146,6 +160,37 @@ def compute_most_active(events, top_n=5):
     return ranked[:top_n]
 
 
+def compute_tool_watch(scored_events, max_per_group=3):
+    """Group technology events by parent/name, pick top-scored items per group."""
+    tech_events = [e for e in scored_events if e.get("source_type") == "technology"]
+
+    if not tech_events:
+        return {}
+
+    # Group by parent (or name if no parent)
+    groups = {}
+    for event in tech_events:
+        tier = event.get("score", {}).get("tier", 3)
+        if tier >= 3:
+            continue  # Skip tier 3 events
+
+        parent = event.get("technology_parent") or event.get("technology_name", "")
+        if not parent:
+            continue
+
+        if parent not in groups:
+            groups[parent] = []
+        groups[parent].append(event)
+
+    # Sort each group by relevance, keep top N
+    tool_watch = {}
+    for parent, events in groups.items():
+        sorted_events = sorted(events, key=lambda e: e.get("score", {}).get("relevance", 0), reverse=True)
+        tool_watch[parent] = sorted_events[:max_per_group]
+
+    return tool_watch
+
+
 def build_event_summary(event):
     """Build a compact dict for sending to the LLM (strip bulky fields)."""
     summary = {
@@ -156,6 +201,14 @@ def build_event_summary(event):
         "date": event.get("date", ""),
         "event_type": event["event_type"],
     }
+
+    # Add technology tracking fields if present
+    source_type = event.get("source_type")
+    if source_type:
+        summary["source_type"] = source_type
+        if source_type == "technology":
+            summary["technology_name"] = event.get("technology_name", "")
+            summary["technology_parent"] = event.get("technology_parent", "")
 
     meta = event.get("repo_meta")
     if meta:
@@ -437,6 +490,16 @@ def main():
     else:
         print(f"  Writeup: {spotlight_writeup[:120]}...")
 
+    # --- Compute Tool Watch ---
+    tool_watch = compute_tool_watch(scored_events)
+    if tool_watch:
+        print(f"\n{'='*60}")
+        print("TOOL WATCH")
+        print(f"{'='*60}")
+        print(f"Technology groups: {len(tool_watch)}")
+        for parent, events in tool_watch.items():
+            print(f"  {parent}: {len(events)} event(s)")
+
     # --- Build output ---
     tier_counts = {"tier_1": 0, "tier_2": 0, "tier_3": 0}
     for e in scored_events:
@@ -459,6 +522,7 @@ def main():
             "event": build_event_summary(best),
             "writeup": spotlight_writeup,
         },
+        "tool_watch": tool_watch,
         "summary": {
             "total_events": len(scored_events),
             **tier_counts,

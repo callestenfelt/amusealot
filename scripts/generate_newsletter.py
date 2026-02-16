@@ -60,6 +60,7 @@ def prepare_sections(scored_events):
 def build_context(data, max_pushes=None):
     """Assemble full template context from scored newsletter data."""
     sections = prepare_sections(data["scored_events"])
+    tool_watch = data.get("tool_watch", {})
 
     ctx = {
         "generation_date": date.today().strftime("%B %d, %Y"),
@@ -71,6 +72,8 @@ def build_context(data, max_pushes=None):
         "has_new_repos": len(sections["new_repos"]) > 0,
         "has_releases": len(sections["releases"]) > 0,
         "has_pushes": len(sections["pushes"]) > 0,
+        "has_tool_watch": len(tool_watch) > 0,
+        "tool_watch": tool_watch,
         "max_pushes": max_pushes,
     }
     return ctx
@@ -174,6 +177,9 @@ def main():
     print(f"  New Repos: {len(context['sections']['new_repos'])} events")
     print(f"  Releases:  {len(context['sections']['releases'])} events")
     print(f"  Pushes:    {len(context['sections']['pushes'])} events")
+    if context['has_tool_watch']:
+        total_tool_events = sum(len(events) for events in context['tool_watch'].values())
+        print(f"  Tool Watch: {len(context['tool_watch'])} groups, {total_tool_events} events")
 
     # --- Full version (archive) ---
     full_html = render_newsletter(context)
