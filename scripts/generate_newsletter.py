@@ -57,10 +57,55 @@ def prepare_sections(scored_events):
     return sections
 
 
+def prepare_individual_events(scored_events):
+    """Filter and prepare events from individual contributors (Tier 1-2)."""
+    # Filter for individual contributors with tier 1 or 2
+    individual_events = []
+
+    for event in scored_events:
+        # Check if this is from an individual (entity_type field or source metadata)
+        # The entity_type field ID is field_7225, with individual = 3090
+        # We need to check the enrichment data or source metadata
+        source_type = event.get("source_type", "source")
+
+        # For now, we'll need to check if the org_name matches an individual in Baserow
+        # This requires the entity_type to be passed through from collection
+        # Let's add a simpler check: look for events from known individuals
+
+        score = event.get("score", {})
+        tier = score.get("tier", 3)
+
+        # Only tier 1 and 2
+        if tier > 2:
+            continue
+
+        # Check if this is from an individual source
+        # This will be set during collection if we track entity_type
+        entity_type = event.get("entity_type")
+        if entity_type == "individual":
+            individual_events.append(event)
+
+    # Deduplicate by repo, keeping highest relevance
+    seen = {}
+    for event in individual_events:
+        repo = event.get("repo", "")
+        relevance = event.get("score", {}).get("relevance", 0)
+        if repo not in seen or relevance > seen[repo].get("score", {}).get("relevance", 0):
+            seen[repo] = event
+
+    individual_events = list(seen.values())
+
+    # Sort: tier 1 before tier 2, then by relevance
+    individual_events.sort(key=lambda e: (e["score"]["tier"], -e["score"]["relevance"]))
+
+    return individual_events
+
+
 def build_context(data, max_pushes=None):
     """Assemble full template context from scored newsletter data."""
     sections = prepare_sections(data["scored_events"])
     tool_watch = data.get("tool_watch", {})
+    individual_events = prepare_individual_events(data["scored_events"])
 
     ctx = {
         "generation_date": date.today().strftime("%B %d, %Y"),
@@ -74,6 +119,8 @@ def build_context(data, max_pushes=None):
         "has_pushes": len(sections["pushes"]) > 0,
         "has_tool_watch": len(tool_watch) > 0,
         "tool_watch": tool_watch,
+        "individual_events": individual_events,
+        "has_individual_events": len(individual_events) > 0,
         "max_pushes": max_pushes,
     }
     return ctx
@@ -180,6 +227,8 @@ def main():
     if context['has_tool_watch']:
         total_tool_events = sum(len(events) for events in context['tool_watch'].values())
         print(f"  Tool Watch: {len(context['tool_watch'])} groups, {total_tool_events} events")
+    if context['has_individual_events']:
+        print(f"  Individual Creators: {len(context['individual_events'])} events")
 
     # --- Full version (archive) ---
     full_html = render_newsletter(context)

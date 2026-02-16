@@ -304,6 +304,18 @@
           </td>
         </tr>
 
+        {# ========== INDIVIDUAL CREATORS ========== #}
+        {% if has_individual_events %}
+        {{ section_header("👤", "Individual Creators") }}
+        {% for event in individual_events %}
+          {% if event.score.tier == 1 %}
+            {{ event_t1(event) }}
+          {% else %}
+            {{ event_t2(event) }}
+          {% endif %}
+        {% endfor %}
+        {% endif %}
+
         {# ========== NOTABLE PUSHES ========== #}
         {% if has_pushes %}
         {{ section_header("🤖", "Notable Pushes") }}

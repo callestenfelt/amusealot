@@ -44,6 +44,7 @@ FIELDS = {
     "name": "field_7191",
     "github": "field_7222",
     "tracked_repos": "field_7261",
+    "entity_type": "field_7225",
 }
 
 # Technology table field names (to be mapped to field IDs once table is created)
@@ -95,8 +96,15 @@ def get_sources():
             name = row.get(FIELDS["name"], "")
             tracked_repos_raw = row.get(FIELDS["tracked_repos"]) or ""
             tracked_repos = [r.strip() for r in tracked_repos_raw.strip().splitlines() if r.strip()]
+            entity_type = row.get(FIELDS["entity_type"], {})
+            entity_type_value = entity_type.get("value") if isinstance(entity_type, dict) else None
             if github_login:
-                sources.append({"login": github_login, "name": name, "tracked_repos": tracked_repos})
+                sources.append({
+                    "login": github_login,
+                    "name": name,
+                    "tracked_repos": tracked_repos,
+                    "entity_type": entity_type_value
+                })
 
         if not data["next"]:
             break
@@ -413,6 +421,7 @@ def main():
         login = src["login"]
         src_name = src["name"] or login
         tracked_repos = src["tracked_repos"]
+        entity_type = src.get("entity_type")
 
         if tracked_repos:
             # Tracked repos mode: only fetch events for specific repos
@@ -432,6 +441,8 @@ def main():
             for item in items:
                 item["org_name"] = src_name
                 item["source_type"] = "source"
+                if entity_type:
+                    item["entity_type"] = entity_type
             all_activity.extend(items)
 
         # Progress
