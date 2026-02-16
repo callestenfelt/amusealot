@@ -404,7 +404,7 @@ def collect_repo_events(repo_full_name, entity_login, cutoff_date):
 
 def main():
     parser = argparse.ArgumentParser(description="Collect GitHub activity from tracked sources")
-    parser.add_argument("--days", type=int, default=14, help="Look back N days (default: 14)")
+    parser.add_argument("--days", type=int, default=30, help="Look back N days (default: 30)")
     parser.add_argument("--output", default=os.path.join(os.path.dirname(__file__), "github_activity.json"),
                         help="Output JSON file (default: scripts/github_activity.json)")
     args = parser.parse_args()
