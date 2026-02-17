@@ -571,6 +571,22 @@ def archive_edition(edition_date):
     # Replace unsubscribe placeholder with generic landing page link
     html = html.replace("%%UNSUBSCRIBE_URL%%", f"{BASE_URL}/unsubscribe")
 
+    # Inject responsive CSS for web viewing (email clients never see this)
+    responsive_css = (
+        '<style type="text/css">'
+        '@media screen and (max-width:620px){'
+        'table[width="600"]{width:100%!important;}'
+        'td[style*="font-size:78px"]{font-size:clamp(36px,11vw,78px)!important;letter-spacing:-1px!important;}'
+        'td[style*="letter-spacing:4.5px"]{letter-spacing:2px!important;font-size:11px!important;}'
+        'td[style*="px 40px"]{padding-left:20px!important;padding-right:20px!important;}'
+        'td[style*=":0 40px"]{padding-left:20px!important;padding-right:20px!important;}'
+        '}'
+        '</style>'
+    )
+    head_close = html.find("</head>")
+    if head_close != -1:
+        html = html[:head_close] + responsive_css + html[head_close:]
+
     # Inject back-to-archive nav bar at the top of <body>
     nav_bar = (
         '<div style="background-color:#080229;padding:12px 24px;text-align:center;">'
