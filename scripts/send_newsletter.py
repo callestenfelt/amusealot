@@ -90,7 +90,7 @@ def personalize_html(html, subscriber):
     return html.replace("%%UNSUBSCRIBE_URL%%", unsub_url)
 
 
-def send_email(to_email, html, unsub_url):
+def send_email(to_email, html, unsub_url, subject="AmuseAlot — Museum Tech Newsletter"):
     """Send a single email via Resend API with proper headers."""
     resp = requests.post(
         "https://api.resend.com/emails",
@@ -101,7 +101,7 @@ def send_email(to_email, html, unsub_url):
         json={
             "from": RESEND_FROM,
             "to": [to_email],
-            "subject": "AmuseAlot — Museum Tech Newsletter",
+            "subject": subject,
             "html": html,
             "headers": {
                 "List-Unsubscribe": f"<{unsub_url}>",
@@ -134,7 +134,18 @@ def main():
     with open(input_file, "r", encoding="utf-8") as f:
         base_html = f.read()
 
+    # Build subject line with date extracted from filename (e.g. newsletter_email_2026-02-17.html)
+    import re
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", os.path.basename(input_file))
+    if date_match:
+        from datetime import date
+        edition_date = datetime.strptime(date_match.group(1), "%Y-%m-%d")
+        subject = f"AmuseAlot — Museum Tech | {edition_date.strftime('%b')} {edition_date.day}, {edition_date.year}"
+    else:
+        subject = "AmuseAlot — Museum Tech Newsletter"
+
     print(f"Newsletter: {input_file}")
+    print(f"  Subject: {subject}")
     print(f"  Size: {len(base_html) / 1024:.1f} KB")
 
     # Check for unsubscribe placeholder
@@ -181,7 +192,7 @@ def main():
         personalized = personalize_html(base_html, sub)
 
         try:
-            result = send_email(email, personalized, unsub_url)
+            result = send_email(email, personalized, unsub_url, subject)
             sent += 1
             email_id = result.get("id", "?")
             print(f"  [{sent}/{len(subscribers)}] Sent to {email} (id: {email_id})")
