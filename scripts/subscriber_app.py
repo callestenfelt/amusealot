@@ -186,7 +186,7 @@ STATIC_FILES = {
     "favicon.svg", "favicon.ico", "favicon-96x96.png",
     "apple-touch-icon.png", "web-app-manifest-192x192.png",
     "web-app-manifest-512x512.png", "site.webmanifest", "share.png",
-    "logo_footer.svg", "bluesky.svg",
+    "logo_footer.svg", "bluesky.svg", "bathing_in_code.webp",
 }
 
 
