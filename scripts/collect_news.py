@@ -412,8 +412,12 @@ def main():
         print("No active RSS sources found!")
         return
 
-    # Get existing article hashes for deduplication
-    existing_hashes = get_existing_hashes()
+    # Get existing article hashes for deduplication (skip in dry-run — not needed for testing)
+    if args.apply:
+        existing_hashes = get_existing_hashes()
+    else:
+        existing_hashes = set()
+        print("Skipping hash deduplication (dry-run mode)")
 
     # Collect articles from all sources
     all_articles = []
