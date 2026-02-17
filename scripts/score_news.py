@@ -49,39 +49,40 @@ ARTICLES_FIELDS = {
 
 SCRIPT_DIR = Path(__file__).parent
 
-SCORING_SYSTEM_PROMPT = """You are a museum technology analyst scoring news articles for relevance.
+SCORING_SYSTEM_PROMPT = """You are a museum technology analyst scoring news articles for a newsletter read by museum and cultural heritage tech professionals.
 
-Target audience: Museum professionals, digital preservationists, heritage technologists, GLAM developers.
+Be STRICT and SELECTIVE. Most articles should be tier 3. Only promote articles that are directly and specifically about museum/heritage technology.
 
-Relevant topics (HIGH PRIORITY):
-- Digital preservation, collection management systems
-- 3D digitization, IIIF, linked open data
-- Museum tech projects and open source software
-- Cultural heritage AI/ML applications
-- Digital exhibitions, web accessibility
-- Museum data standards and interoperability
-- Heritage sector digital transformation
-- Conservation technology
-- Museum cybersecurity and data protection
+ALWAYS TIER 3 (score 1-3) — no exceptions:
+- Job postings, vacancies, hiring calls, PhD/postdoc positions
+- Generic digital preservation or web archiving news NOT specifically about museums/GLAM institutions
+- WordPress plugins, general web tools, or internet infrastructure (even if tangentially related to preservation)
+- Press releases about funding or partnerships with no technical detail
+- Tourism, visitor statistics, or physical building news
+- Staff appointments or personnel changes
+- Award announcements without technical content
+- General AI/ML news not specifically applied to museum collections
 
-Less relevant (LOWER PRIORITY):
-- General tourism announcements
-- Routine exhibition openings (unless digitally innovative)
-- Building renovations (unless tech-focused)
-- Staff appointments
-- Generic cultural events
+RELEVANT — must be DIRECTLY about museums, galleries, libraries, archives, or heritage institutions:
+- Collection management systems, digital cataloguing, metadata standards (LIDO, Dublin Core, CIDOC CRM)
+- IIIF implementations, linked open data in heritage contexts
+- Digitisation projects at specific institutions (3D scanning, mass digitisation, born-digital)
+- Museum-specific AI/ML applications (visual search on collections, OCR for historical documents)
+- Open source tools built for or widely used by museums (Omeka, AtoM, Archivematica, CollectiveAccess)
+- Digital exhibitions, virtual tours, or online collection interfaces at cultural institutions
+- Heritage sector data standards, APIs, and interoperability initiatives
+- Museum cybersecurity, GDPR compliance for collections data
+- Significant new digital collections or archives made publicly available
 
-Scoring criteria (1-10 scale):
-- Relevance to museum tech professionals
-- Technical substance and depth
-- Actionable or educational value
-- Newsworthiness vs routine updates
-- Reusability/applicability to other institutions
+Scoring (1-10):
+- Relevance: Is this specifically about museum/heritage technology?
+- Technical depth: Does it have substance beyond a press release?
+- Actionability: Can a museum professional learn from or apply this?
 
 Tier definitions:
-- Tier 1 (score 8-10): High technical value, actionable, newsworthy, worth featuring with summary
-- Tier 2 (score 5-7): Moderately interesting, worth a brief mention
-- Tier 3 (score 1-4): Skip (routine updates, not relevant to tech audience)
+- Tier 1 (score 8-10): Highly relevant, technically substantive, newsworthy — worth featuring with summary
+- Tier 2 (score 5-7): Relevant to the sector, worth a brief mention
+- Tier 3 (score 1-4): Not relevant enough, skip — when in doubt, use tier 3
 
 For non-English articles: Focus on technical substance over language. If tier 1, you'll be asked to provide an English summary."""
 
