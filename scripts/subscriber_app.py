@@ -52,6 +52,7 @@ EDITION_TABLE_ID = os.environ.get("EDITION_TABLE_ID")  # optional, needed for /a
 FEEDBACK_TABLE_ID = os.environ.get("FEEDBACK_TABLE_ID")  # optional, needed for /feedback
 NOTIFY_EMAIL = os.environ.get("NOTIFY_EMAIL")  # optional, feedback notifications
 SOURCES_TABLE_ID = os.environ.get("SOURCES_TABLE_ID")  # optional, needed for /sources
+NEWS_SOURCES_TABLE_ID = os.environ.get("NEWS_SOURCES_TABLE_ID")  # optional, news RSS sources
 
 BASEROW_HEADERS = {
     "Authorization": f"Token {BASEROW_TOKEN}",
@@ -481,14 +482,71 @@ def get_sources():
         return []
 
 
+_news_sources_cache = {"data": None, "time": 0}
+
+
+def get_news_sources():
+    """Fetch active RSS news sources from Baserow with a 1-hour TTL cache."""
+    now = time.time()
+    if _news_sources_cache["data"] is not None and now - _news_sources_cache["time"] < SOURCES_CACHE_TTL:
+        return _news_sources_cache["data"]
+
+    if not NEWS_SOURCES_TABLE_ID:
+        return []
+
+    try:
+        sources = []
+        page = 1
+        while True:
+            resp = requests.get(
+                f"{BASEROW_URL}/api/database/rows/table/{NEWS_SOURCES_TABLE_ID}/",
+                params={
+                    "size": 200,
+                    "page": page,
+                    "user_field_names": "true",
+                },
+                headers=BASEROW_HEADERS,
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            for row in data["results"]:
+                if not row.get("active"):
+                    continue
+                country = row.get("country") or {}
+                language = row.get("language") or {}
+                sources.append({
+                    "name": row.get("name", ""),
+                    "country": country.get("value", "") if isinstance(country, dict) else str(country),
+                    "language": language.get("value", "") if isinstance(language, dict) else str(language),
+                    "focus_area": row.get("focus_area", "") or "",
+                    "rss_url": row.get("rss_url", "") or "",
+                })
+            if not data.get("next"):
+                break
+            page += 1
+        sources.sort(key=lambda s: s["name"].lower())
+        _news_sources_cache["data"] = sources
+        _news_sources_cache["time"] = now
+        return sources
+    except Exception as e:
+        print(f"ERROR fetching news sources: {e}")
+        if _news_sources_cache["data"] is not None:
+            return _news_sources_cache["data"]
+        return []
+
+
 @app.route("/sources")
 def sources():
     source_list = get_sources()
+    news_list = get_news_sources()
     countries = set(s["country"] for s in source_list if s["country"])
     return render_template("sources.html",
                            sources=source_list,
                            total=len(source_list),
                            country_count=len(countries),
+                           news_sources=news_list,
+                           news_total=len(news_list),
                            canonical_url=BASE_URL + "/sources")
 
 

@@ -14,83 +14,189 @@
 
   <h2>Sources</h2>
 
-  {% if sources %}
-
-  <div class="src-stats">
-    <div class="src-stat">
-      <div class="src-stat-num">{{ total }}</div>
-      <div class="src-stat-label">Sources</div>
-    </div>
-    <div class="src-stat">
-      <div class="src-stat-num">{{ country_count }}</div>
-      <div class="src-stat-label">Countries</div>
-    </div>
+  {# ── Tab toggle ── #}
+  <div class="tab-row">
+    <button class="tab-btn active" id="tabGithub" aria-selected="true">GitHub</button>
+    <button class="tab-btn" id="tabNews" aria-selected="false">News feeds</button>
   </div>
 
-  <p>
-    Every Wednesday, the pipeline scans public GitHub activity from these
-    organizations and individuals to find new projects, releases, and
-    noteworthy commits.
-  </p>
+  {# ══════════════════════════════════
+     GITHUB SOURCES PANEL
+     ══════════════════════════════════ #}
+  <div id="panelGithub">
+    {% if sources %}
 
-  <div class="src-cta">
-    Missing an organization or repo?
-    <a href="/feedback">Suggest an addition</a>
-  </div>
-
-  <div class="src-filters">
-    <div class="src-filter-chips">
-      <button class="src-fchip active" data-type="all">All</button>
-      <button class="src-fchip" data-type="museum">Museum</button>
-      <button class="src-fchip" data-type="individual">Individual</button>
-      <button class="src-fchip" data-type="other_org">Other</button>
-    </div>
-    <input type="text" class="src-search" placeholder="Filter by name or country..." id="srcSearch">
-  </div>
-
-  <div class="src-count" id="srcCount">Showing {{ total }} sources</div>
-
-  <div id="srcList">
-    {% set ns = namespace(current_letter='') %}
-    {% for source in sources %}
-      {% set first = source.name[0]|upper if source.name else '?' %}
-      {% if first != ns.current_letter %}
-        {% set ns.current_letter = first %}
-        <div class="src-letter" data-letter="{{ first }}">{{ first }}</div>
-      {% endif %}
-      <div class="src-entry" data-type="{{ source.entity_type }}" data-name="{{ source.name|lower }}" data-handle="{{ source.github|lower }}" data-country="{{ source.country|lower }}">
-        <div class="src-entry-main">
-          <a class="src-entry-name" href="{{ source.github_url }}" target="_blank" rel="noopener">{{ source.name }}</a>
-          <span class="src-entry-handle">{{ source.github }}</span>
-        </div>
-        <div class="src-entry-chips">
-          {% if source.entity_type == "museum" %}
-            <span class="chip chip-type">Museum</span>
-          {% elif source.entity_type == "individual" %}
-            <span class="chip chip-individual">Individual</span>
-          {% elif source.entity_type == "other_org" %}
-            <span class="chip chip-other_org">Other Org</span>
-          {% elif source.entity_type == "umbrella_org" %}
-            <span class="chip chip-umbrella_org">Umbrella Org</span>
-          {% endif %}
-          {% if source.country %}
-            <span class="chip chip-country">{{ source.country }}</span>
-          {% endif %}
-        </div>
+    <div class="src-stats">
+      <div class="src-stat">
+        <div class="src-stat-num">{{ total }}</div>
+        <div class="src-stat-label">Sources</div>
       </div>
-    {% endfor %}
-  </div>
+      <div class="src-stat">
+        <div class="src-stat-num">{{ country_count }}</div>
+        <div class="src-stat-label">Countries</div>
+      </div>
+    </div>
 
-  <div class="src-empty" id="srcEmpty" style="display:none;">
-    No sources match your filter.
-  </div>
+    <p>
+      Every Wednesday, the pipeline scans public GitHub activity from these
+      organizations and individuals to find new projects, releases, and
+      noteworthy commits.
+    </p>
 
-  {% else %}
-  <p>Source list temporarily unavailable. Please try again later.</p>
-  {% endif %}
-</div>
+    <div class="src-cta">
+      Missing an organization or repo?
+      <a href="/feedback">Suggest an addition</a>
+    </div>
+
+    <div class="src-filters">
+      <div class="src-filter-chips">
+        <button class="src-fchip active" data-type="all">All</button>
+        <button class="src-fchip" data-type="museum">Museum</button>
+        <button class="src-fchip" data-type="individual">Individual</button>
+        <button class="src-fchip" data-type="other_org">Other</button>
+      </div>
+      <input type="text" class="src-search" placeholder="Filter by name or country..." id="srcSearch">
+    </div>
+
+    <div class="src-count" id="srcCount">Showing {{ total }} sources</div>
+
+    <div id="srcList">
+      {% set ns = namespace(current_letter='') %}
+      {% for source in sources %}
+        {% set first = source.name[0]|upper if source.name else '?' %}
+        {% if first != ns.current_letter %}
+          {% set ns.current_letter = first %}
+          <div class="src-letter" data-letter="{{ first }}">{{ first }}</div>
+        {% endif %}
+        <div class="src-entry" data-type="{{ source.entity_type }}" data-name="{{ source.name|lower }}" data-handle="{{ source.github|lower }}" data-country="{{ source.country|lower }}">
+          <div class="src-entry-main">
+            <a class="src-entry-name" href="{{ source.github_url }}" target="_blank" rel="noopener">{{ source.name }}</a>
+            <span class="src-entry-handle">{{ source.github }}</span>
+          </div>
+          <div class="src-entry-chips">
+            {% if source.entity_type == "museum" %}
+              <span class="chip chip-type">Museum</span>
+            {% elif source.entity_type == "individual" %}
+              <span class="chip chip-individual">Individual</span>
+            {% elif source.entity_type == "other_org" %}
+              <span class="chip chip-other_org">Other Org</span>
+            {% elif source.entity_type == "umbrella_org" %}
+              <span class="chip chip-umbrella_org">Umbrella Org</span>
+            {% endif %}
+            {% if source.country %}
+              <span class="chip chip-country">{{ source.country }}</span>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="src-empty" id="srcEmpty" style="display:none;">
+      No sources match your filter.
+    </div>
+
+    {% else %}
+    <p>Source list temporarily unavailable. Please try again later.</p>
+    {% endif %}
+  </div>{# /panelGithub #}
+
+  {# ══════════════════════════════════
+     NEWS SOURCES PANEL
+     ══════════════════════════════════ #}
+  <div id="panelNews" style="display:none;">
+    {% if news_sources %}
+
+    <div class="src-stats">
+      <div class="src-stat">
+        <div class="src-stat-num">{{ news_total }}</div>
+        <div class="src-stat-label">Feeds</div>
+      </div>
+    </div>
+
+    <p>
+      Each issue includes curated news articles from these RSS feeds —
+      scored by AI for relevance to museum and heritage technology professionals.
+    </p>
+
+    <div class="src-filters" style="margin-top:24px;">
+      <input type="text" class="src-search" placeholder="Filter by name or country..." id="newsSrcSearch">
+    </div>
+
+    <div class="src-count" id="newsSrcCount">Showing {{ news_total }} feeds</div>
+
+    <div id="newsSrcList">
+      {% set ns2 = namespace(current_letter='') %}
+      {% for source in news_sources %}
+        {% set first = source.name[0]|upper if source.name else '?' %}
+        {% if first != ns2.current_letter %}
+          {% set ns2.current_letter = first %}
+          <div class="src-letter news-letter" data-letter="{{ first }}">{{ first }}</div>
+        {% endif %}
+        <div class="src-entry news-entry" data-name="{{ source.name|lower }}" data-country="{{ source.country|lower }}">
+          <div class="src-entry-main">
+            <span class="src-entry-name" style="cursor:default;">{{ source.name }}</span>
+            {% if source.focus_area %}
+              <span class="src-entry-handle">{{ source.focus_area }}</span>
+            {% endif %}
+          </div>
+          <div class="src-entry-chips">
+            {% if source.language and source.language != 'en' %}
+              <span class="chip chip-country">{{ source.language }}</span>
+            {% endif %}
+            {% if source.country %}
+              <span class="chip chip-country">{{ source.country }}</span>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="src-empty" id="newsSrcEmpty" style="display:none;">
+      No feeds match your filter.
+    </div>
+
+    {% else %}
+    <p>News source list temporarily unavailable. Please try again later.</p>
+    {% endif %}
+  </div>{# /panelNews #}
+
+</div>{# /container #}
 
 <style>
+  /* Tab toggle */
+  .tab-row {
+    display: flex;
+    gap: 0;
+    margin-bottom: 32px;
+    border-bottom: 3px solid #080229;
+  }
+  .tab-btn {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 0.3px;
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -3px;
+    cursor: pointer;
+    color: rgba(8, 2, 41, 0.45);
+    transition: color 0.15s;
+  }
+  .tab-btn:hover {
+    color: #080229;
+  }
+  .tab-btn.active {
+    color: #080229;
+    border-bottom-color: #080229;
+  }
+  .tab-btn:focus-visible {
+    outline: 2px solid #C4BBF6;
+    outline-offset: 2px;
+  }
+
+  /* Shared source list styles */
   .src-stats {
     display: flex;
     gap: 48px;
@@ -202,7 +308,7 @@
     display: block;
     text-decoration: none;
   }
-  .src-entry-name:hover {
+  a.src-entry-name:hover {
     text-decoration: underline;
     text-underline-offset: 3px;
   }
@@ -239,6 +345,9 @@
     }
   }
   @media (prefers-color-scheme: dark) {
+    .tab-btn { color: rgba(8, 2, 41, 0.45) !important; }
+    .tab-btn:hover, .tab-btn.active { color: #080229 !important; }
+    .tab-btn.active { border-bottom-color: #080229 !important; }
     .src-fchip { border-color: rgba(8, 2, 41, 0.4) !important; color: #080229 !important; background: transparent !important; }
     .src-fchip:hover, .src-fchip.active { background: #080229 !important; color: #fbfbfb !important; border-color: #080229 !important; }
     .src-search { border-color: #080229 !important; color: #080229 !important; background: transparent !important; }
@@ -250,34 +359,57 @@
 
 <script>
 (function() {
-  var chips = document.querySelectorAll('.src-fchip');
-  var search = document.getElementById('srcSearch');
-  var entries = document.querySelectorAll('.src-entry');
-  var letters = document.querySelectorAll('.src-letter');
+  // ── Tab switching ──
+  var tabGithub  = document.getElementById('tabGithub');
+  var tabNews    = document.getElementById('tabNews');
+  var panelGithub = document.getElementById('panelGithub');
+  var panelNews   = document.getElementById('panelNews');
+
+  tabGithub.addEventListener('click', function() {
+    tabGithub.classList.add('active');
+    tabGithub.setAttribute('aria-selected', 'true');
+    tabNews.classList.remove('active');
+    tabNews.setAttribute('aria-selected', 'false');
+    panelGithub.style.display = '';
+    panelNews.style.display = 'none';
+  });
+
+  tabNews.addEventListener('click', function() {
+    tabNews.classList.add('active');
+    tabNews.setAttribute('aria-selected', 'true');
+    tabGithub.classList.remove('active');
+    tabGithub.setAttribute('aria-selected', 'false');
+    panelNews.style.display = '';
+    panelGithub.style.display = 'none';
+  });
+
+  // ── GitHub sources filter ──
+  var chips   = document.querySelectorAll('.src-fchip');
+  var search  = document.getElementById('srcSearch');
+  var entries = document.querySelectorAll('.src-entry:not(.news-entry)');
+  var letters = document.querySelectorAll('.src-letter:not(.news-letter)');
   var countEl = document.getElementById('srcCount');
   var emptyEl = document.getElementById('srcEmpty');
   var activeType = 'all';
 
-  function applyFilters() {
+  function applyGithubFilters() {
     var q = search.value.toLowerCase().trim();
     var visible = 0;
     var visibleLetters = {};
 
     entries.forEach(function(el) {
-      var type = el.getAttribute('data-type');
-      var name = el.getAttribute('data-name');
-      var handle = el.getAttribute('data-handle');
+      var type    = el.getAttribute('data-type');
+      var name    = el.getAttribute('data-name');
+      var handle  = el.getAttribute('data-handle');
       var country = el.getAttribute('data-country');
-      var matchType = activeType === 'all' || type === activeType;
+      var matchType   = activeType === 'all' || type === activeType;
       var matchSearch = !q || name.indexOf(q) !== -1 || handle.indexOf(q) !== -1 || country.indexOf(q) !== -1;
       var show = matchType && matchSearch;
       el.style.display = show ? '' : 'none';
       if (show) {
         visible++;
         var prev = el.previousElementSibling;
-        while (prev && !prev.classList.contains('src-letter')) {
-          prev = prev.previousElementSibling;
-        }
+        while (prev && !prev.classList.contains('src-letter')) prev = prev.previousElementSibling;
         if (prev) visibleLetters[prev.getAttribute('data-letter')] = true;
       }
     });
@@ -290,16 +422,52 @@
     emptyEl.style.display = visible === 0 ? '' : 'none';
   }
 
-  chips.forEach(function(chip) {
-    chip.addEventListener('click', function() {
-      chips.forEach(function(c) { c.classList.remove('active'); });
-      chip.classList.add('active');
-      activeType = chip.getAttribute('data-type');
-      applyFilters();
+  if (chips.length) {
+    chips.forEach(function(chip) {
+      chip.addEventListener('click', function() {
+        chips.forEach(function(c) { c.classList.remove('active'); });
+        chip.classList.add('active');
+        activeType = chip.getAttribute('data-type');
+        applyGithubFilters();
+      });
     });
-  });
+  }
+  if (search) search.addEventListener('input', applyGithubFilters);
 
-  search.addEventListener('input', applyFilters);
+  // ── News sources filter ──
+  var newsSearch  = document.getElementById('newsSrcSearch');
+  var newsEntries = document.querySelectorAll('.news-entry');
+  var newsLetters = document.querySelectorAll('.news-letter');
+  var newsCountEl = document.getElementById('newsSrcCount');
+  var newsEmptyEl = document.getElementById('newsSrcEmpty');
+
+  function applyNewsFilters() {
+    var q = newsSearch.value.toLowerCase().trim();
+    var visible = 0;
+    var visibleLetters = {};
+
+    newsEntries.forEach(function(el) {
+      var name    = el.getAttribute('data-name');
+      var country = el.getAttribute('data-country');
+      var show = !q || name.indexOf(q) !== -1 || country.indexOf(q) !== -1;
+      el.style.display = show ? '' : 'none';
+      if (show) {
+        visible++;
+        var prev = el.previousElementSibling;
+        while (prev && !prev.classList.contains('news-letter')) prev = prev.previousElementSibling;
+        if (prev) visibleLetters[prev.getAttribute('data-letter')] = true;
+      }
+    });
+
+    newsLetters.forEach(function(el) {
+      el.style.display = visibleLetters[el.getAttribute('data-letter')] ? '' : 'none';
+    });
+
+    newsCountEl.textContent = 'Showing ' + visible + ' feed' + (visible !== 1 ? 's' : '');
+    newsEmptyEl.style.display = visible === 0 ? '' : 'none';
+  }
+
+  if (newsSearch) newsSearch.addEventListener('input', applyNewsFilters);
 })();
 </script>
 {% endblock %}
