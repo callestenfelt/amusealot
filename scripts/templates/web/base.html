@@ -194,6 +194,215 @@
     .chip-other_org,
     .chip-umbrella_org,
     .chip-country { background-color: transparent; color: #080229; border: 1.5px solid rgba(8, 2, 41, 0.4); }
+
+    /* =============================================
+       HAMBURGER MENU
+       ============================================= */
+
+    /* Toggle button */
+    .menu-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: #080229;
+      border: none;
+      cursor: pointer;
+      width: clamp(44px, 6vw, 56px);
+      height: clamp(44px, 6vw, 56px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 5px;
+      transition: background-color 0.2s ease,
+                  transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.35s ease;
+    }
+    .menu-btn.is-scrolled-out {
+      transform: translateY(calc(-100% - 28px));
+      opacity: 0;
+      pointer-events: none;
+    }
+    .menu-btn:hover {
+      background: #12084E;
+    }
+    .menu-btn:focus-visible {
+      outline: 3px solid #C4BBF6;
+      outline-offset: 2px;
+    }
+
+    /* Three-line icon → X */
+    .menu-icon {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      pointer-events: none;
+    }
+    .menu-icon span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: #fbfbfb;
+      transform-origin: center;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity  0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .menu-btn[aria-expanded="true"] .menu-icon span:nth-child(1) {
+      transform: translateY(7px) rotate(45deg);
+    }
+    .menu-btn[aria-expanded="true"] .menu-icon span:nth-child(2) {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+    .menu-btn[aria-expanded="true"] .menu-icon span:nth-child(3) {
+      transform: translateY(-7px) rotate(-45deg);
+    }
+
+    /* Backdrop */
+    .menu-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 2, 41, 0.55);
+      z-index: 998;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+    .menu-backdrop.is-open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Drawer panel */
+    .nav-menu {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(420px, 100vw);
+      height: 100dvh;
+      background: #080229;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      padding: 28px 36px 40px;
+      overflow-y: auto;
+      /* hidden state: slide out + remove from tab order */
+      transform: translateX(100%);
+      visibility: hidden;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                  visibility 0s linear 0.35s;
+    }
+    .nav-menu.is-open {
+      transform: translateX(0);
+      visibility: visible;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                  visibility 0s linear 0s;
+    }
+
+    /* Close button inside drawer */
+    .menu-close {
+      align-self: flex-end;
+      background: none;
+      border: 2px solid rgba(251, 251, 251, 0.25);
+      color: #fbfbfb;
+      font-size: 18px;
+      line-height: 1;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .menu-close:hover {
+      border-color: #C4BBF6;
+      background: rgba(196, 187, 246, 0.12);
+    }
+    .menu-close:focus-visible {
+      outline: 3px solid #C4BBF6;
+      outline-offset: 2px;
+    }
+
+    /* Nav links */
+    .nav-links {
+      list-style: none;
+      margin: auto 0;
+      padding: 32px 0;
+    }
+    .nav-links li + li {
+      border-top: 1px solid rgba(251, 251, 251, 0.1);
+    }
+    .nav-links a {
+      display: block;
+      font-size: clamp(28px, 7vw, 40px);
+      font-weight: bold;
+      letter-spacing: -1.5px;
+      color: #fbfbfb;
+      text-decoration: none;
+      padding: 14px 0;
+      transition: color 0.2s ease, padding-left 0.2s ease;
+    }
+    .nav-links a:hover {
+      color: #C4BBF6;
+      padding-left: 10px;
+    }
+    .nav-links a[aria-current="page"] {
+      color: #C4BBF6;
+    }
+    .nav-links a:focus-visible {
+      outline: 3px solid #C4BBF6;
+      outline-offset: 2px;
+    }
+
+    /* Social link at bottom of drawer */
+    .nav-social {
+      border-top: 1px solid rgba(251, 251, 251, 0.1);
+      padding-top: 20px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .nav-social a {
+      font-size: 14px;
+      color: rgba(251, 251, 251, 0.6);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.2s ease;
+    }
+    .nav-social a:hover {
+      color: #C4BBF6;
+    }
+    .nav-social a:focus-visible {
+      outline: 3px solid #C4BBF6;
+      outline-offset: 2px;
+    }
+    .nav-social img {
+      height: 14px;
+      width: auto;
+      opacity: 0.6;
+      transition: opacity 0.2s ease;
+    }
+    .nav-social a:hover img {
+      opacity: 1;
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .menu-btn, .menu-icon span,
+      .menu-backdrop, .nav-menu,
+      .menu-close, .nav-links a, .nav-social a {
+        transition: none;
+      }
+      .nav-menu { transition: visibility 0s linear 0.35s; }
+      .nav-menu.is-open { transition: visibility 0s linear 0s; }
+      .menu-btn.is-scrolled-out { transform: none; opacity: 0; }
+    }
+
     @media (prefers-color-scheme: dark) {
       body { background-color: #fbfbfb !important; color: #080229 !important; }
       .footer { background-color: #080229 !important; }
@@ -223,7 +432,47 @@
   </script>
 </head>
 <body>
+
+  <!-- Hamburger toggle -->
+  <button class="menu-btn" id="menuBtn"
+          aria-label="Open menu"
+          aria-expanded="false"
+          aria-controls="navMenu">
+    <span class="menu-icon" aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+    </span>
+  </button>
+
+  <!-- Backdrop (click to close) -->
+  <div class="menu-backdrop" id="menuBackdrop" aria-hidden="true"></div>
+
+  <!-- Nav drawer -->
+  <nav class="nav-menu" id="navMenu"
+       aria-label="Main navigation"
+       aria-hidden="true">
+
+    <button class="menu-close" id="menuClose" aria-label="Close menu">&#x2715;</button>
+
+    <ul class="nav-links">
+      <li><a href="/">Subscribe</a></li>
+      <li><a href="/archive">Archive</a></li>
+      <li><a href="/about">About</a></li>
+      <li><a href="/sources">Sources</a></li>
+      <li><a href="/feedback">Feedback</a></li>
+      <li><a href="/privacy">Privacy</a></li>
+    </ul>
+
+    <div class="nav-social">
+      <a href="https://bsky.app/profile/amusealot.com" target="_blank" rel="noopener noreferrer">
+        <img src="/bluesky.svg" alt=""> Bluesky
+      </a>
+    </div>
+  </nav>
+
   {% block body %}{% endblock %}
+
   <div class="footer">
     <a href="/" style="display:inline-block;margin-bottom:28px;text-decoration:none;">
       <img src="/logo_footer.svg" alt="AmuseAlot" style="height:158px;width:auto;">
@@ -239,5 +488,99 @@
       <a href="https://bsky.app/profile/amusealot.com" target="_blank" rel="noopener"><img src="/bluesky.svg" alt=""> Bluesky</a>
     </div>
   </div>
+
+  <script>
+    (function () {
+      var btn      = document.getElementById('menuBtn');
+      var menu     = document.getElementById('navMenu');
+      var backdrop = document.getElementById('menuBackdrop');
+      var closeBtn = document.getElementById('menuClose');
+      var FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+      function openMenu() {
+        menu.classList.add('is-open');
+        backdrop.classList.add('is-open');
+        btn.setAttribute('aria-expanded', 'true');
+        btn.setAttribute('aria-label', 'Close menu');
+        menu.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        // Move focus to first item in drawer
+        var first = menu.querySelector(FOCUSABLE);
+        if (first) { setTimeout(function(){ first.focus(); }, 50); }
+      }
+
+      function closeMenu() {
+        menu.classList.remove('is-open');
+        backdrop.classList.remove('is-open');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'Open menu');
+        menu.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        btn.focus();
+      }
+
+      btn.addEventListener('click', function () {
+        btn.getAttribute('aria-expanded') === 'true' ? closeMenu() : openMenu();
+      });
+
+      backdrop.addEventListener('click', closeMenu);
+      closeBtn.addEventListener('click', closeMenu);
+
+      // Escape key
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && btn.getAttribute('aria-expanded') === 'true') {
+          closeMenu();
+        }
+      });
+
+      // Focus trap
+      menu.addEventListener('keydown', function (e) {
+        if (e.key !== 'Tab') return;
+        var focusable = Array.prototype.slice.call(menu.querySelectorAll(FOCUSABLE));
+        var first = focusable[0];
+        var last  = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+          if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
+        }
+      });
+
+      // Close when a nav link is clicked
+      var links = menu.querySelectorAll('a');
+      for (var i = 0; i < links.length; i++) {
+        links[i].addEventListener('click', closeMenu);
+      }
+
+      // Mark current page
+      var path = window.location.pathname.replace(/\/$/, '') || '/';
+      var navLinks = menu.querySelectorAll('.nav-links a');
+      for (var j = 0; j < navLinks.length; j++) {
+        var linkPath = navLinks[j].getAttribute('href').replace(/\/$/, '') || '/';
+        var isHome   = linkPath === '/' || linkPath === '';
+        var match    = isHome ? (path === '/' || path === '') : (path === linkPath || path.indexOf(linkPath + '/') === 0);
+        if (match) {
+          navLinks[j].setAttribute('aria-current', 'page');
+        }
+      }
+
+      // Scroll direction: hide on down, reveal on up
+      var lastScrollY = window.scrollY;
+      var SCROLL_THRESHOLD = 10;
+      window.addEventListener('scroll', function () {
+        // Never hide while menu is open
+        if (btn.getAttribute('aria-expanded') === 'true') return;
+        var currentY = window.scrollY;
+        if (currentY <= 0) {
+          btn.classList.remove('is-scrolled-out');
+        } else if (currentY > lastScrollY + SCROLL_THRESHOLD) {
+          btn.classList.add('is-scrolled-out');
+        } else if (currentY < lastScrollY - SCROLL_THRESHOLD) {
+          btn.classList.remove('is-scrolled-out');
+        }
+        lastScrollY = currentY;
+      }, { passive: true });
+    })();
+  </script>
 </body>
 </html>
