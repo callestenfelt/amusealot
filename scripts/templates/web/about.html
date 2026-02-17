@@ -16,8 +16,13 @@
   <p>
     AmuseAlot is an automated newsletter that tracks what museums, archives,
     heritage organizations, and individual researchers are building on GitHub.
-    It monitors over 670 sources worldwide and delivers a digest every Wednesday
+    {% if total_sources > 0 %}
+    It monitors {{ total_sources }} sources{% if total_countries > 0 %} in {{ total_countries }}{% if total_countries > 30 %}+{% endif %} countries{% endif %} and delivers a digest every Wednesday
     of new projects, releases, and notable development activity.
+    {% else %}
+    It monitors sources worldwide and delivers a digest every Wednesday
+    of new projects, releases, and notable development activity.
+    {% endif %}
   </p>
 
   <div class="dotline"></div>
@@ -31,6 +36,12 @@
     See the full list of <a href="/sources">tracked sources</a>.
     The pipeline collects push events, new repositories, and releases, then enriches
     each event with repository metadata like language, stars, and descriptions.
+  </p>
+  <p>
+    In addition to GitHub activity, the newsletter curates relevant news articles
+    from cultural heritage organizations, museum technology blogs, and digital preservation
+    sources worldwide. Articles are automatically scored for relevance and the most
+    valuable content is featured in each issue.
   </p>
 
   <h3 style="font-size:16px;font-weight:bold;margin-bottom:8px;">AI-assisted curation</h3>

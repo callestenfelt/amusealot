@@ -1,3 +1,2 @@
 Now tracking individual researchers and developers alongside organizations
 Added national archives, heritage boards, and other organizations relevant to museum technology
-Expanded to over <a href="https://amusealot.com/sources" class="link" style="color:#080229;text-decoration:underline;text-underline-offset:2px;">140 sources</a> across 30+ countries

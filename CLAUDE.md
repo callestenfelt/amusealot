@@ -13,6 +13,12 @@
 - User will merge to master and deploy manually
 - At the start of a session, check and tell the user which branch is currently active
 
+## Newsletter Template Design
+- Whenever adding or changing inline `color:` values in newsletter.html.j2, always include `mso-color-alt` on the same declaration for Outlook Desktop dark mode compatibility
+- Light text on dark elements: `color:#fbfbfb;mso-color-alt:#fbfbfb`
+- Dark text on light elements: `color:#080229;mso-color-alt:#fbfbfb`
+- Test dark mode after design changes: generate with `--test`, send with `send_newsletter.py --test calle@callestenfelt.se --apply`
+
 ## Project
 - Newsletter platform for museum tech
 - Live at amusealot.com, sends real emails via Resend

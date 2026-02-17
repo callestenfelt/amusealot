@@ -101,11 +101,93 @@ def prepare_individual_events(scored_events):
     return individual_events
 
 
-def build_context(data, max_pushes=None):
+def get_source_stats():
+    """Get source counts from Baserow — same logic as /sources page."""
+    try:
+        import requests
+        baserow_url = os.environ.get("BASEROW_URL")
+        baserow_token = os.environ.get("BASEROW_TOKEN")
+        sources_table_id = os.environ.get("SOURCES_TABLE_ID")
+
+        if not all([baserow_url, baserow_token, sources_table_id]):
+            return {"total_sources": 0, "total_countries": 0}
+
+        headers = {"Authorization": f"Token {baserow_token}"}
+        total_sources = 0
+        countries = set()
+        page = 1
+        while True:
+            response = requests.get(
+                f"{baserow_url}/api/database/rows/table/{sources_table_id}/",
+                params={"size": 200, "page": page, "filter__field_7222__not_empty": "true"},
+                headers=headers,
+                timeout=10
+            )
+            response.raise_for_status()
+            data = response.json()
+            total_sources += len(data["results"])
+            for row in data["results"]:
+                country = row.get("field_7192") or ""
+                if isinstance(country, dict):
+                    country = country.get("value", "")
+                if country:
+                    countries.add(country)
+            if not data.get("next"):
+                break
+            page += 1
+
+        return {"total_sources": total_sources, "total_countries": len(countries)}
+    except Exception as e:
+        print(f"Warning: Could not fetch source stats: {e}")
+        return {"total_sources": 0, "total_countries": 0}
+
+
+def prepare_news_articles(news_articles):
+    """Filter and prepare news articles by tier. Max 1 per source, cap at 4 total."""
+    tier1 = [a for a in news_articles if a.get("score", {}).get("tier") == 1]
+    tier2 = [a for a in news_articles if a.get("score", {}).get("tier") == 2]
+
+    # Sort by relevance score (descending)
+    tier1.sort(key=lambda a: a.get("score", {}).get("relevance", 0), reverse=True)
+    tier2.sort(key=lambda a: a.get("score", {}).get("relevance", 0), reverse=True)
+
+    # Combine tier 1 and tier 2, filter to max 1 per source
+    all_news = tier1 + tier2
+    seen_sources = set()
+    filtered_news = []
+
+    for article in all_news:
+        source = article.get("source_name", "")
+        if source not in seen_sources:
+            seen_sources.add(source)
+            filtered_news.append(article)
+
+    # Cap at 4 total for newsletter, rest go to website
+    return {
+        "newsletter": filtered_news[:4],
+        "website_only": filtered_news[4:8] if len(filtered_news) > 4 else [],
+        "total": len(filtered_news)
+    }
+
+
+def build_context(data, max_pushes=None, news_data=None):
     """Assemble full template context from scored newsletter data."""
     sections = prepare_sections(data["scored_events"])
     tool_watch = data.get("tool_watch", {})
     individual_events = prepare_individual_events(data["scored_events"])
+
+    # Get source statistics
+    source_stats = get_source_stats()
+
+    # Prepare news articles if provided
+    news_articles = {"newsletter": [], "website_only": [], "total": 0}
+    if news_data:
+        news_articles = prepare_news_articles(news_data)
+
+    # Get total counts for sections (for "see all" links)
+    total_new_repos = len(sections["new_repos"])
+    total_releases = len(sections["releases"])
+    total_pushes = len(sections["pushes"])
 
     ctx = {
         "generation_date": date.today().strftime("%B %d, %Y"),
@@ -114,14 +196,20 @@ def build_context(data, max_pushes=None):
         "most_active": data["most_active"],
         "spotlight": data["spotlight"],
         "sections": sections,
-        "has_new_repos": len(sections["new_repos"]) > 0,
-        "has_releases": len(sections["releases"]) > 0,
-        "has_pushes": len(sections["pushes"]) > 0,
+        "total_new_repos": total_new_repos,
+        "total_releases": total_releases,
+        "total_pushes": total_pushes,
+        "has_new_repos": total_new_repos > 0,
+        "has_releases": total_releases > 0,
+        "has_pushes": total_pushes > 0,
         "has_tool_watch": len(tool_watch) > 0,
         "tool_watch": tool_watch,
         "individual_events": individual_events,
         "has_individual_events": len(individual_events) > 0,
+        "news_articles": news_articles,
+        "has_news": len(news_articles["newsletter"]) > 0,
         "max_pushes": max_pushes,
+        "source_stats": source_stats,
     }
     return ctx
 
@@ -209,6 +297,16 @@ def main():
     print(f"  Events: {len(data['scored_events'])}")
     print(f"  Stats: {data['stats']}")
 
+    # Load optional news articles
+    news_path = os.path.join(script_dir, "news_articles_scored.json")
+    news_articles = []
+    if os.path.exists(news_path):
+        with open(news_path, "r", encoding="utf-8") as f:
+            news_articles = json.load(f)
+        print(f"  News articles: {len(news_articles)}")
+    else:
+        print("  No news articles found (news_articles_scored.json missing)")
+
     # Load optional "What's new" items
     whats_new_path = os.path.join(script_dir, "whats_new.txt")
     whats_new = []
@@ -217,7 +315,7 @@ def main():
             whats_new = [line.strip() for line in f if line.strip()]
 
     # Build context (shared between both renders)
-    context = build_context(data)
+    context = build_context(data, news_data=news_articles)
     context["whats_new"] = whats_new
 
     print(f"\nSections:")
@@ -229,6 +327,8 @@ def main():
         print(f"  Tool Watch: {len(context['tool_watch'])} groups, {total_tool_events} events")
     if context['has_individual_events']:
         print(f"  Individual Creators: {len(context['individual_events'])} events")
+    if context['has_news']:
+        print(f"  News: {len(context['news_articles']['newsletter'])} in newsletter, {len(context['news_articles']['website_only'])} website-only")
 
     # --- Full version (archive) ---
     full_html = render_newsletter(context)
@@ -246,7 +346,7 @@ def main():
     print(f"  Size: {full_kb:.1f} KB")
 
     # --- Truncated version (email) ---
-    email_context = build_context(data, max_pushes=6)
+    email_context = build_context(data, max_pushes=6, news_data=news_articles)
     email_context["whats_new"] = whats_new
     email_html = render_newsletter(email_context)
 

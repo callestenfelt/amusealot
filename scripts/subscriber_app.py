@@ -245,7 +245,19 @@ def sitemap_xml():
 
 @app.route("/")
 def landing():
-    return render_template("landing.html", canonical_url=BASE_URL + "/")
+    sources = get_sources()
+    total_sources = len(sources)
+    countries = set()
+    for source in sources:
+        country = source.get("country")
+        if isinstance(country, dict):
+            country = country.get("value", "")
+        if country:
+            countries.add(country)
+    return render_template("landing.html",
+                           canonical_url=BASE_URL + "/",
+                           total_sources=total_sources,
+                           total_countries=len(countries))
 
 
 subscribe_route = app.route("/subscribe", methods=["POST"])
@@ -395,7 +407,22 @@ def privacy():
 
 @app.route("/about")
 def about():
-    return render_template("about.html", canonical_url=BASE_URL + "/about")
+    # Get source stats for dynamic count
+    sources = get_sources()
+    total_sources = len(sources)
+    countries = set()
+    for source in sources:
+        country = source.get("country")
+        if isinstance(country, dict):
+            country = country.get("value", "")
+        if country:
+            countries.add(country)
+    total_countries = len(countries)
+
+    return render_template("about.html",
+                         canonical_url=BASE_URL + "/about",
+                         total_sources=total_sources,
+                         total_countries=total_countries)
 
 
 # --- Sources ---

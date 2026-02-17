@@ -8,7 +8,14 @@ scripts/github_museum_details.json
 scripts/github_museum_candidates.json
 scripts/github_activity.json
 scripts/github_activity_enriched.json
+scripts/github_activity_individuals.json
+scripts/github_activity_quick.json
+scripts/github_activity_*test.json
 scripts/scored_newsletter_content.json
+scripts/scored_newsletter_content_test.json
+scripts/news_articles.json
+scripts/news_articles_scored.json
+scripts/news_etags.json
 scripts/newsletter_test.html
 scripts/newsletter_email_test.html
 scripts/editions/

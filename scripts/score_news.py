@@ -1,0 +1,349 @@
+#!/usr/bin/env python3
+"""
+Score news articles for relevance using Groq/Llama 3.3.
+Assigns tier (1=featured, 2=mentioned, 3=skip) based on relevance to museum tech audience.
+Generates English summaries for tier 1 non-English articles.
+
+Usage:
+  python score_news.py [--input news_articles.json] [--output news_articles_scored.json] [--apply]
+
+By default, runs in dry-run mode (safe). Use --apply to write scores to Baserow.
+
+Requires environment variable: GROQ_API_KEY, BASEROW_URL, BASEROW_TOKEN, NEWS_ARTICLES_TABLE_ID
+"""
+
+import sys
+import io
+import os
+import json
+import time
+import argparse
+from pathlib import Path
+import requests
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+
+# Configuration from environment
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+BASEROW_URL = os.environ.get("BASEROW_URL")
+BASEROW_TOKEN = os.environ.get("BASEROW_TOKEN")
+NEWS_ARTICLES_TABLE_ID = os.environ.get("NEWS_ARTICLES_TABLE_ID")
+
+if not GROQ_API_KEY:
+    print("ERROR: Missing GROQ_API_KEY environment variable")
+    sys.exit(1)
+
+GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+DELAY_BETWEEN_CALLS = 3  # seconds
+MAX_RETRIES = 3
+BATCH_SIZE = 10  # Smaller than GitHub batches due to longer text
+
+# Field IDs for News Articles table (752)
+ARTICLES_FIELDS = {
+    "relevance_score": "field_7281",
+    "tier": "field_7282",
+    "ai_summary": "field_7283",
+}
+
+SCRIPT_DIR = Path(__file__).parent
+
+SCORING_SYSTEM_PROMPT = """You are a museum technology analyst scoring news articles for relevance.
+
+Target audience: Museum professionals, digital preservationists, heritage technologists, GLAM developers.
+
+Relevant topics (HIGH PRIORITY):
+- Digital preservation, collection management systems
+- 3D digitization, IIIF, linked open data
+- Museum tech projects and open source software
+- Cultural heritage AI/ML applications
+- Digital exhibitions, web accessibility
+- Museum data standards and interoperability
+- Heritage sector digital transformation
+- Conservation technology
+- Museum cybersecurity and data protection
+
+Less relevant (LOWER PRIORITY):
+- General tourism announcements
+- Routine exhibition openings (unless digitally innovative)
+- Building renovations (unless tech-focused)
+- Staff appointments
+- Generic cultural events
+
+Scoring criteria (1-10 scale):
+- Relevance to museum tech professionals
+- Technical substance and depth
+- Actionable or educational value
+- Newsworthiness vs routine updates
+- Reusability/applicability to other institutions
+
+Tier definitions:
+- Tier 1 (score 8-10): High technical value, actionable, newsworthy, worth featuring with summary
+- Tier 2 (score 5-7): Moderately interesting, worth a brief mention
+- Tier 3 (score 1-4): Skip (routine updates, not relevant to tech audience)
+
+For non-English articles: Focus on technical substance over language. If tier 1, you'll be asked to provide an English summary."""
+
+
+def groq_request(messages, json_mode=True):
+    """Make a Groq API request with retry on 429."""
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "model": GROQ_MODEL,
+        "messages": messages,
+        "temperature": 0.3,
+        "max_tokens": 2000,
+    }
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            resp = requests.post(GROQ_URL, headers=headers, json=body, timeout=30)
+
+            if resp.status_code == 429:
+                wait = (attempt + 1) * 10  # 10s, 20s, 30s
+                print(f"    Rate limited (429), waiting {wait}s...")
+                time.sleep(wait)
+                continue
+
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"]
+
+            if json_mode:
+                return json.loads(content), None
+            return content, None
+
+        except json.JSONDecodeError as e:
+            return None, f"JSON parse error: {e}"
+        except requests.exceptions.Timeout:
+            if attempt < MAX_RETRIES - 1:
+                continue
+            return None, "Timeout"
+        except Exception as e:
+            return None, str(e)[:200]
+
+    return None, "Max retries exceeded"
+
+
+def score_article_batch(articles):
+    """Score a batch of articles for relevance."""
+    # Prepare article descriptions for the LLM
+    article_texts = []
+    for i, article in enumerate(articles):
+        text = f"""Article {i+1}:
+Title: {article['title']}
+Source: {article['source_name']} ({article.get('language', 'unknown')})
+Date: {article.get('published_date', 'unknown')}
+Summary: {article.get('summary', 'No summary available')[:300]}
+"""
+        article_texts.append(text)
+
+    batch_text = "\n\n".join(article_texts)
+
+    prompt = f"""Score these {len(articles)} news articles for relevance to museum technology professionals.
+
+{batch_text}
+
+For each article, provide:
+1. relevance: score 1-10
+2. tier: 1 (feature), 2 (mention), or 3 (skip)
+3. reasoning: brief explanation of score
+
+Return JSON object with "articles" array, each with: {{"index": N, "relevance": X, "tier": Y, "reasoning": "..."}}"""
+
+    messages = [
+        {"role": "system", "content": SCORING_SYSTEM_PROMPT},
+        {"role": "user", "content": prompt}
+    ]
+
+    result, error = groq_request(messages, json_mode=True)
+
+    if error:
+        print(f"    Error: {error}")
+        return None
+
+    return result
+
+
+def generate_english_summary(article):
+    """Generate English summary for a non-English tier 1 article."""
+    prompt = f"""This article is in {article['language']} and is highly relevant to museum technology professionals.
+Generate a concise English summary (2-3 sentences) focusing on the technical aspects.
+
+Title: {article['title']}
+Summary: {article.get('summary', 'No summary available')}
+
+Provide a clear, informative English summary that explains what makes this article valuable."""
+
+    messages = [
+        {"role": "system", "content": "You are a technical translator for the museum technology sector."},
+        {"role": "user", "content": prompt}
+    ]
+
+    result, error = groq_request(messages, json_mode=False)
+
+    if error:
+        print(f"    Summary generation error: {error}")
+        return None
+
+    return result.strip() if result else None
+
+
+def update_article_scores_in_baserow(article_id, score_data, apply_mode):
+    """Update article scores in Baserow."""
+    if not apply_mode:
+        return
+
+    try:
+        # Map tier to single_select value (needs to match Baserow options)
+        tier_value = str(score_data["tier"])
+
+        update_data = {
+            ARTICLES_FIELDS["relevance_score"]: score_data["relevance"],
+            ARTICLES_FIELDS["tier"]: tier_value,
+        }
+
+        if score_data.get("ai_summary"):
+            update_data[ARTICLES_FIELDS["ai_summary"]] = score_data["ai_summary"]
+
+        response = requests.patch(
+            f"{BASEROW_URL}/api/database/rows/table/{NEWS_ARTICLES_TABLE_ID}/{article_id}/",
+            headers={
+                "Authorization": f"Token {BASEROW_TOKEN}",
+                "Content-Type": "application/json",
+            },
+            json=update_data,
+            timeout=30
+        )
+        response.raise_for_status()
+
+    except Exception as e:
+        print(f"    Warning: Could not update Baserow: {e}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Score news articles for relevance")
+    parser.add_argument("--input", default="news_articles.json", help="Input JSON file")
+    parser.add_argument("--output", default="news_articles_scored.json", help="Output JSON file")
+    parser.add_argument("--apply", action="store_true", help="Write scores to Baserow (default is dry-run)")
+    args = parser.parse_args()
+
+    print("=" * 60)
+    print("News Article Scoring")
+    print("=" * 60)
+
+    if not args.apply:
+        print("\n⚠️  DRY RUN MODE - Use --apply to write to Baserow\n")
+
+    # Load articles
+    input_path = SCRIPT_DIR / args.input
+    if not input_path.exists():
+        print(f"ERROR: Input file not found: {input_path}")
+        print("Run collect_news.py first to generate articles")
+        sys.exit(1)
+
+    with open(input_path, encoding='utf-8') as f:
+        articles = json.load(f)
+
+    if not articles:
+        print("No articles to score")
+        return
+
+    print(f"Loaded {len(articles)} articles")
+
+    # Score articles in batches
+    scored_articles = []
+    total_batches = (len(articles) + BATCH_SIZE - 1) // BATCH_SIZE
+
+    for batch_idx in range(0, len(articles), BATCH_SIZE):
+        batch = articles[batch_idx:batch_idx + BATCH_SIZE]
+        batch_num = batch_idx // BATCH_SIZE + 1
+
+        print(f"\nScoring batch {batch_num}/{total_batches} ({len(batch)} articles)...")
+
+        scores = score_article_batch(batch)
+
+        if not scores or "articles" not in scores:
+            print("  Warning: Scoring failed for this batch, skipping")
+            # Add articles with default low scores
+            for article in batch:
+                article["score"] = {
+                    "relevance": 1,
+                    "tier": 3,
+                    "reasoning": "Scoring failed",
+                    "ai_summary": None
+                }
+                scored_articles.append(article)
+            continue
+
+        # Map scores back to articles
+        for score_data in scores["articles"]:
+            idx = score_data.get("index", 0) - 1  # Convert to 0-based
+            if 0 <= idx < len(batch):
+                article = batch[idx]
+                article["score"] = {
+                    "relevance": score_data.get("relevance", 1),
+                    "tier": score_data.get("tier", 3),
+                    "reasoning": score_data.get("reasoning", ""),
+                    "ai_summary": None
+                }
+
+                # Generate English summary for tier 1 non-English articles
+                if article["score"]["tier"] == 1 and article.get("language") != "en":
+                    print(f"  Generating English summary for: {article['title'][:50]}...")
+                    time.sleep(DELAY_BETWEEN_CALLS)
+
+                    summary = generate_english_summary(article)
+                    if summary:
+                        article["score"]["ai_summary"] = summary
+
+                # Update Baserow if apply mode
+                if "id" in article:  # Only if article has Baserow ID
+                    update_article_scores_in_baserow(article["id"], article["score"], args.apply)
+
+                scored_articles.append(article)
+
+        # Rate limiting between batches
+        if batch_idx + BATCH_SIZE < len(articles):
+            time.sleep(DELAY_BETWEEN_CALLS)
+
+    # Save scored articles
+    output_path = SCRIPT_DIR / args.output
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(scored_articles, f, indent=2, ensure_ascii=False)
+
+    print(f"\n✓ Saved scored articles to {output_path}")
+
+    # Summary statistics
+    tier_counts = {1: 0, 2: 0, 3: 0}
+    for article in scored_articles:
+        tier = article.get("score", {}).get("tier", 3)
+        tier_counts[tier] = tier_counts.get(tier, 0) + 1
+
+    print("\n" + "=" * 60)
+    print("SUMMARY")
+    print("=" * 60)
+    print(f"Total articles scored: {len(scored_articles)}")
+    print(f"\nTier distribution:")
+    print(f"  Tier 1 (Featured): {tier_counts[1]} articles")
+    print(f"  Tier 2 (Mentioned): {tier_counts[2]} articles")
+    print(f"  Tier 3 (Skip): {tier_counts[3]} articles")
+
+    if tier_counts[1] > 0:
+        print(f"\nTier 1 articles:")
+        for article in scored_articles:
+            if article.get("score", {}).get("tier") == 1:
+                score = article["score"]["relevance"]
+                lang = article.get("language", "?")
+                print(f"  [{score}/10] [{lang}] {article['title'][:60]}...")
+
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()
