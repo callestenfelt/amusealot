@@ -11,18 +11,20 @@
   <h1>AmuseAlot <span class="beta-chip">BETA</span></h1>
   <div class="subtitle">Museum Tech Newsletter</div>
 
-  {# ── h2 + tab toggle merged into one row ── #}
+  {# ── h2 + M3-style tab row ── #}
   <div class="tab-row">
     <span class="tab-heading">Sources</span>
-    <div class="tab-btns">
-      <button class="tab-btn active" id="tabGithub" aria-selected="true">GitHub</button>
-      <button class="tab-btn" id="tabNews" aria-selected="false">News feeds</button>
+    <div class="tab-btns" role="tablist" aria-label="Source type">
+      <button class="tab-btn active" id="tabGithub" role="tab" aria-selected="true" aria-controls="panelGithub">GitHub</button>
+      <button class="tab-btn" id="tabNews" role="tab" aria-selected="false" aria-controls="panelNews">News feeds</button>
+      <span class="tab-indicator" id="tabIndicator" aria-hidden="true"></span>
     </div>
   </div>
 
   {# ══════════════════════════════════
      GITHUB SOURCES PANEL
      ══════════════════════════════════ #}
+  <div id="panelWrapper">
   <div id="panelGithub">
     {% if sources %}
 
@@ -159,29 +161,30 @@
     <p>News source list temporarily unavailable. Please try again later.</p>
     {% endif %}
   </div>{# /panelNews #}
+  </div>{# /panelWrapper #}
 
 </div>{# /container #}
 
 <style>
-  /* Merged heading + tab row */
+  /* Merged heading + M3-style tab row */
   .tab-row {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
     gap: 16px;
     margin-bottom: 32px;
-    border-bottom: 3px solid #080229;
-    padding-bottom: 0;
+    border-bottom: 1px solid rgba(8, 2, 41, 0.15);
   }
   .tab-heading {
     font-size: 22px;
     font-weight: bold;
     letter-spacing: -0.5px;
-    padding-bottom: 16px;
     white-space: nowrap;
+    padding-bottom: 14px;
   }
   .tab-btns {
     display: flex;
+    position: relative;
     gap: 0;
   }
   .tab-btn {
@@ -189,25 +192,33 @@
     font-size: 13px;
     font-weight: bold;
     letter-spacing: 0.3px;
-    padding: 8px 16px;
+    padding: 10px 18px 19px;
     background: none;
     border: none;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -3px;
     cursor: pointer;
-    color: rgba(8, 2, 41, 0.4);
-    transition: color 0.15s;
+    color: #080229;
+    transition: color 0.2s;
   }
   .tab-btn:hover {
     color: #080229;
   }
   .tab-btn.active {
     color: #080229;
-    border-bottom-color: #080229;
   }
   .tab-btn:focus-visible {
     outline: 2px solid #C4BBF6;
-    outline-offset: 2px;
+    outline-offset: -2px;
+    border-radius: 2px;
+  }
+  .tab-indicator {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: #080229;
+    border-radius: 3px 3px 0 0;
+    transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
   }
 
   /* Shared source list styles */
@@ -340,6 +351,9 @@
     flex-shrink: 0;
     padding-top: 2px;
   }
+  #panelWrapper {
+    transition: opacity 0.18s ease;
+  }
   .src-empty {
     padding: 48px 0;
     text-align: center;
@@ -360,10 +374,10 @@
   }
   @media (prefers-color-scheme: dark) {
     .tab-heading { color: #080229 !important; }
-    .tab-row { border-bottom-color: #080229 !important; }
-    .tab-btn { color: rgba(8, 2, 41, 0.4) !important; }
-    .tab-btn:hover, .tab-btn.active { color: #080229 !important; }
-    .tab-btn.active { border-bottom-color: #080229 !important; }
+    .tab-row { border-bottom-color: rgba(8, 2, 41, 0.15) !important; }
+    .tab-btn { color: #080229 !important; }
+    .tab-btn.active { color: #080229 !important; }
+    .tab-indicator { background: #080229 !important; }
     .src-fchip { border-color: rgba(8, 2, 41, 0.4) !important; color: #080229 !important; background: transparent !important; }
     .src-fchip:hover, .src-fchip.active { background: #080229 !important; color: #fbfbfb !important; border-color: #080229 !important; }
     .src-search { border-color: #080229 !important; color: #080229 !important; background: transparent !important; }
@@ -375,28 +389,57 @@
 
 <script>
 (function() {
-  // ── Tab switching ──
-  var tabGithub  = document.getElementById('tabGithub');
-  var tabNews    = document.getElementById('tabNews');
+  // ── Tab switching with M3 sliding indicator ──
+  var tabGithub   = document.getElementById('tabGithub');
+  var tabNews     = document.getElementById('tabNews');
   var panelGithub = document.getElementById('panelGithub');
   var panelNews   = document.getElementById('panelNews');
+  var indicator   = document.getElementById('tabIndicator');
+
+  function updateIndicator() {
+    var active = document.querySelector('.tab-btn.active');
+    if (active && indicator) {
+      indicator.style.left  = active.offsetLeft + 'px';
+      indicator.style.width = active.offsetWidth + 'px';
+    }
+  }
+
+  // Disable transition on first paint so indicator snaps into position
+  if (indicator) {
+    indicator.style.transition = 'none';
+    updateIndicator();
+    // Re-enable after first frame
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        indicator.style.transition = '';
+      });
+    });
+  }
+
+  var wrapper = document.getElementById('panelWrapper');
+
+  function switchToPanel(showBtn, hideBtn, showPanel, hidePanel) {
+    wrapper.style.opacity = '0';
+    setTimeout(function() {
+      showBtn.classList.add('active');
+      showBtn.setAttribute('aria-selected', 'true');
+      hideBtn.classList.remove('active');
+      hideBtn.setAttribute('aria-selected', 'false');
+      showPanel.style.display = '';
+      hidePanel.style.display = 'none';
+      updateIndicator();
+      wrapper.style.opacity = '1';
+    }, 180);
+  }
 
   tabGithub.addEventListener('click', function() {
-    tabGithub.classList.add('active');
-    tabGithub.setAttribute('aria-selected', 'true');
-    tabNews.classList.remove('active');
-    tabNews.setAttribute('aria-selected', 'false');
-    panelGithub.style.display = '';
-    panelNews.style.display = 'none';
+    if (tabGithub.classList.contains('active')) return;
+    switchToPanel(tabGithub, tabNews, panelGithub, panelNews);
   });
 
   tabNews.addEventListener('click', function() {
-    tabNews.classList.add('active');
-    tabNews.setAttribute('aria-selected', 'true');
-    tabGithub.classList.remove('active');
-    tabGithub.setAttribute('aria-selected', 'false');
-    panelNews.style.display = '';
-    panelGithub.style.display = 'none';
+    if (tabNews.classList.contains('active')) return;
+    switchToPanel(tabNews, tabGithub, panelNews, panelGithub);
   });
 
   // ── GitHub sources filter ──
