@@ -35,6 +35,8 @@ Museum tech domains: IIIF, collection management (Specify, CollectiveAccess), di
 
 Some events come from tracked museum/heritage organizations (source_type: "source"), while others come from tracked technologies/tools used by the sector (source_type: "technology", with technology_name and technology_parent fields).
 
+IMPORTANT: For technology events (source_type: "technology"), the tool is already confirmed to be used in the museum sector — score the activity assuming a museum tech professional cares about updates to this tool. Meaningful commits, releases, or new features on these tools should be tier 1 or 2. Only truly trivial activity (CI fixes, version bumps, typos) should be tier 3.
+
 Scoring criteria:
 - Relevance to museum professionals (1-10)
 - Newsworthiness vs routine activity
@@ -171,8 +173,10 @@ def compute_tool_watch(scored_events, max_per_group=3):
     groups = {}
     for event in tech_events:
         tier = event.get("score", {}).get("tier", 3)
-        if tier >= 3:
-            continue  # Skip tier 3 events
+        relevance = event.get("score", {}).get("relevance", 0)
+        # Include tier 1+2 always; include tier 3 only if relevance >= 4
+        if tier >= 3 and relevance < 4:
+            continue
 
         parent = event.get("technology_parent") or event.get("technology_name", "")
         if not parent:

@@ -316,6 +316,15 @@ def main():
 
     # Build context (shared between both renders)
     context = build_context(data, news_data=news_articles)
+
+    # Substitute source stats into whats_new lines (supports {{ total_sources }} etc.)
+    stats = context.get("source_stats", {})
+    whats_new = [
+        line
+        .replace("{{ total_sources }}", str(stats.get("total_sources", "")))
+        .replace("{{ total_countries }}", str(stats.get("total_countries", "")))
+        for line in whats_new
+    ]
     context["whats_new"] = whats_new
 
     print(f"\nSections:")
