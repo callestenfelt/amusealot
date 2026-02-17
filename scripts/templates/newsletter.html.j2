@@ -16,6 +16,7 @@
     :root { color-scheme: light dark; }
     a.link:hover { color: #080229 !important; }
     .ehdr img { padding-bottom: 5px !important; }
+    .wn-box a { color: #080229 !important; text-decoration: underline; }
     /* Outlook dark mode (Windows desktop) */
     [data-ogsc] body, [data-ogsb] body { background-color: #080229 !important; }
     [data-ogsc] table, [data-ogsb] table { background-color: #080229 !important; }
@@ -63,7 +64,9 @@
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
       <tr>
         <td class="sec-hdr" style="font-size:20px;font-weight:bold;color:#080229;mso-color-alt:#fbfbfb;letter-spacing:-1px;padding-bottom:16px;border-bottom:3px solid #080229;">
+          <!--[if !mso]><!-->
           <span class="ehdr" style="font-size:22px;vertical-align:middle;letter-spacing:0;">{{ emoji }}</span>
+          <!--<![endif]-->
           <span style="vertical-align:middle;">{{ text }}</span>
         </td>
       </tr>
@@ -243,7 +246,9 @@
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
                 <td class="sec-hdr" style="font-size:20px;font-weight:bold;color:#080229;mso-color-alt:#fbfbfb;letter-spacing:-1px;padding-bottom:16px;border-bottom:3px solid #080229;">
+                  <!--[if !mso]><!-->
                   <span class="ehdr" style="font-size:22px;vertical-align:middle;letter-spacing:0;">👀</span>
+                  <!--<![endif]-->
                   <span style="vertical-align:middle;">Spotlight</span>
                 </td>
               </tr>

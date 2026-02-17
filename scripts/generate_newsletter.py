@@ -319,8 +319,14 @@ def main():
 
     # Substitute source stats into whats_new lines (supports {{ total_sources }} etc.)
     stats = context.get("source_stats", {})
+    link_style = "color:#080229;mso-color-alt:#fbfbfb;text-decoration:underline;text-underline-offset:2px;"
+    sources_link = f'<a href="https://amusealot.com/sources" style="{link_style}">{stats.get("total_sources", "")} sources</a>'
     whats_new = [
         line
+        .replace(
+            f'<a href="https://amusealot.com/sources">{{{{ total_sources }}}} sources</a>',
+            sources_link
+        )
         .replace("{{ total_sources }}", str(stats.get("total_sources", "")))
         .replace("{{ total_countries }}", str(stats.get("total_countries", "")))
         for line in whats_new
