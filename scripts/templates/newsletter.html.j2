@@ -443,7 +443,7 @@
               <tr>
                 <td>
                   <a href="{{ article.url }}" class="link" style="font-size:16px;font-weight:bold;color:#080229;mso-color-alt:#fbfbfb;text-decoration:underline;text-underline-offset:3px;">
-                    {{ article.title }}
+                    {{ article.score.ai_title if (article.language != 'en' and article.score.ai_title) else article.title }}
                   </a>
                 </td>
               </tr>

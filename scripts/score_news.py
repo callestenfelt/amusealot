@@ -172,27 +172,29 @@ Return JSON object with "articles" array, each with: {{"index": N, "relevance": 
 
 
 def generate_english_summary(article):
-    """Generate English summary for a non-English tier 1 article."""
+    """Generate English title and summary for a non-English tier 1 article."""
     prompt = f"""This article is in {article['language']} and is highly relevant to museum technology professionals.
-Generate a concise English summary (2-3 sentences) focusing on the technical aspects.
+Translate the title to English and write a concise English summary (2-3 sentences) focusing on the technical aspects.
 
 Title: {article['title']}
 Summary: {article.get('summary', 'No summary available')}
 
-Provide a clear, informative English summary that explains what makes this article valuable."""
+Return JSON with exactly two fields:
+- "title": a concise English translation of the article title
+- "summary": a clear, informative English summary explaining what makes this article valuable"""
 
     messages = [
         {"role": "system", "content": "You are a technical translator for the museum technology sector."},
         {"role": "user", "content": prompt}
     ]
 
-    result, error = groq_request(messages, json_mode=False)
+    result, error = groq_request(messages, json_mode=True)
 
     if error:
         print(f"    Summary generation error: {error}")
         return None
 
-    return result.strip() if result else None
+    return result if result else None
 
 
 def update_article_scores_in_baserow(article_id, score_data, apply_mode):
@@ -294,14 +296,18 @@ def main():
                     "ai_summary": None
                 }
 
-                # Generate English summary for tier 1 non-English articles
+                # Generate English title + summary for tier 1 non-English articles
                 if article["score"]["tier"] == 1 and article.get("language") != "en":
-                    print(f"  Generating English summary for: {article['title'][:50]}...")
+                    print(f"  Generating English title+summary for: {article['title'][:50]}...")
                     time.sleep(DELAY_BETWEEN_CALLS)
 
-                    summary = generate_english_summary(article)
-                    if summary:
-                        article["score"]["ai_summary"] = summary
+                    result = generate_english_summary(article)
+                    if result:
+                        if isinstance(result, dict):
+                            article["score"]["ai_title"] = result.get("title")
+                            article["score"]["ai_summary"] = result.get("summary")
+                        else:
+                            article["score"]["ai_summary"] = result
 
                 # Update Baserow if apply mode
                 if "id" in article:  # Only if article has Baserow ID
