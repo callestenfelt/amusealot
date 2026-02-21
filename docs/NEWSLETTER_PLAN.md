@@ -334,6 +334,44 @@ GitHub API (133 museums)
 - Email delivery via Resend
 - RSS feed output
 
+## Codeberg as an Additional Source
+
+Investigated 2026-02-21. Codeberg is a non-profit, FOSS-aligned Git hosting platform (Berlin, Germany) running Forgejo (a Gitea fork).
+
+### API
+
+Full REST API at `codeberg.org/api/v1`. Key endpoints:
+
+| Endpoint | What it gives |
+|---|---|
+| `GET /orgs/{org}/activities/feeds` | Activity feed with individual commit messages per event |
+| `GET /repos/{owner}/{repo}/commits` | Full commit history |
+| `GET /repos/{owner}/{repo}/releases` | Releases |
+| `GET /repos/search?q=...` | Repo search |
+
+The activity feed returns individual `commit_repo` and `push_tag` events with real commit messages — no separate compare-API enrichment step needed (unlike GitHub's sparse PushEvents). No token required for public repos.
+
+### Current GLAM presence — thin but real
+
+| Account | Who | Notable repos |
+|---|---|---|
+| `dainst` | Deutsches Archäologisches Institut | `iiif_image_plug` (Elixir IIIF image server, hit v1.0 Jan 2026, migrated from GitHub) |
+| `PIA` | Participatory Image Archives (Basel/Bern) | IIIF manifests, Mirador instance, image archive search |
+| `abbe98` | Albin Larsson (Swedish GLAM/Wikidata dev) | `iiif-tools`, OpenRefine extensions, Wikidata integrations |
+
+Most GLAM orgs on Codeberg appear to have migrated from or mirrored from GitHub. The `dainst` migration is notable — a conscious move away from GitHub.
+
+### Decision: Watch, don't integrate yet
+
+**No new integration pipeline needed.** The GLAM presence is too small to justify a dedicated collector.
+
+**Near-term action:** Add `dainst`, `PIA`, and `abbe98` as tracked sources in Baserow (`entity_type = individual` or `other_org`) with their Codeberg repos listed in `tracked_repos`. The existing `collect_github_activity.py` repo-event logic can be adapted to call the Codeberg API instead — same shape, different base URL.
+
+**Watch for:** More GLAM orgs migrating from GitHub (Microsoft ownership concerns, increased interest in FOSS hosting). If that accelerates, Codeberg becomes a first-class source worth a dedicated collector.
+
+---
+
 ## Reference
 
 - [heripo-research-radar](https://github.com/heripo-lab/heripo-research-radar) - AI newsletter for Korean cultural heritage
+- [Codeberg API](https://codeberg.org/api/swagger) - Forgejo REST API (used by Codeberg)
