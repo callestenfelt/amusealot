@@ -271,7 +271,7 @@
         {% if has_new_repos %}
         {{ section_header("🥚", "New Repositories") }}
         {% for event in sections.new_repos %}
-          {% if loop.index <= 4 %}
+          {% if not section_cap or loop.index <= section_cap %}
             {% if event.score.tier == 1 %}
               {{ event_t1(event) }}
             {% else %}
@@ -279,7 +279,7 @@
             {% endif %}
           {% endif %}
         {% endfor %}
-        {% if total_new_repos > 4 %}
+        {% if section_cap and total_new_repos > section_cap %}
         <tr>
           <td style="padding:20px 40px 0 40px;">
             <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;mso-color-alt:#fbfbfb;text-decoration:underline;text-underline-offset:3px;">See all {{ total_new_repos }} new repositories in the full edition</a>
@@ -292,7 +292,7 @@
         {% if has_releases %}
         {{ section_header("🚀", "Releases") }}
         {% for event in sections.releases %}
-          {% if loop.index <= 4 %}
+          {% if not section_cap or loop.index <= section_cap %}
             {% if event.score.tier == 1 %}
               {{ event_t1(event) }}
             {% else %}
@@ -300,7 +300,7 @@
             {% endif %}
           {% endif %}
         {% endfor %}
-        {% if total_releases > 4 %}
+        {% if section_cap and total_releases > section_cap %}
         <tr>
           <td style="padding:20px 40px 0 40px;">
             <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;mso-color-alt:#fbfbfb;text-decoration:underline;text-underline-offset:3px;">See all {{ total_releases }} releases in the full edition</a>
@@ -356,7 +356,7 @@
         {% if has_pushes %}
         {{ section_header("🤖", "Notable Pushes") }}
         {% for event in sections.pushes %}
-          {% if loop.index <= 4 %}
+          {% if not section_cap or loop.index <= section_cap %}
             {% if event.score.tier == 1 %}
               {{ event_t1(event) }}
             {% else %}
@@ -364,7 +364,7 @@
             {% endif %}
           {% endif %}
         {% endfor %}
-        {% if total_pushes > 4 %}
+        {% if section_cap and total_pushes > section_cap %}
         <tr>
           <td style="padding:20px 40px 0 40px;">
             <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;mso-color-alt:#fbfbfb;text-decoration:underline;text-underline-offset:3px;">See all {{ total_pushes }} pushes in the full edition</a>
@@ -471,7 +471,7 @@
           </td>
         </tr>
         {% endfor %}
-        {% if news_articles.total > 4 %}
+        {% if section_cap and news_articles.total > section_cap %}
         <tr>
           <td style="padding:20px 40px 0 40px;">
             <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;mso-color-alt:#fbfbfb;text-decoration:underline;text-underline-offset:3px;">See all {{ news_articles.total }} articles in the full edition</a>

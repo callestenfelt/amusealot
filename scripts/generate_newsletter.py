@@ -142,8 +142,8 @@ def get_source_stats():
         return {"total_sources": 0, "total_countries": 0}
 
 
-def prepare_news_articles(news_articles):
-    """Filter and prepare news articles by tier. Max 1 per source, cap at 4 total."""
+def prepare_news_articles(news_articles, cap=None):
+    """Filter and prepare news articles by tier. Max 1 per source. Cap if specified."""
     tier1 = [a for a in news_articles if a.get("score", {}).get("tier") == 1]
     tier2 = [a for a in news_articles if a.get("score", {}).get("tier") == 2]
 
@@ -162,16 +162,19 @@ def prepare_news_articles(news_articles):
             seen_sources.add(source)
             filtered_news.append(article)
 
-    # Cap at 4 total for newsletter, rest go to website
+    newsletter = filtered_news[:cap] if cap else filtered_news
     return {
-        "newsletter": filtered_news[:4],
-        "website_only": filtered_news[4:8] if len(filtered_news) > 4 else [],
+        "newsletter": newsletter,
         "total": len(filtered_news)
     }
 
 
-def build_context(data, max_pushes=None, news_data=None):
-    """Assemble full template context from scored newsletter data."""
+def build_context(data, section_cap=None, news_data=None):
+    """Assemble full template context from scored newsletter data.
+
+    section_cap: if set, caps new_repos/releases/pushes/news to this many items
+                 and shows "see all" links. None = full/archive version (no cap).
+    """
     sections = prepare_sections(data["scored_events"])
     tool_watch = data.get("tool_watch", {})
     individual_events = prepare_individual_events(data["scored_events"])
@@ -180,9 +183,9 @@ def build_context(data, max_pushes=None, news_data=None):
     source_stats = get_source_stats()
 
     # Prepare news articles if provided
-    news_articles = {"newsletter": [], "website_only": [], "total": 0}
+    news_articles = {"newsletter": [], "total": 0}
     if news_data:
-        news_articles = prepare_news_articles(news_data)
+        news_articles = prepare_news_articles(news_data, cap=section_cap)
 
     # Get total counts for sections (for "see all" links)
     total_new_repos = len(sections["new_repos"])
@@ -208,7 +211,7 @@ def build_context(data, max_pushes=None, news_data=None):
         "has_individual_events": len(individual_events) > 0,
         "news_articles": news_articles,
         "has_news": len(news_articles["newsletter"]) > 0,
-        "max_pushes": max_pushes,
+        "section_cap": section_cap,
         "source_stats": source_stats,
     }
     return ctx
@@ -314,7 +317,7 @@ def main():
         with open(whats_new_path, "r", encoding="utf-8") as f:
             whats_new = [line.strip() for line in f if line.strip()]
 
-    # Build context (shared between both renders)
+    # Build context — full/archive version (no cap)
     context = build_context(data, news_data=news_articles)
 
     # Substitute source stats into whats_new lines (supports {{ total_sources }} etc.)
@@ -343,7 +346,7 @@ def main():
     if context['has_individual_events']:
         print(f"  Individual Creators: {len(context['individual_events'])} events")
     if context['has_news']:
-        print(f"  News: {len(context['news_articles']['newsletter'])} in newsletter, {len(context['news_articles']['website_only'])} website-only")
+        print(f"  News: {len(context['news_articles']['newsletter'])} articles (total {context['news_articles']['total']})")
 
     # --- Full version (archive) ---
     full_html = render_newsletter(context)
@@ -361,7 +364,7 @@ def main():
     print(f"  Size: {full_kb:.1f} KB")
 
     # --- Truncated version (email) ---
-    email_context = build_context(data, max_pushes=6, news_data=news_articles)
+    email_context = build_context(data, section_cap=4, news_data=news_articles)
     email_context["whats_new"] = whats_new
     email_html = render_newsletter(email_context)
 
