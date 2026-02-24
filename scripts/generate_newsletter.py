@@ -181,6 +181,8 @@ def build_context(data, section_cap=None, news_data=None):
 
     # Get source statistics
     source_stats = get_source_stats()
+    if source_stats["total_sources"] == 0:
+        print("  Warning: source stats unavailable (BASEROW credentials missing?) — showing '—' in newsletter")
 
     # Prepare news articles if provided
     news_articles = {"newsletter": [], "total": 0}

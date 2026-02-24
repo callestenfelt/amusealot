@@ -197,11 +197,11 @@
               </tr>
               <tr>
                 <td align="center" width="33%" valign="top" style="padding:24px 4px 16px 4px;">
-                  <span style="display:block;font-size:32px;font-weight:bold;color:#080229;mso-color-alt:#fbfbfb;">{{ source_stats.total_sources }}</span>
+                  <span style="display:block;font-size:32px;font-weight:bold;color:#080229;mso-color-alt:#fbfbfb;">{{ source_stats.total_sources if source_stats.total_sources else "—" }}</span>
                   <span style="display:block;font-size:12px;color:#080229;mso-color-alt:#fbfbfb;text-transform:uppercase;letter-spacing:0.5px;padding-top:6px;">Sources</span>
                 </td>
                 <td align="center" width="34%" valign="top" style="padding:24px 4px 16px 4px;">
-                  <span style="display:block;font-size:32px;font-weight:bold;color:#080229;mso-color-alt:#fbfbfb;">{{ source_stats.total_countries }}</span>
+                  <span style="display:block;font-size:32px;font-weight:bold;color:#080229;mso-color-alt:#fbfbfb;">{{ source_stats.total_countries if source_stats.total_countries else "—" }}</span>
                   <span style="display:block;font-size:12px;color:#080229;mso-color-alt:#fbfbfb;text-transform:uppercase;letter-spacing:0.5px;padding-top:6px;">Countries</span>
                 </td>
                 <td align="center" width="33%" valign="top" style="padding:24px 4px 16px 4px;">
