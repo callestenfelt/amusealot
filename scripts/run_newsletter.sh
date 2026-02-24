@@ -59,6 +59,13 @@ echo ""
 echo "[8/8] Sending confirmation reminders..."
 python3 "$SCRIPT_DIR/send_reminders.py" "$@"
 
+# Clear "What's new" after a real send so it doesn't repeat next week
+if [[ "${1:-}" == "--apply" ]]; then
+    > "$SCRIPT_DIR/whats_new.txt"
+    echo ""
+    echo "Cleared whats_new.txt"
+fi
+
 echo ""
 echo "========================================"
 echo "  Pipeline complete"
