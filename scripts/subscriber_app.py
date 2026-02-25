@@ -24,6 +24,7 @@ import io
 import os
 import re
 import glob
+import json
 import secrets
 import time
 from datetime import datetime, timezone, date
@@ -255,10 +256,12 @@ def landing():
             country = country.get("value", "")
         if country:
             countries.add(country)
+    latest_news = get_latest_news()
     return render_template("landing.html",
                            canonical_url=BASE_URL + "/",
                            total_sources=total_sources,
-                           total_countries=len(countries))
+                           total_countries=len(countries),
+                           latest_news=latest_news)
 
 
 subscribe_route = app.route("/subscribe", methods=["POST"])
@@ -480,6 +483,16 @@ def get_sources():
         if _sources_cache["data"] is not None:
             return _sources_cache["data"]
         return []
+
+
+def get_latest_news():
+    """Load latest_news.json written by generate_newsletter.py after each edition."""
+    path = os.path.join(script_dir, "latest_news.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"date": None, "articles": []}
 
 
 _news_sources_cache = {"data": None, "time": 0}

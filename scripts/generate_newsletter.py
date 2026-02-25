@@ -382,6 +382,26 @@ def main():
     print(f"Email newsletter written to {email_path}")
     print(f"  Size: {email_kb:.1f} KB {'(OK)' if email_kb < 102 else '(WARNING: exceeds Gmail 102KB limit)'}")
 
+    # Write latest_news.json for the landing page (skip in test mode)
+    if not args.test:
+        latest_news_path = os.path.join(script_dir, "latest_news.json")
+        latest_articles = email_context["news_articles"]["newsletter"]
+        with open(latest_news_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "date": today_iso,
+                "articles": [
+                    {
+                        "title": a.get("score", {}).get("ai_title") if a.get("language") != "en" and a.get("score", {}).get("ai_title") else a["title"],
+                        "url": a["url"],
+                        "source_name": a.get("source_name", ""),
+                        "language": a.get("language", "en"),
+                        "published_date": a.get("published_date", ""),
+                    }
+                    for a in latest_articles
+                ]
+            }, f, ensure_ascii=False, indent=2)
+        print(f"\nLatest news written to {latest_news_path} ({len(latest_articles)} articles)")
+
     # Register edition in Baserow (skip in test mode) — archive version only
     if args.test:
         print("\nTest mode: skipping Baserow registration")
