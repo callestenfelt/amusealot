@@ -487,7 +487,7 @@ def get_sources():
 
 def get_latest_news():
     """Load latest_news.json written by generate_newsletter.py after each edition."""
-    path = os.path.join(script_dir, "latest_news.json")
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "latest_news.json")
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
