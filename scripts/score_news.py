@@ -296,8 +296,8 @@ def main():
                     "ai_summary": None
                 }
 
-                # Generate English title + summary for tier 1 non-English articles
-                if article["score"]["tier"] == 1 and article.get("language") != "en":
+                # Generate English title + summary for tier 1 and tier 2 non-English articles
+                if article["score"]["tier"] in (1, 2) and article.get("language") != "en":
                     print(f"  Generating English title+summary for: {article['title'][:50]}...")
                     time.sleep(DELAY_BETWEEN_CALLS)
 
