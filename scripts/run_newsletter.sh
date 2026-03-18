@@ -14,6 +14,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Load .env from the project root (one level up from scripts/) if present.
+# Needed when running via cron, which doesn't source shell profiles.
+ENV_FILE="$(dirname "$SCRIPT_DIR")/.env"
+if [[ -f "$ENV_FILE" ]]; then
+    set -o allexport
+    # shellcheck source=/dev/null
+    source "$ENV_FILE"
+    set +o allexport
+fi
+
 echo "========================================"
 echo "  AmuseAlot Newsletter Pipeline"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
