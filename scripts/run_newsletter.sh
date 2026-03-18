@@ -24,6 +24,27 @@ if [[ -f "$ENV_FILE" ]]; then
     set +o allexport
 fi
 
+# Log file — keeps the last 30 days of output
+LOG_DIR="$(dirname "$SCRIPT_DIR")/logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/newsletter-$(date '+%Y-%m-%d').log"
+
+# Tee all output to the log file
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+# On failure: send admin notification with the log tail
+_on_failure() {
+    local exit_code=$?
+    local tail
+    tail=$(tail -30 "$LOG_FILE" 2>/dev/null || echo "(log unavailable)")
+    python3 "$SCRIPT_DIR/notify_admin.py" \
+        --status failure \
+        --message "Pipeline failed (exit $exit_code) at $(date '+%Y-%m-%d %H:%M:%S')
+
+$tail" || true
+}
+trap _on_failure ERR
+
 echo "========================================"
 echo "  AmuseAlot Newsletter Pipeline"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
@@ -80,3 +101,13 @@ echo ""
 echo "========================================"
 echo "  Pipeline complete"
 echo "========================================"
+
+# Admin success notification (only when actually sending)
+if [[ "${1:-}" == "--apply" ]]; then
+    SENT_COUNT=$(grep -c "Sent to " "$LOG_FILE" 2>/dev/null || echo "?")
+    python3 "$SCRIPT_DIR/notify_admin.py" \
+        --status success \
+        --message "Newsletter sent on $(date '+%Y-%m-%d %H:%M:%S') — ${SENT_COUNT} email(s) sent.
+
+Log: $LOG_FILE" || true
+fi
