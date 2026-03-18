@@ -53,7 +53,7 @@ echo "========================================"
 # Step 1: Collect GitHub activity
 echo ""
 echo "[1/8] Collecting GitHub activity..."
-python3 "$SCRIPT_DIR/collect_github_activity.py"
+python3 "$SCRIPT_DIR/collect_github_activity.py" --days 8
 
 # Step 2: Enrich events
 echo ""
