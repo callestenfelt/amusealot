@@ -23,3 +23,21 @@
 - Newsletter platform for museum tech
 - Live at amusealot.com, sends real emails via Resend
 - Baserow is the production database — treat writes with care
+
+## Infrastructure
+- VPS: `root@77.42.40.207`, SSH key: `~/.ssh/id_ed25519`
+- Scripts live at `/opt/musemaniac/scripts/` on the VPS
+- Deploy: run the PowerShell scp commands (no deploy.sh — no WSL on this machine)
+- Cron: `0 7 * * 3` (every Wednesday 7AM) runs `cron_newsletter.sh` which calls `run_newsletter.sh --apply`
+- Logs: `/opt/musemaniac/logs/newsletter_YYYY-MM-DD.log` — check these if a send is missed
+- Admin notifications: success/failure emails go to `calle@callestenfelt.se` via `notify_admin.py`
+
+## Recovering from a missed send
+1. SSH in and run manually: `cd /opt/musemaniac && ./scripts/cron_newsletter.sh`
+2. If the cron itself didn't run, check for `^M` line endings: `grep -a newsletter /var/log/syslog | tail -5`
+   - Fix: `crontab -l | sed 's/\r//' | crontab -`
+
+## Recovering a missing archive entry
+If a newsletter was sent but not registered in Baserow (e.g. ran locally):
+1. `python scripts/register_past_edition.py YYYY-MM-DD`
+2. `scp scripts/editions/newsletter_YYYY-MM-DD.html root@77.42.40.207:/opt/musemaniac/scripts/editions/`
