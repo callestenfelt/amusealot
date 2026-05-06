@@ -3,14 +3,15 @@
 ## Safety Rules
 - NEVER run send_newsletter.py or any script that sends real emails
 - NEVER run scripts with --apply against production Baserow without explicit user approval
-- NEVER commit or push to master directly — always use feature branches
+- NEVER commit straight to master — all work goes on a feature branch first
 - Always run scripts in dry-run mode (no --apply) by default
-- NEVER run git push without explicit user request
+- NEVER run git push without explicit user request (applies to both feature branches and master)
 
 ## Branching
 - All new work goes on a feature branch off master
 - Branch naming: feature/description, fix/description
-- User will merge to master and deploy manually
+- Merging to master: fast-forward only, after the feature branch is pushed and reviewed. "Merge to master" from the user authorizes a local ff-merge; a separate explicit instruction is needed before pushing master to origin.
+- Deploys to the VPS happen via scp, separately from the merge
 - At the start of a session, check and tell the user which branch is currently active
 
 ## Newsletter Template Design
