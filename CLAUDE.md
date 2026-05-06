@@ -9,7 +9,7 @@
 
 ## Branching
 - All new work goes on a feature branch off master
-- Branch naming: feature/description, fix/description
+- Branch naming: feature/description, fix/description. Pick a name that covers the full scope of the branch — if you start with a narrow fix and end up bundling related commits (defensive fix + upstream hardening + docs), rename the branch (or open a new one) before merging so the name still describes the whole change.
 - Merging to master: fast-forward only, after the feature branch is pushed and reviewed. "Merge to master" from the user authorizes a local ff-merge; a separate explicit instruction is needed before pushing master to origin.
 - Deploys to the VPS happen via scp, separately from the merge
 - At the start of a session, check and tell the user which branch is currently active
