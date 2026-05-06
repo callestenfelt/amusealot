@@ -63,6 +63,13 @@ BOT_AUTHORS = {"dependabot[bot]", "dependabot-preview[bot]", "renovate[bot]",
 def github_get(url, params=None):
     """Make a GitHub API request with rate limit handling."""
     resp = requests.get(url, params=params, headers=GITHUB_HEADERS)
+    if resp.status_code == 401:
+        # Bad/expired token. Abort loudly — silent 401s previously produced
+        # newsletters with 0 GitHub events.
+        raise SystemExit(
+            f"GitHub API returned 401 (Bad credentials) for {url}. "
+            "Check GITHUB_TOKEN — likely expired, revoked, or missing scopes."
+        )
     if resp.status_code == 403:
         reset = int(resp.headers.get("X-RateLimit-Reset", 0))
         wait = max(reset - time.time(), 0) + 2
