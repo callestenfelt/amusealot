@@ -476,23 +476,28 @@ def main():
 
     # Pick highest-scored event, preferring repos not previously spotlighted
     candidates = sorted(scored_events, key=lambda e: e["score"]["relevance"], reverse=True)
-    best = candidates[0]  # fallback
-    for candidate in candidates:
-        if candidate["repo"] not in past_spotlights:
-            best = candidate
-            break
+    best = None
+    spotlight_writeup = ""
+    if not candidates:
+        print(f"  No GitHub events available — skipping spotlight")
     else:
-        print(f"  All top candidates were previously spotlighted, reusing top scorer")
-    print(f"  Selected: {best['repo']} (relevance {best['score']['relevance']})")
+        best = candidates[0]
+        for candidate in candidates:
+            if candidate["repo"] not in past_spotlights:
+                best = candidate
+                break
+        else:
+            print(f"  All top candidates were previously spotlighted, reusing top scorer")
+        print(f"  Selected: {best['repo']} (relevance {best['score']['relevance']})")
 
-    spotlight_writeup, error = generate_spotlight(best)
-    api_calls += 1
+        spotlight_writeup, error = generate_spotlight(best)
+        api_calls += 1
 
-    if error:
-        print(f"  Spotlight ERROR: {error}")
-        spotlight_writeup = ""
-    else:
-        print(f"  Writeup: {spotlight_writeup[:120]}...")
+        if error:
+            print(f"  Spotlight ERROR: {error}")
+            spotlight_writeup = ""
+        else:
+            print(f"  Writeup: {spotlight_writeup[:120]}...")
 
     # --- Compute Tool Watch ---
     tool_watch = compute_tool_watch(scored_events)
@@ -523,7 +528,7 @@ def main():
         "most_active": most_active,
         "scored_events": scored_events,
         "spotlight": {
-            "event": build_event_summary(best),
+            "event": build_event_summary(best) if best else {},
             "writeup": spotlight_writeup,
         },
         "tool_watch": tool_watch,
