@@ -1,0 +1,63 @@
+# Enabling Cloudflare Turnstile on the subscribe form
+
+The `/subscribe` form already ships with two bot-protection layers that need **no
+config** (honeypot + signed timing token). Cloudflare Turnstile is the optional
+third layer — a privacy-friendly CAPTCHA (no cookies, GDPR-friendly, free) that
+keeps the site's "no tracking, no cookies" promise. The code is already wired up;
+it stays dormant until both keys are present in the environment.
+
+Do this when you're ready to harden further (e.g. if honeypot + timing stop being
+enough). Estimated time: ~5 minutes.
+
+## Steps
+
+1. **Create the Turnstile widget**
+   - Go to https://dash.cloudflare.com → **Turnstile** → **Add widget**.
+   - Widget name: `amusealot subscribe` (anything).
+   - Domain: `amusealot.com` (add `localhost` too if you want to test locally).
+   - Widget mode: **Managed** (recommended — invisible for most visitors).
+   - Save. Cloudflare shows two keys:
+     - **Site Key** (public) → `TURNSTILE_SITEKEY`
+     - **Secret Key** (private) → `TURNSTILE_SECRET`
+
+2. **Add the keys to the VPS env**
+   ```
+   ssh root@77.42.40.207 "nano /opt/musemaniac/.env"
+   ```
+   Add:
+   ```
+   TURNSTILE_SITEKEY=0x4AAAAAAA...
+   TURNSTILE_SECRET=0x4AAAAAAA...
+   ```
+
+3. **Restart the subscriber app** so it picks up the new env.
+   (However the Flask app is run/supervised on the VPS — systemd unit, gunicorn,
+   etc. Check `systemctl` or the process manager in use, then restart it.)
+
+4. **Verify**
+   - Load https://amusealot.com/ — the Turnstile widget should appear above the
+     Subscribe button (the `<script>` tag and widget only render when
+     `TURNSTILE_SITEKEY` is set).
+   - Subscribe with a real test address; confirm you still get the confirmation
+     email.
+   - Submitting without solving the challenge (or via a direct POST) should be
+     rejected with "Verification failed. Please go back and try again."
+
+## How it behaves
+
+- **Disabled (no keys):** honeypot + timing only. Form works normally.
+- **Enabled (both keys):** every submission's `cf-turnstile-response` token is
+  verified server-side via Cloudflare `siteverify` before any Baserow write or
+  email send.
+- **Fails closed:** if Cloudflare is unreachable or the token is missing/invalid,
+  the signup is rejected. A brief Cloudflare outage will block new signups rather
+  than let bots through — an acceptable trade for a low-volume newsletter.
+
+## Local testing (optional)
+
+Add `localhost` as an allowed domain on the widget, set both keys in your local
+`.env`, and run `python scripts/subscriber_app.py`. Cloudflare also publishes
+[testing keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/)
+that always pass or always fail, useful for exercising both branches.
+
+See also: the "Subscribe form bot protection" section in `CLAUDE.md`.

@@ -20,6 +20,15 @@
 - Dark text on light elements: `color:#080229;mso-color-alt:#fbfbfb`
 - Test dark mode after design changes: generate with `--test`, send with `send_newsletter.py --test calle@callestenfelt.se --apply`
 
+## Subscribe form bot protection
+The `/subscribe` form has three layers against subscription-bombing (bots firing double-opt-in confirmation emails at third parties, which burns Resend quota and harms sender reputation):
+1. **Honeypot** — hidden `company_website` field; if filled, the request is dropped silently (normal success page, no Baserow write, no email).
+2. **Timing** — `form_ts` is an HMAC-signed render timestamp; submissions faster than 3s or older than 2h are dropped silently.
+3. **Cloudflare Turnstile** — hard CAPTCHA gate, active only when `TURNSTILE_SITEKEY` + `TURNSTILE_SECRET` are set in `.env`. Privacy-friendly (no cookies), so it keeps the site's "no tracking, no cookies" promise. Fails closed (a Cloudflare outage briefly blocks signups rather than letting bots through).
+
+Layers 1–2 need no config and ship active. To enable layer 3, follow `docs/turnstile-setup.md` (create the widget, add both keys to `/opt/musemaniac/.env`, restart the app).
+- Cleanup: bot signups sit as `pending` rows in Baserow and never confirm. `python scripts/purge_pending_subscribers.py` lists stale pending rows (dry run, default >30 days; `--days N` to adjust); add `--apply` to delete. `--apply` against production needs explicit user approval per the safety rules. Note a 30-day cutoff intentionally keeps recent pending rows, so a fresh bot spike won't be purged until it ages out (or lower `--days`, accepting some risk to legit unconfirmed signups).
+
 ## Project
 - Newsletter platform for museum tech
 - Live at amusealot.com, sends real emails via Resend

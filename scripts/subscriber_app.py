@@ -25,6 +25,8 @@ import os
 import re
 import glob
 import json
+import hmac
+import hashlib
 import secrets
 import time
 from datetime import datetime, timezone, date
@@ -55,6 +57,18 @@ NOTIFY_EMAIL = os.environ.get("NOTIFY_EMAIL")  # optional, feedback notification
 SOURCES_TABLE_ID = os.environ.get("SOURCES_TABLE_ID")  # optional, needed for /sources
 NEWS_SOURCES_TABLE_ID = os.environ.get("NEWS_SOURCES_TABLE_ID")  # optional, news RSS sources
 
+# --- Bot protection ---
+# Cloudflare Turnstile (privacy-friendly CAPTCHA, no cookies). Both must be set
+# for the hard gate to activate; if unset, only honeypot + timing apply.
+TURNSTILE_SITEKEY = os.environ.get("TURNSTILE_SITEKEY")  # public, rendered in the form
+TURNSTILE_SECRET = os.environ.get("TURNSTILE_SECRET")    # private, used for siteverify
+# Secret for signing the form-render timestamp (timing check). A per-process
+# fallback is fine — at worst, forms rendered before a restart are rejected and
+# the visitor simply resubmits.
+FORM_SECRET = os.environ.get("FORM_SECRET") or secrets.token_hex(32)
+MIN_FORM_AGE = 3       # seconds; a human can't fill + submit faster than this
+MAX_FORM_AGE = 7200    # seconds (2h); reject stale/replayed render tokens
+
 BASEROW_HEADERS = {
     "Authorization": f"Token {BASEROW_TOKEN}",
     "Content-Type": "application/json",
@@ -69,6 +83,54 @@ if HAS_LIMITER:
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
+
+
+# --- Bot protection helpers ---
+
+def make_form_token():
+    """Return a signed render timestamp for the timing check (form_ts field)."""
+    ts = str(int(time.time()))
+    sig = hmac.new(FORM_SECRET.encode(), ts.encode(), hashlib.sha256).hexdigest()[:16]
+    return f"{ts}.{sig}"
+
+
+def form_token_ok(token):
+    """Validate a form_ts token: correct signature and a human-plausible age."""
+    try:
+        ts_str, sig = token.split(".", 1)
+        expected = hmac.new(FORM_SECRET.encode(), ts_str.encode(), hashlib.sha256).hexdigest()[:16]
+        if not hmac.compare_digest(sig, expected):
+            return False
+        age = time.time() - int(ts_str)
+        return MIN_FORM_AGE <= age <= MAX_FORM_AGE
+    except (ValueError, AttributeError):
+        return False
+
+
+def verify_turnstile(token, remoteip=None):
+    """Verify a Cloudflare Turnstile token. Returns True if disabled (no secret).
+
+    Fails closed: a missing token or a verification error counts as failure, so a
+    Cloudflare outage briefly blocks signups rather than letting bots through.
+    """
+    if not TURNSTILE_SECRET:
+        return True  # gate not configured — honeypot + timing still apply
+    if not token:
+        return False
+    try:
+        data = {"secret": TURNSTILE_SECRET, "response": token}
+        if remoteip:
+            data["remoteip"] = remoteip
+        resp = requests.post(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            data=data,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return bool(resp.json().get("success"))
+    except Exception as e:
+        print(f"ERROR verifying Turnstile token: {e}")
+        return False
 
 
 # --- Baserow helpers ---
@@ -196,7 +258,9 @@ STATIC_FILES = {
 def static_root_files(filename):
     if filename in STATIC_FILES:
         return send_from_directory(STATIC_DIR, filename)
-    return render_template("landing.html", canonical_url=BASE_URL + "/"), 404
+    return render_template("landing.html", canonical_url=BASE_URL + "/",
+                           form_ts=make_form_token(),
+                           turnstile_sitekey=TURNSTILE_SITEKEY), 404
 
 
 # --- SEO routes ---
@@ -261,17 +325,40 @@ def landing():
                            canonical_url=BASE_URL + "/",
                            total_sources=total_sources,
                            total_countries=len(countries),
-                           latest_news=latest_news)
+                           latest_news=latest_news,
+                           form_ts=make_form_token(),
+                           turnstile_sitekey=TURNSTILE_SITEKEY)
 
 
 subscribe_route = app.route("/subscribe", methods=["POST"])
 
 def _subscribe():
+    # --- Bot protection (subscription-bombing defense) ---
+    # 1. Honeypot: a field hidden from humans; only bots fill it. Filled → drop
+    #    silently with the normal success page so bots can't detect the trap.
+    if request.form.get("company_website", "").strip():
+        print("Bot signup blocked: honeypot filled")
+        return render_template("subscribe_success.html")
+
+    # 2. Timing: reject submissions that arrive implausibly fast or with a
+    #    missing/forged render token. Also silent.
+    if not form_token_ok(request.form.get("form_ts", "")):
+        print("Bot signup blocked: timing/token check failed")
+        return render_template("subscribe_success.html")
+
     email = request.form.get("email", "").strip().lower()
 
     if not email or not EMAIL_RE.match(email):
         return render_template("subscribe_success.html",
                                error="Please enter a valid email address."), 400
+
+    # 3. Turnstile hard gate (active only when TURNSTILE_SECRET is set). The
+    #    widget is visible, so a failure gets honest user-facing feedback.
+    if not verify_turnstile(request.form.get("cf-turnstile-response", ""),
+                            remoteip=request.remote_addr):
+        print(f"Subscribe blocked: Turnstile verification failed for {email}")
+        return render_template("subscribe_success.html",
+                               error="Verification failed. Please go back and try again."), 400
 
     # Check for existing subscriber
     existing = find_row_by_token("email", email)

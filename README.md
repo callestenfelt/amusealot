@@ -39,6 +39,7 @@ musemaniac/
     send_reminder.py               # Send reminder to non-openers
     run_newsletter.sh              # End-to-end pipeline script
     subscriber_app.py              # Flask web app (subscribe/confirm/unsubscribe/sources/feedback)
+    purge_pending_subscribers.py   # Remove stale pending subscribers (bot signups); dry-run by default
     enrich_github.py               # Wikidata → Baserow GitHub enrichment
     search_github_museums.py       # GitHub API org search
     filter_github_museums.py       # Filter candidates to real museums
@@ -48,6 +49,7 @@ musemaniac/
     NEWS_ARTICLES.md               # News feature: tables, scoring, integration
     TOOL_WATCH.md                  # Tool Watch feature: technologies table setup
     NEWSLETTER_PLAN.md             # Original architecture plan
+    turnstile-setup.md             # How to enable the Cloudflare Turnstile gate on the subscribe form
 ```
 
 ## Infrastructure
