@@ -1,13 +1,17 @@
 # Enabling Cloudflare Turnstile on the subscribe form
 
-The `/subscribe` form already ships with two bot-protection layers that need **no
-config** (honeypot + signed timing token). Cloudflare Turnstile is the optional
-third layer — a privacy-friendly CAPTCHA (no cookies, GDPR-friendly, free) that
-keeps the site's "no tracking, no cookies" promise. The code is already wired up;
-it stays dormant until both keys are present in the environment.
+> **Status: LIVE.** Turnstile was enabled on `amusealot.com` on 2026-05-20; the
+> keys live in `/opt/musemaniac/.env` on the VPS. This doc is now mainly a runbook
+> for **re-creating or rotating** the widget/keys (e.g. if the secret leaks or the
+> Cloudflare account changes). The steps below are unchanged for that purpose.
 
-Do this when you're ready to harden further (e.g. if honeypot + timing stop being
-enough). Estimated time: ~5 minutes.
+The `/subscribe` form ships with two bot-protection layers that need **no config**
+(honeypot + signed timing token). Cloudflare Turnstile is the third layer — a
+privacy-friendly CAPTCHA (no cookies, GDPR-friendly, free) that keeps the site's
+"no tracking, no cookies" promise. The code stays dormant until both keys are
+present in the environment.
+
+Estimated time: ~5 minutes.
 
 ## Steps
 

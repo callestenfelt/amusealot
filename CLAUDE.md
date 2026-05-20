@@ -26,8 +26,10 @@ The `/subscribe` form has three layers against subscription-bombing (bots firing
 2. **Timing** — `form_ts` is an HMAC-signed render timestamp; submissions faster than 3s or older than 2h are dropped silently.
 3. **Cloudflare Turnstile** — hard CAPTCHA gate, active only when `TURNSTILE_SITEKEY` + `TURNSTILE_SECRET` are set in `.env`. Privacy-friendly (no cookies), so it keeps the site's "no tracking, no cookies" promise. Fails closed (a Cloudflare outage briefly blocks signups rather than letting bots through).
 
-Layers 1–2 need no config and ship active. To enable layer 3, follow `docs/turnstile-setup.md` (create the widget, add both keys to `/opt/musemaniac/.env`, restart the app).
-- Cleanup: bot signups sit as `pending` rows in Baserow and never confirm. `python scripts/purge_pending_subscribers.py` lists stale pending rows (dry run, default >30 days; `--days N` to adjust); add `--apply` to delete. `--apply` against production needs explicit user approval per the safety rules. Note a 30-day cutoff intentionally keeps recent pending rows, so a fresh bot spike won't be purged until it ages out (or lower `--days`, accepting some risk to legit unconfirmed signups).
+All three layers are **live in production** (Turnstile enabled 2026-05-20; keys are in `/opt/musemaniac/.env`). To re-create or rotate the Turnstile widget/keys, follow `docs/turnstile-setup.md`.
+- Cleanup: bot signups sit as `pending` rows in Baserow and never confirm. They're harmless (only `confirmed` rows are ever emailed), so cleanup is just tidiness. Two ways:
+  - **Manual (Baserow UI):** filter the subscribers table to `status = pending`, sort by `subscribed_at`, select and delete. The filter guarantees confirmed subscribers can't be touched. Good for one-off, eyes-on cleanups (this is how the May 2026 bot spike was cleared).
+  - **Script (for automation):** `python scripts/purge_pending_subscribers.py` lists stale pending rows (dry run, default >30 days; `--days N` to adjust); add `--apply` to delete. `--apply` against production needs explicit user approval per the safety rules. A 30-day cutoff intentionally keeps recent pending rows, so a fresh bot spike won't be purged until it ages out (or lower `--days`, accepting some risk to legit unconfirmed signups).
 
 ## Project
 - Newsletter platform for museum tech
