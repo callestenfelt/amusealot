@@ -62,7 +62,7 @@ BOT_AUTHORS = {"dependabot[bot]", "dependabot-preview[bot]", "renovate[bot]",
 
 def github_get(url, params=None):
     """Make a GitHub API request with rate limit handling."""
-    resp = requests.get(url, params=params, headers=GITHUB_HEADERS)
+    resp = requests.get(url, params=params, headers=GITHUB_HEADERS, timeout=30)
     if resp.status_code == 401:
         # Bad/expired token. Abort loudly — silent 401s previously produced
         # newsletters with 0 GitHub events.
@@ -75,7 +75,7 @@ def github_get(url, params=None):
         wait = max(reset - time.time(), 0) + 2
         print(f"  Rate limited! Waiting {wait:.0f}s...")
         time.sleep(wait)
-        resp = requests.get(url, params=params, headers=GITHUB_HEADERS)
+        resp = requests.get(url, params=params, headers=GITHUB_HEADERS, timeout=30)
     return resp
 
 
@@ -93,7 +93,8 @@ def get_sources():
                 "page": page,
                 "filter__field_7222__not_empty": "true",
             },
-            headers={"Authorization": f"Token {BASEROW_TOKEN}"}
+            headers={"Authorization": f"Token {BASEROW_TOKEN}"},
+            timeout=30,
         )
         response.raise_for_status()
         data = response.json()
@@ -134,7 +135,8 @@ def get_technologies():
     try:
         schema_resp = requests.get(
             f"{BASEROW_URL}/api/database/fields/table/{TECHNOLOGIES_TABLE_ID}/",
-            headers={"Authorization": f"Token {BASEROW_TOKEN}"}
+            headers={"Authorization": f"Token {BASEROW_TOKEN}"},
+            timeout=30,
         )
         schema_resp.raise_for_status()
         fields = schema_resp.json()
@@ -164,7 +166,8 @@ def get_technologies():
                     "size": 200,
                     "page": page,
                 },
-                headers={"Authorization": f"Token {BASEROW_TOKEN}"}
+                headers={"Authorization": f"Token {BASEROW_TOKEN}"},
+                timeout=30,
             )
             response.raise_for_status()
             data = response.json()

@@ -69,6 +69,7 @@ def get_confirmed_subscribers():
                 "user_field_names": "true",
             },
             headers=BASEROW_HEADERS,
+            timeout=30,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -108,6 +109,7 @@ def send_email(to_email, html, unsub_url, subject="AmuseAlot — Museum Tech New
                 "List-Unsubscribe-Post": "List-Unsubscribe=One-Click-Unsubscribe",
             },
         },
+        timeout=30,
     )
     resp.raise_for_status()
     return resp.json()
@@ -166,7 +168,10 @@ def main():
         print("\nNo subscribers to send to. Done.")
         return
 
-    if not args.apply and not args.test:
+    if not args.apply:
+        # Dry run unless --apply is given. This covers --test too: a test
+        # address without --apply prints what would be sent rather than
+        # firing a real email (the documented test path is --test ... --apply).
         print("\n--- DRY RUN ---")
         for sub in subscribers:
             email = sub.get("email", "?")

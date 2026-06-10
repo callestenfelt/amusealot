@@ -43,6 +43,7 @@ def main():
         "https://api.resend.com/emails",
         headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
         json={"from": RESEND_FROM, "to": [NOTIFY_EMAIL], "subject": subject, "html": body},
+        timeout=30,
     )
     if resp.status_code >= 400:
         print(f"notify_admin: failed to send ({resp.status_code}): {resp.text[:200]}")

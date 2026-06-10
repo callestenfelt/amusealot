@@ -261,6 +261,7 @@ def main():
 
     # Score articles in batches
     scored_articles = []
+    failed_count = 0  # articles dropped to default tier 3 by a Groq/API failure
     total_batches = (len(articles) + BATCH_SIZE - 1) // BATCH_SIZE
 
     for batch_idx in range(0, len(articles), BATCH_SIZE):
@@ -273,6 +274,7 @@ def main():
 
         if not scores or "articles" not in scores:
             print("  Warning: Scoring failed for this batch, skipping")
+            failed_count += len(batch)
             # Add articles with default low scores
             for article in batch:
                 article["score"] = {
@@ -350,6 +352,14 @@ def main():
                 print(f"  [{score}/10] [{lang}] {article['title'][:60]}...")
 
     print("=" * 60)
+
+    # Abort if a large fraction of articles failed to score (Groq outage / rate
+    # limit). Better to fail the run and retry than to silently ship a thin
+    # edition — run_newsletter.sh's ERR trap turns this into an admin alert.
+    if failed_count >= 3 and failed_count > len(scored_articles) * 0.5:
+        print(f"\nERROR: {failed_count}/{len(scored_articles)} articles failed to "
+              "score due to Groq API errors. Aborting so the pipeline is retried.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

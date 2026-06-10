@@ -40,13 +40,13 @@ def github_get(url, params=None):
     """Make a GitHub API request with rate limit handling."""
     global api_calls
     api_calls += 1
-    resp = requests.get(url, params=params, headers=GITHUB_HEADERS)
+    resp = requests.get(url, params=params, headers=GITHUB_HEADERS, timeout=30)
     if resp.status_code == 403:
         reset = int(resp.headers.get("X-RateLimit-Reset", 0))
         wait = max(reset - time.time(), 0) + 2
         print(f"  Rate limited! Waiting {wait:.0f}s...")
         time.sleep(wait)
-        resp = requests.get(url, params=params, headers=GITHUB_HEADERS)
+        resp = requests.get(url, params=params, headers=GITHUB_HEADERS, timeout=30)
     return resp
 
 
@@ -245,7 +245,7 @@ def main():
 
     remaining = GITHUB_HEADERS.copy()
     try:
-        resp = requests.get(f"{GITHUB_API}/rate_limit", headers=remaining)
+        resp = requests.get(f"{GITHUB_API}/rate_limit", headers=remaining, timeout=10)
         if resp.status_code == 200:
             rate = resp.json().get("rate", {})
             print(f"Rate limit: {rate.get('remaining', '?')}/{rate.get('limit', '?')} remaining")

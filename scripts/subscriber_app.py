@@ -141,7 +141,7 @@ def baserow_list_rows(filters=None):
     params = {"size": 200, "user_field_names": "true"}
     if filters:
         params.update(filters)
-    resp = requests.get(url, params=params, headers=BASEROW_HEADERS)
+    resp = requests.get(url, params=params, headers=BASEROW_HEADERS, timeout=10)
     resp.raise_for_status()
     return resp.json().get("results", [])
 
@@ -150,7 +150,7 @@ def baserow_create_row(data):
     """Create a row in the subscribers table."""
     url = f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/"
     params = {"user_field_names": "true"}
-    resp = requests.post(url, json=data, params=params, headers=BASEROW_HEADERS)
+    resp = requests.post(url, json=data, params=params, headers=BASEROW_HEADERS, timeout=10)
     resp.raise_for_status()
     return resp.json()
 
@@ -159,7 +159,7 @@ def baserow_update_row(row_id, data):
     """Update a row in the subscribers table."""
     url = f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/{row_id}/"
     params = {"user_field_names": "true"}
-    resp = requests.patch(url, json=data, params=params, headers=BASEROW_HEADERS)
+    resp = requests.patch(url, json=data, params=params, headers=BASEROW_HEADERS, timeout=10)
     resp.raise_for_status()
     return resp.json()
 
@@ -202,6 +202,7 @@ def send_confirmation_email(email, confirm_url):
             "subject": "Confirm your AmuseAlot subscription",
             "html": html,
         },
+        timeout=10,
     )
     resp.raise_for_status()
     return resp.json()
@@ -238,6 +239,7 @@ def send_welcome_email(email, unsubscribe_token):
                 "List-Unsubscribe-Post": "List-Unsubscribe=One-Click-Unsubscribe",
             },
         },
+        timeout=10,
     )
     resp.raise_for_status()
     print(f"Welcome email sent to {email}")
@@ -385,15 +387,19 @@ def _subscribe():
             confirm_token = secrets.token_urlsafe(32)
             unsubscribe_token = existing.get("unsubscribe_token") or secrets.token_urlsafe(32)
             now = date.today().isoformat()
-            baserow_update_row(existing["id"], {
-                "status": "pending",
-                "subscribed_at": now,
-                "confirmed_at": None,
-                "unsubscribed_at": None,
-                "confirm_token": confirm_token,
-                "unsubscribe_token": unsubscribe_token,
-                "consent_source": "web_form",
-            })
+            try:
+                baserow_update_row(existing["id"], {
+                    "status": "pending",
+                    "subscribed_at": now,
+                    "confirmed_at": None,
+                    "unsubscribed_at": None,
+                    "confirm_token": confirm_token,
+                    "unsubscribe_token": unsubscribe_token,
+                    "consent_source": "web_form",
+                })
+            except Exception as e:
+                print(f"ERROR updating subscriber row for {email}: {e}")
+                return render_template("subscribe_success.html")
             confirm_url = f"{BASE_URL}/confirm?token={confirm_token}"
             try:
                 send_confirmation_email(email, confirm_url)
@@ -406,14 +412,20 @@ def _subscribe():
     unsubscribe_token = secrets.token_urlsafe(32)
     now = date.today().isoformat()
 
-    baserow_create_row({
-        "email": email,
-        "status": "pending",
-        "subscribed_at": now,
-        "confirm_token": confirm_token,
-        "unsubscribe_token": unsubscribe_token,
-        "consent_source": "web_form",
-    })
+    try:
+        baserow_create_row({
+            "email": email,
+            "status": "pending",
+            "subscribed_at": now,
+            "confirm_token": confirm_token,
+            "unsubscribe_token": unsubscribe_token,
+            "consent_source": "web_form",
+        })
+    except Exception as e:
+        # Baserow write failed — log it but still show success so we don't leak
+        # backend errors to visitors (they can simply try again later).
+        print(f"ERROR creating subscriber row for {email}: {e}")
+        return render_template("subscribe_success.html")
 
     confirm_url = f"{BASE_URL}/confirm?token={confirm_token}"
     try:
@@ -450,10 +462,14 @@ def confirm():
         return render_template("confirm_error.html"), 400
 
     now = date.today().isoformat()
-    baserow_update_row(row["id"], {
-        "status": "confirmed",
-        "confirmed_at": now,
-    })
+    try:
+        baserow_update_row(row["id"], {
+            "status": "confirmed",
+            "confirmed_at": now,
+        })
+    except Exception as e:
+        print(f"ERROR confirming subscriber {row.get('email', '')}: {e}")
+        return render_template("confirm_error.html"), 503
 
     try:
         send_welcome_email(row.get("email", ""), row.get("unsubscribe_token", ""))
@@ -483,10 +499,14 @@ def unsubscribe():
         return render_template("unsubscribe_success.html")
 
     now = date.today().isoformat()
-    baserow_update_row(row["id"], {
-        "status": "unsubscribed",
-        "unsubscribed_at": now,
-    })
+    try:
+        baserow_update_row(row["id"], {
+            "status": "unsubscribed",
+            "unsubscribed_at": now,
+        })
+    except Exception as e:
+        print(f"ERROR unsubscribing {row.get('email', '')}: {e}")
+        return render_template("unsubscribe_error.html"), 503
 
     return render_template("unsubscribe_success.html")
 
@@ -543,6 +563,7 @@ def get_sources():
                     "filter__field_7222__not_empty": "true",
                 },
                 headers=BASEROW_HEADERS,
+                timeout=10,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -668,6 +689,7 @@ def get_editions():
                 "order_by": "-edition_date",
             },
             headers=BASEROW_HEADERS,
+            timeout=10,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -772,7 +794,7 @@ def create_feedback_row(data):
         return None
     url = f"{BASEROW_URL}/api/database/rows/table/{FEEDBACK_TABLE_ID}/"
     params = {"user_field_names": "true"}
-    resp = requests.post(url, json=data, params=params, headers=BASEROW_HEADERS)
+    resp = requests.post(url, json=data, params=params, headers=BASEROW_HEADERS, timeout=10)
     resp.raise_for_status()
     return resp.json()
 
@@ -875,6 +897,7 @@ def _feedback_post():
                     "subject": "AmuseAlot: New feedback received",
                     "text": body,
                 },
+                timeout=10,
             )
         except Exception as e:
             print(f"ERROR sending feedback notification: {e}")

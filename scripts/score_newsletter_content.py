@@ -552,6 +552,18 @@ def main():
     print(f"API calls made: {api_calls}")
     print(f"\nSaved to {args.output}")
 
+    # Abort if a large fraction of events failed to score (Groq outage / rate
+    # limit). These were forced to tier 3 (skip_reason "scoring_error"), so the
+    # newsletter body would be near-empty. Fail loudly so the run is retried —
+    # run_newsletter.sh's ERR trap turns a non-zero exit into an admin alert.
+    scoring_errors = sum(
+        1 for e in scored_events if e["score"].get("skip_reason") == "scoring_error"
+    )
+    if scoring_errors >= 3 and scoring_errors > len(scored_events) * 0.5:
+        print(f"\nERROR: {scoring_errors}/{len(scored_events)} events failed to score "
+              "due to Groq API errors. Aborting so the pipeline is retried.")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

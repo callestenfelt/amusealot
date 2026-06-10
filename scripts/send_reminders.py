@@ -53,6 +53,7 @@ def get_pending_needing_reminder():
                 "user_field_names": "true",
             },
             headers=BASEROW_HEADERS,
+            timeout=30,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -104,6 +105,7 @@ def update_reminder_sent(row_id):
         params={"user_field_names": "true"},
         headers=BASEROW_HEADERS,
         json={"reminder_sent_at": date.today().isoformat()},
+        timeout=30,
     )
     resp.raise_for_status()
 
@@ -122,6 +124,7 @@ def send_reminder_email(to_email, html):
             "subject": "AmuseAlot — Quick reminder to confirm",
             "html": html,
         },
+        timeout=30,
     )
     resp.raise_for_status()
     return resp.json()

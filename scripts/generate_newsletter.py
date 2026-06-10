@@ -22,7 +22,7 @@ from datetime import date, datetime, timezone
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 
 try:
-    from jinja2 import Environment, FileSystemLoader, select_autoescape
+    from jinja2 import Environment, FileSystemLoader
 except ImportError:
     print("ERROR: jinja2 is required. Install with: pip install jinja2")
     sys.exit(1)
@@ -222,9 +222,14 @@ def build_context(data, section_cap=None, news_data=None):
 def render_newsletter(context):
     """Render the Jinja2 template with the given context."""
     template_dir = os.path.join(os.path.dirname(__file__), "templates")
+    # autoescape=True (not select_autoescape(["html"])) because the template is
+    # named newsletter.html.j2 — select_autoescape matches on the final extension
+    # (".j2"), so it would leave escaping OFF and render RSS titles / AI summaries
+    # raw. Literal HTML in the template is unaffected; "What's new" opts back out
+    # with an explicit | safe.
     env = Environment(
         loader=FileSystemLoader(template_dir),
-        autoescape=select_autoescape(["html"]),
+        autoescape=True,
         trim_blocks=True,
         lstrip_blocks=True,
     )
@@ -274,7 +279,7 @@ def register_edition(context, file_name):
 
     try:
         url = f"{baserow_url}/api/database/rows/table/{edition_table_id}/"
-        resp = requests.post(url, json=row_data, params={"user_field_names": "true"}, headers=headers)
+        resp = requests.post(url, json=row_data, params={"user_field_names": "true"}, headers=headers, timeout=10)
         resp.raise_for_status()
         print(f"\nEdition registered in Baserow (row {resp.json().get('id')})")
     except Exception as e:
