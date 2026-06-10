@@ -15,9 +15,6 @@ Cloudflare Turnstile) is live in production, Turnstile was enabled and verified 
 - [ ] **Automate pending-row cleanup (optional).** Add a VPS cron to run
       `python scripts/purge_pending_subscribers.py --apply` (e.g. monthly, default
       30-day cutoff) so stale rows never pile up again.
-- [ ] **Housekeeping:** decide whether `scripts/latest_news.json` (generated
-      runtime artifact) should be added to `.gitignore` so it stops showing up in
-      `git status`.
 
 ## Done
 
@@ -30,6 +27,8 @@ Cloudflare Turnstile) is live in production, Turnstile was enabled and verified 
 - [x] Cleared stale `pending` bot rows from Baserow (manual, filtered by status).
 - [x] Updated docs: `CLAUDE.md`, `docs/turnstile-setup.md`, `README.md`,
       `.env.example`.
+- [x] **Housekeeping:** added `scripts/latest_news.json` to `.gitignore`
+      (generated runtime artifact; no longer clutters `git status`).
 
 ---
 
@@ -63,3 +62,41 @@ Details in `CLAUDE.md` → Newsletter Template Design.
 - [x] Deployed to VPS (scp'd `newsletter.html.j2` + `generate_newsletter.py`;
       backed up the old template to `.bak`; verified on the server —
       `mso-color-alt` count `0`, `background-color` count `76`).
+
+---
+
+# Code review & hardening (June 2026)
+
+A multi-agent code review (every high-impact finding verified against source)
+surfaced a batch of bugs and improvements. Fixes are done on the
+`fix/review-hardening` branch — commits `0df9de7` (P0+P1) and `9477406` (P2).
+Not yet pushed, merged, or deployed.
+
+## Open
+
+- [ ] **Push → merge (ff-only) → deploy** `fix/review-hardening`. The diff spans
+      both the web app (`subscriber_app.py` → restart
+      `musemaniac-subscriber.service`) and the cron pipeline (`run_newsletter.sh`
+      + scripts → `/opt/musemaniac/scripts/`).
+- [ ] **Watch the next `0 7 * * 3` send** to exercise the new degraded-scoring
+      guard: a Groq outage now aborts the run (non-zero exit → admin failure
+      email) instead of silently shipping a near-empty edition.
+
+## Done
+
+- [x] **P0** — `send_newsletter.py --test` without `--apply` now dry-runs instead
+      of sending a real email; enabled Jinja autoescaping for the email template
+      (its `.j2` name had silently disabled `select_autoescape(["html"])`, so RSS
+      titles / AI summaries rendered raw).
+- [x] **P1** — added request timeouts to every Baserow/Resend/GitHub call in the
+      web app + pipeline; both AI scorers now exit non-zero when a large fraction
+      of items fail to score; guarded the Baserow writes in `/subscribe`,
+      `/confirm`, `/unsubscribe` so a Baserow blip yields a friendly page, not a 500.
+- [x] **P2** — deduped GitHub event extraction (`_extract_event`); removed dead
+      `parse_rss_date` / `find_row_by_field`; rate-limited `/confirm` +
+      `/unsubscribe`; added input length caps + `MAX_CONTENT_LENGTH`; enricher
+      aborts on a GitHub 401; escaped the admin notification; dated-edition glob
+      guard; `run_newsletter.sh` forwards only `--apply` to the send scripts.
+- [x] Verified: all changed files byte-compile; autoescape proven end-to-end (a
+      `<canvas>` title escapes to `&lt;canvas&gt;`); the `_extract_event` refactor
+      is unit-checked; `bash -n run_newsletter.sh` clean.
