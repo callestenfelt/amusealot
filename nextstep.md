@@ -48,11 +48,6 @@ Details in `CLAUDE.md` → Newsletter Template Design.
 
 ## Open
 
-- [ ] **Deploy to VPS** (required before it affects the cron send): scp
-      `scripts/templates/newsletter.html.j2` and `scripts/generate_newsletter.py`
-      to `/opt/musemaniac/scripts/...`. Verify on the server with
-      `grep -c mso-color-alt` (expect `0`) and `grep -c background-color`
-      (expect `76`).
 - [ ] **Watch the next Wednesday `0 7 * * 3` send** and the admin success email
       to confirm the live edition renders correctly.
 
@@ -65,3 +60,6 @@ Details in `CLAUDE.md` → Newsletter Template Design.
 - [x] Verified with a real test send to an affected user (Outlook desktop, dark
       mode) — body and lavender News panel readable.
 - [x] Merged to master; rewrote the CLAUDE.md Newsletter Template Design rule.
+- [x] Deployed to VPS (scp'd `newsletter.html.j2` + `generate_newsletter.py`;
+      backed up the old template to `.bak`; verified on the server —
+      `mso-color-alt` count `0`, `background-color` count `76`).
