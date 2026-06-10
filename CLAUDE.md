@@ -15,10 +15,10 @@
 - At the start of a session, check and tell the user which branch is currently active
 
 ## Newsletter Template Design
-- Whenever adding or changing inline `color:` values in newsletter.html.j2, always include `mso-color-alt` on the same declaration for Outlook Desktop dark mode compatibility
-- Light text on dark elements: `color:#fbfbfb;mso-color-alt:#fbfbfb`
-- Dark text on light elements: `color:#080229;mso-color-alt:#fbfbfb`
-- Test dark mode after design changes: generate with `--test`, send with `send_newsletter.py --test calle@callestenfelt.se --apply`
+- **Dark mode / "white-on-white" rule:** every text-bearing `<td>` must carry an explicit `background-color` matching its section, on the *same element* as its `color:`. This is the only thing that stops classic Word-engine Outlook for Windows desktop (and Windows Mail) from producing white-on-white — those clients run their own colour inversion and ignore `<style>` rules, so pairing background+text on one element makes the invert stay coherent. Section palette: body = `#fbfbfb`, lavender panels (What's new box, News+Feedback) = `#EDEBF5`, footer = `#080229` (light text). Never set a cell's `color:` without its sibling `background-color:`, and keep both in the same section's palette.
+- **Do NOT use `mso-color-alt`** — it's a real legacy Office property but does NOT control Outlook dark-mode inversion (confirmed against Litmus / Email on Acid / hteumeuleu / Microsoft's own docs). The old template sprinkled it everywhere as a placebo; it was removed 2026-06-10. Don't reintroduce it.
+- Outlook.com / new Outlook / Outlook mobile dark mode is handled separately by the `[data-ogsc]/[data-ogsb]` rules in the `<head>` `<style>` block (only those clients inject those attributes). If you add a new section background, add a matching `[data-ogsc] ... { background-color: ... !important }` override there too, or webmail dark mode will show light cells behind forced-white text.
+- Test dark mode after design changes: generate with `--test`, send with `send_newsletter.py --test calle@callestenfelt.se --apply`, then view in **Outlook desktop on Windows with dark mode on** (the client the fix targets) — webmail/Apple Mail won't exercise the Word-engine path.
 
 ## Subscribe form bot protection
 The `/subscribe` form has three layers against subscription-bombing (bots firing double-opt-in confirmation emails at third parties, which burns Resend quota and harms sender reputation):

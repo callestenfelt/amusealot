@@ -324,7 +324,7 @@ def main():
 
     # Substitute source stats into whats_new lines (supports {{ total_sources }} etc.)
     stats = context.get("source_stats", {})
-    link_style = "color:#080229;mso-color-alt:#fbfbfb;text-decoration:underline;text-underline-offset:2px;"
+    link_style = "color:#080229;text-decoration:underline;text-underline-offset:2px;"
     sources_link = f'<a href="https://amusealot.com/sources" style="{link_style}">{stats.get("total_sources", "")} sources</a>'
     whats_new = [
         line
