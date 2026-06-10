@@ -76,9 +76,18 @@ BASEROW_HEADERS = {
 
 # --- Flask setup ---
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), "templates", "web"))
+app.config["MAX_CONTENT_LENGTH"] = 256 * 1024  # reject request bodies larger than 256 KB
 
 if HAS_LIMITER:
     limiter = Limiter(get_remote_address, app=app, default_limits=[])
+
+
+def _rate_limit(spec):
+    """Decorator applying a flask-limiter limit when available, else a no-op."""
+    if HAS_LIMITER:
+        return limiter.limit(spec)
+    return lambda f: f
+
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
@@ -162,12 +171,6 @@ def baserow_update_row(row_id, data):
     resp = requests.patch(url, json=data, params=params, headers=BASEROW_HEADERS, timeout=10)
     resp.raise_for_status()
     return resp.json()
-
-
-def find_row_by_field(field_name, value):
-    """Find a single row where field equals value."""
-    rows = baserow_list_rows({f"filter__field_{field_name}__equal": value})
-    return rows[0] if rows else None
 
 
 def find_row_by_token(field_name, token):
@@ -350,7 +353,7 @@ def _subscribe():
 
     email = request.form.get("email", "").strip().lower()
 
-    if not email or not EMAIL_RE.match(email):
+    if not email or len(email) > 254 or not EMAIL_RE.match(email):
         return render_template("subscribe_success.html",
                                error="Please enter a valid email address."), 400
 
@@ -443,6 +446,7 @@ _subscribe = subscribe_route(_subscribe)
 
 
 @app.route("/confirm")
+@_rate_limit("30/minute")
 def confirm():
     token = request.args.get("token", "").strip()
     if not token:
@@ -480,6 +484,7 @@ def confirm():
 
 
 @app.route("/unsubscribe", methods=["GET", "POST"])
+@_rate_limit("30/minute")
 def unsubscribe():
     token = request.args.get("token", "").strip()
     if not token:
@@ -834,9 +839,9 @@ def _feedback_post():
 
     edition = request.form.get("edition", "").strip()
     rating_str = request.form.get("rating", "").strip()
-    feedback_text = request.form.get("feedback_text", "").strip()
-    suggest_org = request.form.get("suggest_org", "").strip()
-    email = request.form.get("email", "").strip()
+    feedback_text = request.form.get("feedback_text", "").strip()[:5000]
+    suggest_org = request.form.get("suggest_org", "").strip()[:500]
+    email = request.form.get("email", "").strip()[:254]
 
     # Parse rating (optional)
     try:

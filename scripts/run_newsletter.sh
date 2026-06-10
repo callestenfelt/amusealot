@@ -45,6 +45,14 @@ $tail" || true
 }
 trap _on_failure ERR
 
+# Only --apply is a meaningful pass-through. Compute it once and forward only it
+# to the send scripts: send_reminders.py understands only --apply, so forwarding
+# "$@" verbatim would make it error on any other arg (e.g. --input/--test).
+APPLY_FLAG=""
+if [[ "${1:-}" == "--apply" ]]; then
+    APPLY_FLAG="--apply"
+fi
+
 echo "========================================"
 echo "  AmuseAlot Newsletter Pipeline"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
@@ -83,12 +91,12 @@ python3 "$SCRIPT_DIR/generate_newsletter.py"
 # Step 7: Send (passes --apply through if provided)
 echo ""
 echo "[7/8] Sending newsletter..."
-python3 "$SCRIPT_DIR/send_newsletter.py" "$@"
+python3 "$SCRIPT_DIR/send_newsletter.py" $APPLY_FLAG
 
 # Step 8: Send confirmation reminders to pending subscribers
 echo ""
 echo "[8/8] Sending confirmation reminders..."
-python3 "$SCRIPT_DIR/send_reminders.py" "$@"
+python3 "$SCRIPT_DIR/send_reminders.py" $APPLY_FLAG
 
 # Clear "What's new" after a real send so it doesn't repeat next week
 if [[ "${1:-}" == "--apply" ]]; then
@@ -104,7 +112,7 @@ echo "========================================"
 
 # Admin success notification (only when actually sending)
 if [[ "${1:-}" == "--apply" ]]; then
-    SENT_COUNT=$(grep -c "Sent to " "$LOG_FILE" 2>/dev/null || echo "?")
+    SENT_COUNT=$(grep -c "Sent to " "$LOG_FILE" 2>/dev/null || true)
     python3 "$SCRIPT_DIR/notify_admin.py" \
         --status success \
         --message "Newsletter sent on $(date '+%Y-%m-%d %H:%M:%S') — ${SENT_COUNT} email(s) sent.

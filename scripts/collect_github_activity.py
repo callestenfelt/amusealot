@@ -244,9 +244,89 @@ def collect_new_repos(org_login, cutoff_date):
     return items
 
 
+def _extract_event(event, org_label, cutoff_date, repo_override=None):
+    """Turn a GitHub event into a release/push item, or None if not noteworthy.
+
+    Shared by collect_events (org/user feed) and collect_repo_events (single-repo
+    feed); repo_override pins the repo name for the single-repo case.
+    """
+    event_date = event.get("created_at", "")
+    if not event_date:
+        return None
+    event_dt = datetime.fromisoformat(event_date.replace("Z", "+00:00"))
+    if event_dt < cutoff_date:
+        return None
+
+    actor = event.get("actor", {}).get("login", "")
+    if actor in BOT_AUTHORS:
+        return None
+
+    event_type = event.get("type")
+    payload = event.get("payload", {})
+    repo_name = repo_override or event.get("repo", {}).get("name", "")
+
+    if event_type == "ReleaseEvent" and payload.get("action") == "published":
+        release = payload.get("release", {})
+        return {
+            "org": org_label,
+            "event_type": "release",
+            "repo": repo_name,
+            "title": release.get("name") or release.get("tag_name", ""),
+            "description": (release.get("body") or "")[:300],
+            "url": release.get("html_url", ""),
+            "date": event_date[:10],
+            "details": {
+                "tag": release.get("tag_name"),
+                "prerelease": release.get("prerelease", False),
+            }
+        }
+
+    if event_type == "PushEvent":
+        ref = payload.get("ref", "")
+        # Only default branches
+        if not any(ref.endswith(b) for b in ("/main", "/master", "/develop")):
+            return None
+        commits = payload.get("commits", [])
+        num_commits = payload.get("size", len(commits))
+        # Skip trivial pushes (1 commit that's a merge or CI)
+        if num_commits <= 1 and commits:
+            msg = commits[0].get("message", "")
+            if msg.startswith("Merge ") or msg.startswith("chore:"):
+                return None
+
+        branch = ref.split("/")[-1]
+        commit_msgs = [c.get("message", "").split("\n")[0][:80] for c in commits[:5]]
+
+        # Build compare URL if we have before/after hashes
+        head = payload.get("head", "")
+        before = payload.get("before", "")
+        if head and before:
+            url = f"https://github.com/{repo_name}/compare/{before[:7]}...{head[:7]}"
+        else:
+            url = f"https://github.com/{repo_name}/commits/{branch}"
+
+        title = f"{num_commits} commit(s) to {branch}" if num_commits > 0 else f"Push to {branch}"
+
+        return {
+            "org": org_label,
+            "event_type": "push",
+            "repo": repo_name,
+            "title": title,
+            "description": "; ".join(commit_msgs) if commit_msgs else "",
+            "url": url,
+            "date": event_date[:10],
+            "details": {
+                "branch": branch,
+                "commit_count": num_commits,
+                "distinct_count": payload.get("distinct_size", 0),
+            }
+        }
+
+    return None
+
+
 def collect_events(org_login, cutoff_date, is_individual=False):
     """Fetch org/user events and extract releases and significant pushes."""
-    items = []
     # Use different endpoint for individuals vs organizations
     if is_individual:
         endpoint = f"{GITHUB_API}/users/{org_login}/events/public"
@@ -255,160 +335,27 @@ def collect_events(org_login, cutoff_date, is_individual=False):
 
     resp = github_get(endpoint, {"per_page": 30})
     if resp.status_code != 200:
-        return items
+        return []
 
+    items = []
     for event in resp.json():
-        event_date = event.get("created_at", "")
-        if not event_date:
-            continue
-        event_dt = datetime.fromisoformat(event_date.replace("Z", "+00:00"))
-        if event_dt < cutoff_date:
-            continue
-
-        actor = event.get("actor", {}).get("login", "")
-        if actor in BOT_AUTHORS:
-            continue
-
-        event_type = event.get("type")
-        payload = event.get("payload", {})
-        repo_name = event.get("repo", {}).get("name", "")
-
-        if event_type == "ReleaseEvent" and payload.get("action") == "published":
-            release = payload.get("release", {})
-            items.append({
-                "org": org_login,
-                "event_type": "release",
-                "repo": repo_name,
-                "title": release.get("name") or release.get("tag_name", ""),
-                "description": (release.get("body") or "")[:300],
-                "url": release.get("html_url", ""),
-                "date": event_date[:10],
-                "details": {
-                    "tag": release.get("tag_name"),
-                    "prerelease": release.get("prerelease", False),
-                }
-            })
-
-        elif event_type == "PushEvent":
-            ref = payload.get("ref", "")
-            # Only default branches
-            if not any(ref.endswith(b) for b in ("/main", "/master", "/develop")):
-                continue
-            commits = payload.get("commits", [])
-            num_commits = payload.get("size", len(commits))
-            # Skip trivial pushes (1 commit that's a merge or CI)
-            if num_commits <= 1 and commits:
-                msg = commits[0].get("message", "")
-                if msg.startswith("Merge ") or msg.startswith("chore:"):
-                    continue
-
-            branch = ref.split("/")[-1]
-            commit_msgs = [c.get("message", "").split("\n")[0][:80] for c in commits[:5]]
-
-            # Build compare URL if we have before/after hashes
-            head = payload.get("head", "")
-            before = payload.get("before", "")
-            if head and before:
-                url = f"https://github.com/{repo_name}/compare/{before[:7]}...{head[:7]}"
-            else:
-                url = f"https://github.com/{repo_name}/commits/{branch}"
-
-            title = f"{num_commits} commit(s) to {branch}" if num_commits > 0 else f"Push to {branch}"
-
-            items.append({
-                "org": org_login,
-                "event_type": "push",
-                "repo": repo_name,
-                "title": title,
-                "description": "; ".join(commit_msgs) if commit_msgs else "",
-                "url": url,
-                "date": event_date[:10],
-                "details": {
-                    "branch": branch,
-                    "commit_count": num_commits,
-                    "distinct_count": payload.get("distinct_size", 0),
-                }
-            })
-
+        item = _extract_event(event, org_login, cutoff_date)
+        if item:
+            items.append(item)
     return items
 
 
 def collect_repo_events(repo_full_name, entity_login, cutoff_date):
     """Fetch events for a specific repo and extract releases and significant pushes."""
-    items = []
     resp = github_get(f"{GITHUB_API}/repos/{repo_full_name}/events", {"per_page": 30})
     if resp.status_code != 200:
-        return items
+        return []
 
+    items = []
     for event in resp.json():
-        event_date = event.get("created_at", "")
-        if not event_date:
-            continue
-        event_dt = datetime.fromisoformat(event_date.replace("Z", "+00:00"))
-        if event_dt < cutoff_date:
-            continue
-
-        actor = event.get("actor", {}).get("login", "")
-        if actor in BOT_AUTHORS:
-            continue
-
-        event_type = event.get("type")
-        payload = event.get("payload", {})
-
-        if event_type == "ReleaseEvent" and payload.get("action") == "published":
-            release = payload.get("release", {})
-            items.append({
-                "org": entity_login,
-                "event_type": "release",
-                "repo": repo_full_name,
-                "title": release.get("name") or release.get("tag_name", ""),
-                "description": (release.get("body") or "")[:300],
-                "url": release.get("html_url", ""),
-                "date": event_date[:10],
-                "details": {
-                    "tag": release.get("tag_name"),
-                    "prerelease": release.get("prerelease", False),
-                }
-            })
-
-        elif event_type == "PushEvent":
-            ref = payload.get("ref", "")
-            if not any(ref.endswith(b) for b in ("/main", "/master", "/develop")):
-                continue
-            commits = payload.get("commits", [])
-            num_commits = payload.get("size", len(commits))
-            if num_commits <= 1 and commits:
-                msg = commits[0].get("message", "")
-                if msg.startswith("Merge ") or msg.startswith("chore:"):
-                    continue
-
-            branch = ref.split("/")[-1]
-            commit_msgs = [c.get("message", "").split("\n")[0][:80] for c in commits[:5]]
-
-            head = payload.get("head", "")
-            before = payload.get("before", "")
-            if head and before:
-                url = f"https://github.com/{repo_full_name}/compare/{before[:7]}...{head[:7]}"
-            else:
-                url = f"https://github.com/{repo_full_name}/commits/{branch}"
-
-            title = f"{num_commits} commit(s) to {branch}" if num_commits > 0 else f"Push to {branch}"
-
-            items.append({
-                "org": entity_login,
-                "event_type": "push",
-                "repo": repo_full_name,
-                "title": title,
-                "description": "; ".join(commit_msgs) if commit_msgs else "",
-                "url": url,
-                "date": event_date[:10],
-                "details": {
-                    "branch": branch,
-                    "commit_count": num_commits,
-                    "distinct_count": payload.get("distinct_size", 0),
-                }
-            })
-
+        item = _extract_event(event, entity_login, cutoff_date, repo_override=repo_full_name)
+        if item:
+            items.append(item)
     return items
 
 

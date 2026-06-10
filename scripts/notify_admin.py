@@ -15,6 +15,7 @@ Requires environment variables:
 import sys
 import os
 import argparse
+import html
 import requests
 from datetime import datetime, timezone
 
@@ -37,7 +38,7 @@ def main():
     icon = "✓" if args.status == "success" else "✗"
     subject = f"{icon} Newsletter pipeline {args.status} — {now}"
 
-    body = f"<pre style='font-family:monospace'>{args.message}</pre>"
+    body = f"<pre style='font-family:monospace'>{html.escape(args.message)}</pre>"
 
     resp = requests.post(
         "https://api.resend.com/emails",

@@ -197,19 +197,6 @@ def get_existing_hashes():
     return hashes
 
 
-def parse_rss_date(date_string):
-    """Parse RSS date to YYYY-MM-DD format."""
-    if not date_string:
-        return None
-
-    try:
-        # feedparser returns a struct_time in entry.published_parsed
-        # We'll use that if available
-        return None  # Will be set from entry.published_parsed
-    except Exception:
-        return None
-
-
 def fetch_rss_feed(source, etag_cache, cutoff_date):
     """Fetch and parse RSS feed with ETag caching."""
     url = source["rss_url"]

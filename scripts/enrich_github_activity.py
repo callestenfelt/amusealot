@@ -41,6 +41,13 @@ def github_get(url, params=None):
     global api_calls
     api_calls += 1
     resp = requests.get(url, params=params, headers=GITHUB_HEADERS, timeout=30)
+    if resp.status_code == 401:
+        # Bad/expired token — abort loudly, matching collect_github_activity.py
+        # (a silent 401 here would just produce un-enriched events).
+        raise SystemExit(
+            f"GitHub API returned 401 (Bad credentials) for {url}. "
+            "Check GITHUB_TOKEN — likely expired, revoked, or missing scopes."
+        )
     if resp.status_code == 403:
         reset = int(resp.headers.get("X-RateLimit-Reset", 0))
         wait = max(reset - time.time(), 0) + 2

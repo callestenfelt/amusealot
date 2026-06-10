@@ -16,6 +16,7 @@ import sys
 import io
 import os
 import glob
+import re
 import time
 import argparse
 from datetime import datetime, timezone
@@ -41,17 +42,26 @@ SEND_DELAY = 1  # seconds between sends
 
 
 def find_latest_newsletter(script_dir):
-    """Find the most recent email newsletter, falling back to full version."""
+    """Find the most recent dated email newsletter, falling back to full version."""
     editions = os.path.join(script_dir, "editions")
+
+    def _dated(paths):
+        # Only dated editions (YYYY-MM-DD) so a stray *_test.html can't win the
+        # reverse lexical sort ("test" sorts after digits).
+        return sorted(
+            (p for p in paths if re.search(r"\d{4}-\d{2}-\d{2}", os.path.basename(p))),
+            reverse=True,
+        )
+
     # Prefer email (truncated) version
-    email_files = sorted(glob.glob(os.path.join(editions, "newsletter_email_*.html")), reverse=True)
+    email_files = _dated(glob.glob(os.path.join(editions, "newsletter_email_*.html")))
     if email_files:
         return email_files[0]
     # Fallback to full version (old editions before email split)
-    full_files = sorted(glob.glob(os.path.join(editions, "newsletter_*.html")), reverse=True)
+    full_files = _dated(glob.glob(os.path.join(editions, "newsletter_*.html")))
     if full_files:
         return full_files[0]
-    print("ERROR: No newsletter_*.html files found")
+    print("ERROR: No dated newsletter_*.html files found")
     sys.exit(1)
 
 
@@ -137,7 +147,6 @@ def main():
         base_html = f.read()
 
     # Build subject line with date extracted from filename (e.g. newsletter_email_2026-02-17.html)
-    import re
     date_match = re.search(r"(\d{4}-\d{2}-\d{2})", os.path.basename(input_file))
     if date_match:
         from datetime import date
