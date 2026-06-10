@@ -70,14 +70,11 @@ Details in `CLAUDE.md` → Newsletter Template Design.
 A multi-agent code review (every high-impact finding verified against source)
 surfaced a batch of bugs and improvements. Fixes are done on the
 `fix/review-hardening` branch — commits `0df9de7` (P0+P1) and `9477406` (P2).
-Not yet pushed, merged, or deployed.
+**Merged to master and deployed to the VPS on 2026-06-10** (master at `9c1c51d`,
+pushed to origin).
 
 ## Open
 
-- [ ] **Push → merge (ff-only) → deploy** `fix/review-hardening`. The diff spans
-      both the web app (`subscriber_app.py` → restart
-      `musemaniac-subscriber.service`) and the cron pipeline (`run_newsletter.sh`
-      + scripts → `/opt/musemaniac/scripts/`).
 - [ ] **Watch the next `0 7 * * 3` send** to exercise the new degraded-scoring
       guard: a Groq outage now aborts the run (non-zero exit → admin failure
       email) instead of silently shipping a near-empty edition.
@@ -100,3 +97,7 @@ Not yet pushed, merged, or deployed.
 - [x] Verified: all changed files byte-compile; autoescape proven end-to-end (a
       `<canvas>` title escapes to `&lt;canvas&gt;`); the `_extract_event` refactor
       is unit-checked; `bash -n run_newsletter.sh` clean.
+- [x] Pushed `fix/review-hardening`, ff-merged to master, pushed master to origin
+      (`9c1c51d`), and deployed all 11 changed scripts to
+      `/opt/musemaniac/scripts/` — restarted `musemaniac-subscriber.service`
+      (active; live form still shows honeypot + timing token + Turnstile).
