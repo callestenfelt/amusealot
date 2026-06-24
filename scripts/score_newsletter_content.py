@@ -45,7 +45,12 @@ Scoring criteria:
 Tier definitions:
 - Tier 1: Clear museum-tech value, reusable, newsworthy
 - Tier 2: Moderately interesting, worth a mention
-- Tier 3: Routine (automated updates, CI config, data dumps, trivial patches)"""
+- Tier 3: Routine (automated updates, CI config, data dumps, trivial patches)
+
+WRITING STYLE (for any summary or writeup you produce):
+- Describe concretely WHAT the project, release, or activity is and does, in terms of features and changes.
+- The entire newsletter audience is already museum/heritage tech professionals, so framing about relevance is redundant. NEVER add a sentence about who could use it or why it matters — do not write "this is relevant to museum professionals", "valuable for the museum community", "useful for those working in digital humanities", "could be useful for institutions looking to...", or "who can benefit". Stop once you have described the substance.
+- Example — BAD: "The repository fixed three UI bugs in the dashboard. This update improves the user experience for library patrons and staff." GOOD: "The repository fixed three UI bugs in the Wikimedia metrics dashboard." (Drop the trailing relevance sentence entirely.)"""
 
 
 def groq_request(messages, json_mode=True):
@@ -283,7 +288,7 @@ def generate_spotlight(event):
     if event.get("enrichment"):
         full_summary["enrichment"] = event["enrichment"]
 
-    user_prompt = f"""Write a 3-4 sentence spotlight for a museum tech newsletter about this GitHub activity. Explain what the project does, why it matters for the museum community, and who can benefit. Present tense, active voice, no markdown. Respond with JSON: {{"writeup": "..."}}.
+    user_prompt = f"""Write a 3-4 sentence spotlight for a museum tech newsletter about this GitHub activity. Explain what the project does and what's notable about this activity — concretely, in terms of features and capabilities. Do not add framing about relevance to museum professionals; the audience already works in the sector. Present tense, active voice, no markdown. Respond with JSON: {{"writeup": "..."}}.
 
 {json.dumps(full_summary, indent=2, ensure_ascii=False)}"""
 

@@ -173,15 +173,16 @@ Return JSON object with "articles" array, each with: {{"index": N, "relevance": 
 
 def generate_english_summary(article):
     """Generate English title and summary for a non-English tier 1 article."""
-    prompt = f"""This article is in {article['language']} and is highly relevant to museum technology professionals.
-Translate the title to English and write a concise English summary (2-3 sentences) focusing on the technical aspects.
+    prompt = f"""This article is in {article['language']}. Translate the title to English and write a concise English summary (2-3 sentences) focusing on the technical substance — what the article actually reports.
+
+Do not add framing about relevance to museum professionals or "why this matters"; the newsletter audience already works in the sector, so that wording is redundant. Just describe what the article is about.
 
 Title: {article['title']}
 Summary: {article.get('summary', 'No summary available')}
 
 Return JSON with exactly two fields:
 - "title": a concise English translation of the article title
-- "summary": a clear, informative English summary explaining what makes this article valuable"""
+- "summary": a clear, informative English summary of what the article reports"""
 
     messages = [
         {"role": "system", "content": "You are a technical translator for the museum technology sector."},
