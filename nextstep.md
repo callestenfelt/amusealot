@@ -101,3 +101,38 @@ pushed to origin).
       (`9c1c51d`), and deployed all 11 changed scripts to
       `/opt/musemaniac/scripts/` — restarted `musemaniac-subscriber.service`
       (active; live form still shows honeypot + timing token + Turnstile).
+
+---
+
+# Groq summary style: drop redundant audience-relevance framing (June 2026)
+
+The Groq/Llama 3.3 summaries and spotlight kept tacking on sentences like
+"this is highly relevant to museum professionals working with digital
+humanities" — pure redundancy, since the whole newsletter is already for that
+audience. Root cause: the prompts literally asked the model to explain "why it
+matters for the museum community" / "what makes this article valuable", so it
+obliged. **Fix:** removed those asks and added an explicit anti-editorializing
+rule (with a negative example) to the prompts. Done on `fix/groq-summary-style`,
+commit `b702f40`. **Merged to master, pushed to origin, and deployed to the VPS
+on 2026-06-24.** Takes effect on the next `0 7 * * 3` send.
+
+## Open
+
+- [ ] **Eyeball the next Wednesday send** to confirm the live copy reads clean.
+      Residual editorializing is ~15% of summaries and mild ("improves
+      functionality"-style tails) — acceptable, but worth a glance.
+
+## Done
+
+- [x] `score_newsletter_content.py`: added a WRITING STYLE rule (with a BAD/GOOD
+      example) to the shared system prompt; reworded the spotlight prompt to drop
+      "why it matters / who can benefit".
+- [x] `score_news.py`: reworded `generate_english_summary` to describe what the
+      article reports instead of "what makes it valuable".
+- [x] Verified by dry-run against the latest local data: the egregious pattern is
+      gone (spotlight + most summaries purely descriptive); the leak rate fell
+      from ~25% to ~15%, with the remainder mild rather than audience-relevance
+      framing.
+- [x] ff-merged to master (`b702f40`), pushed to origin, scp'd both scripts to
+      `/opt/musemaniac/scripts/` (verified: new prompt text present, both
+      `py_compile` clean).
