@@ -18,6 +18,7 @@ import os
 import json
 import time
 import argparse
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import requests
 
@@ -45,7 +46,18 @@ ARTICLES_FIELDS = {
     "relevance_score": "field_7281",
     "tier": "field_7282",
     "ai_summary": "field_7283",
+    # Read fields (same table, used when recovering unscored rows)
+    "title": "field_7271",
+    "url": "field_7274",
+    "source_name": "field_7275",
+    "published_date": "field_7276",
+    "collected_date": "field_7277",
+    "summary": "field_7278",
+    "language": "field_7279",
 }
+
+# Unscored rows older than this are left alone (stale; next edition won't use them)
+RECOVERY_WINDOW_DAYS = 14
 
 SCRIPT_DIR = Path(__file__).parent
 
@@ -200,6 +212,75 @@ Return JSON with exactly two fields:
     return result if result else None
 
 
+def _select_value(field):
+    """Baserow single-selects come back as {'value': ...}; plain text as str."""
+    if isinstance(field, dict):
+        return field.get("value", "")
+    return field or ""
+
+
+def fetch_unscored_articles():
+    """Fetch recent Baserow rows with an empty tier field.
+
+    Articles land in Baserow during collection but only get a tier during
+    scoring, so a scoring failure (e.g. a Groq outage) followed by a rerun
+    strands them: collect_news dedups against Baserow and never re-emits them.
+    Merging them back in here makes a failed-then-rerun cycle self-heal.
+    """
+    if not all([BASEROW_URL, BASEROW_TOKEN, NEWS_ARTICLES_TABLE_ID]):
+        print("  Baserow env not configured, skipping unscored-row recovery")
+        return []
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=RECOVERY_WINDOW_DAYS)
+    articles = []
+    page = 1
+
+    while True:
+        try:
+            response = requests.get(
+                f"{BASEROW_URL}/api/database/rows/table/{NEWS_ARTICLES_TABLE_ID}/",
+                params={"size": 200, "page": page},
+                headers={"Authorization": f"Token {BASEROW_TOKEN}"},
+                timeout=30
+            )
+            response.raise_for_status()
+            data = response.json()
+        except Exception as e:
+            print(f"  Warning: Could not fetch unscored articles from Baserow: {e}")
+            return articles
+
+        for row in data["results"]:
+            if _select_value(row.get(ARTICLES_FIELDS["tier"])):
+                continue  # already scored
+
+            collected_raw = row.get(ARTICLES_FIELDS["collected_date"]) or ""
+            if collected_raw:
+                try:
+                    collected = datetime.fromisoformat(collected_raw.replace("Z", "+00:00"))
+                    if collected.tzinfo is None:
+                        collected = collected.replace(tzinfo=timezone.utc)
+                    if collected < cutoff:
+                        continue  # too old to matter for the next edition
+                except ValueError:
+                    pass  # unparseable date: keep the row rather than strand it
+
+            articles.append({
+                "id": row["id"],
+                "title": row.get(ARTICLES_FIELDS["title"], ""),
+                "url": row.get(ARTICLES_FIELDS["url"], ""),
+                "source_name": _select_value(row.get(ARTICLES_FIELDS["source_name"])),
+                "published_date": row.get(ARTICLES_FIELDS["published_date"], ""),
+                "summary": row.get(ARTICLES_FIELDS["summary"], ""),
+                "language": _select_value(row.get(ARTICLES_FIELDS["language"])) or "en",
+            })
+
+        if not data.get("next"):
+            break
+        page += 1
+
+    return articles
+
+
 def update_article_scores_in_baserow(article_id, score_data, apply_mode):
     """Update article scores in Baserow."""
     if not apply_mode:
@@ -237,6 +318,8 @@ def main():
     parser.add_argument("--input", default="news_articles.json", help="Input JSON file")
     parser.add_argument("--output", default="news_articles_scored.json", help="Output JSON file")
     parser.add_argument("--apply", action="store_true", help="Write scores to Baserow (default is dry-run)")
+    parser.add_argument("--baserow-only", action="store_true",
+                        help="Skip the input file; score only unscored Baserow rows (recovery mode)")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -247,20 +330,34 @@ def main():
         print("\n⚠️  DRY RUN MODE - Use --apply to write to Baserow\n")
 
     # Load articles
-    input_path = SCRIPT_DIR / args.input
-    if not input_path.exists():
-        print(f"ERROR: Input file not found: {input_path}")
-        print("Run collect_news.py first to generate articles")
-        sys.exit(1)
+    articles = []
+    if not args.baserow_only:
+        input_path = SCRIPT_DIR / args.input
+        if not input_path.exists():
+            print(f"ERROR: Input file not found: {input_path}")
+            print("Run collect_news.py first to generate articles")
+            sys.exit(1)
 
-    with open(input_path, encoding='utf-8') as f:
-        articles = json.load(f)
+        with open(input_path, encoding='utf-8') as f:
+            articles = json.load(f)
+
+        print(f"Loaded {len(articles)} articles from {args.input}")
+
+    # Recover unscored rows stranded in Baserow by a previous failed run
+    print("Checking Baserow for recent unscored articles...")
+    seen_ids = {a["id"] for a in articles if "id" in a}
+    seen_urls = {a["url"] for a in articles if a.get("url")}
+    recovered = [a for a in fetch_unscored_articles()
+                 if a["id"] not in seen_ids and a["url"] not in seen_urls]
+    if recovered:
+        print(f"  Recovered {len(recovered)} unscored articles from Baserow")
+        articles.extend(recovered)
 
     if not articles:
         print("No articles to score")
         return
 
-    print(f"Loaded {len(articles)} articles")
+    print(f"Scoring {len(articles)} articles total")
 
     # Score articles in batches
     scored_articles = []
