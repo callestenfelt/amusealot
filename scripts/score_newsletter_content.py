@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Score and categorize enriched GitHub activity for the museum tech newsletter.
-Sends events to Groq/Llama 3.3 for relevance scoring, summarization, and
+Sends events to Groq/GPT-OSS 120B for relevance scoring, summarization, and
 newsletter section assignment. Also computes stats and most-active repos.
 
 Usage:
@@ -22,7 +22,7 @@ import requests
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "openai/gpt-oss-120b"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 DELAY_BETWEEN_CALLS = 3  # seconds
@@ -64,7 +64,9 @@ def groq_request(messages, json_mode=True):
         "model": GROQ_MODEL,
         "messages": messages,
         "temperature": 0.3,
-        "max_tokens": 2000,
+        # gpt-oss spends completion tokens on reasoning before the answer
+        "max_tokens": 4000,
+        "reasoning_effort": "low",
     }
     if json_mode:
         body["response_format"] = {"type": "json_object"}

@@ -11,7 +11,7 @@ Every Wednesday, the pipeline runs automatically:
 1. **Collect GitHub activity** — scans public events from 700+ sources (museums, archives, heritage orgs, individuals) and tracked museum-tech tools
 2. **Enrich** — adds repository metadata (language, stars, descriptions)
 3. **Collect news** — fetches RSS feeds from cultural heritage institutions across Europe
-4. **Score** — AI (Llama 3.3 via Groq) scores each GitHub event and news article for relevance to museum technology professionals
+4. **Score** — AI (GPT-OSS 120B via Groq) scores each GitHub event and news article for relevance to museum technology professionals
 5. **Generate** — renders an email-ready HTML newsletter
 6. **Send** — delivers to subscribers via Resend
 7. **Remind** — sends a reminder to non-openers a few days later
@@ -59,7 +59,7 @@ musemaniac/
 - **News sources:** 15+ RSS feeds from European museums and heritage institutions
 - **Technologies tracked:** Museum-sector tools (IIIF, Omeka, CollectiveAccess, etc.) via Tool Watch
 - **Email delivery:** Resend
-- **AI:** Groq / Llama 3.3 (free tier) for scoring and summarization
+- **AI:** Groq / GPT-OSS 120B (free tier) for scoring and summarization
 - **Web:** Flask app with Caddy reverse proxy (auto-HTTPS)
 
 ## Website

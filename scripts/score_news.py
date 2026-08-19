@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Score news articles for relevance using Groq/Llama 3.3.
+Score news articles for relevance using Groq/GPT-OSS 120B.
 Assigns tier (1=featured, 2=mentioned, 3=skip) based on relevance to museum tech audience.
 Generates English summaries for tier 1 non-English articles.
 
@@ -33,7 +33,7 @@ if not GROQ_API_KEY:
     print("ERROR: Missing GROQ_API_KEY environment variable")
     sys.exit(1)
 
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "openai/gpt-oss-120b"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 DELAY_BETWEEN_CALLS = 3  # seconds
@@ -97,7 +97,9 @@ def groq_request(messages, json_mode=True):
         "model": GROQ_MODEL,
         "messages": messages,
         "temperature": 0.3,
-        "max_tokens": 2000,
+        # gpt-oss spends completion tokens on reasoning before the answer
+        "max_tokens": 4000,
+        "reasoning_effort": "low",
     }
     if json_mode:
         body["response_format"] = {"type": "json_object"}

@@ -12,7 +12,7 @@ Museums publish important technical and digital heritage announcements through i
 2. **Deduplication**: Content hashing (SHA256 of title + URL + date) prevents duplicate collection
 3. **Caching**: ETag headers minimize bandwidth and respect 304 Not Modified responses
 4. **Language detection**: Automatically detects article language via langdetect
-5. **Scoring**: `score_news.py` uses Groq/Llama 3.3 to score articles for relevance (1-10 → tier 1/2/3)
+5. **Scoring**: `score_news.py` uses Groq/GPT-OSS 120B to score articles for relevance (1-10 → tier 1/2/3)
 6. **Translation**: Non-English tier 1 articles get AI-generated English summaries
 7. **Integration**: Newsletter includes top 4 articles (max 1 per source) with links to archive for more
 
@@ -253,7 +253,7 @@ except LangDetectException:
 ```
 E:/_dev/musemaniac/scripts/
 ├── collect_news.py              # RSS collection with ETag caching
-├── score_news.py                # Groq/Llama AI scoring
+├── score_news.py                # Groq/GPT-OSS AI scoring
 ├── news_articles.json           # Intermediate: collected articles
 ├── news_articles_scored.json    # Intermediate: scored articles
 ├── news_etags.json              # ETag cache for bandwidth optimization
@@ -271,7 +271,7 @@ Baserow: News Sources (RSS URLs, active=true)
 collect_news.py → news_articles.json
     ↓ (uses news_etags.json for caching)
 score_news.py → news_articles_scored.json
-    ↓ (Groq/Llama 3.3 scoring + translation)
+    ↓ (Groq/GPT-OSS 120B scoring + translation)
     ├─→ Baserow: News Articles (storage + metrics)
     └─→ generate_newsletter.py
             ↓ (merges with GitHub scored content)
