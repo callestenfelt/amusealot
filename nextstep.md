@@ -184,3 +184,48 @@ rerun manually the same day.
       `/opt/musemaniac/scripts/`, and reran the pipeline manually.
 - [x] Confirmed the Wednesday cron needs no change — the model name lived only
       inside the two deployed scripts.
+
+---
+
+# News pipeline: Baserow registry + failed-run recovery (August 2026)
+
+Post-mortem of the 2026-08-19 rerun found the news section mostly missing:
+the failed morning run had collected 46 articles and persisted feed ETags,
+so the rerun's conditional GETs skipped unchanged feeds and overwrote
+`news_articles.json` with only 11 articles. Root cause was structural: the
+pipeline ran `collect_news.py`/`score_news.py` **without `--apply`** (always
+had), so articles/scores never reached Baserow — which also silently disabled
+content-hash dedup every week (editions could repeat items from the previous
+edition's 14-day window; only the ETag cache limited it). **Fix** (branch
+`fix/news-baserow-pipeline`): pipeline now forwards `--apply` to collect+score;
+`collect_news` captures the Baserow row id on insert (and saves JSON after the
+insert) so `score_news` can write scores back; `score_news` recovers recent
+tier-empty Baserow rows into its batch (plus a `--baserow-only` recovery flag),
+so a failed-then-rerun cycle self-heals. The 46 missed articles need no manual
+recovery: the 14-day window re-collects them next Wednesday and they become
+candidates for the 2026-08-26 edition.
+
+## Open
+
+- [ ] **Watch the 2026-08-26 send closely** — first run exercising the new
+      `--apply` paths (Baserow inserts + score write-backs + dedup). Expect a
+      one-time catch-up edition: the missed Aug 12–19 articles are included,
+      and 1 article mentioned on Aug 19 may repeat (it isn't in Baserow yet).
+- [ ] **After 2026-08-26, verify in Baserow** that new article rows have
+      relevance/tier/ai_summary set (i.e. score write-backs work — the row-id
+      capture is new code first exercised in production that day).
+
+## Done
+
+- [x] Verified the failure chain in logs: morning run "Saved 46 articles" +
+      "DRY RUN MODE" on the collect step; rerun "Saved 11 articles" (ETag 304s).
+- [x] `score_news.py`: fetch recent tier-empty Baserow rows and merge into the
+      scoring batch; `--baserow-only` flag; deployed to VPS and live-tested
+      (dry run found/scored the 1 genuinely unscored row).
+- [x] `run_newsletter.sh`: forward `--apply` to `collect_news.py` and
+      `score_news.py` (user-approved production Baserow writes).
+- [x] `collect_news.py`: stamp `article["id"]` from the insert response; save
+      Baserow before the JSON so ids reach `score_news` — without this every
+      row stays tier-empty and recovery re-includes all articles weekly.
+- [x] Decided against a manual recovery run now: inserting the missed articles
+      into Baserow today would dedup them **out** of the 2026-08-26 edition.
