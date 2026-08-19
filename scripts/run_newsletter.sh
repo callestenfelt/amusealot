@@ -46,8 +46,11 @@ $tail" || true
 trap _on_failure ERR
 
 # Only --apply is a meaningful pass-through. Compute it once and forward only it
-# to the send scripts: send_reminders.py understands only --apply, so forwarding
-# "$@" verbatim would make it error on any other arg (e.g. --input/--test).
+# to the scripts that take it: send_reminders.py understands only --apply, so
+# forwarding "$@" verbatim would make it error on any other arg (e.g. --input/--test).
+# collect_news/score_news also get it: without --apply they never write articles
+# or scores to Baserow, which disables cross-edition dedup and leaves nothing
+# for score_news's unscored-row recovery to heal after a failed run.
 APPLY_FLAG=""
 if [[ "${1:-}" == "--apply" ]]; then
     APPLY_FLAG="--apply"
@@ -71,12 +74,12 @@ python3 "$SCRIPT_DIR/enrich_github_activity.py"
 # Step 3: Collect news articles
 echo ""
 echo "[3/8] Collecting news articles..."
-python3 "$SCRIPT_DIR/collect_news.py"
+python3 "$SCRIPT_DIR/collect_news.py" $APPLY_FLAG
 
 # Step 4: Score news articles
 echo ""
 echo "[4/8] Scoring news articles..."
-python3 "$SCRIPT_DIR/score_news.py"
+python3 "$SCRIPT_DIR/score_news.py" $APPLY_FLAG
 
 # Step 5: Score GitHub content with LLM
 echo ""

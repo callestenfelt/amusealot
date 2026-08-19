@@ -363,6 +363,8 @@ def save_articles_to_baserow(articles, apply_mode):
                 timeout=30
             )
             response.raise_for_status()
+            # Keep the row id so score_news can write scores back to this row
+            article["id"] = response.json()["id"]
             saved += 1
 
         except Exception as e:
@@ -434,15 +436,16 @@ def main():
     # Save ETag cache
     save_etag_cache(new_etag_cache)
 
+    # Save to Baserow first: it stamps each article with its Baserow row id,
+    # which must end up in the JSON so score_news can write scores back
+    if all_articles:
+        save_articles_to_baserow(all_articles, args.apply)
+
     # Save intermediate JSON
     output_path = SCRIPT_DIR / args.output
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(all_articles, f, indent=2, ensure_ascii=False)
     print(f"\n✓ Saved {len(all_articles)} articles to {output_path}")
-
-    # Save to Baserow
-    if all_articles:
-        save_articles_to_baserow(all_articles, args.apply)
 
     # Summary
     print("\n" + "=" * 60)
