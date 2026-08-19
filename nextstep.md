@@ -136,3 +136,51 @@ on 2026-06-24.** Takes effect on the next `0 7 * * 3` send.
 - [x] ff-merged to master (`b702f40`), pushed to origin, scp'd both scripts to
       `/opt/musemaniac/scripts/` (verified: new prompt text present, both
       `py_compile` clean).
+
+---
+
+# Groq model migration: llama-3.3 → gpt-oss-120b (August 2026)
+
+The 2026-08-19 pipeline run failed (exit 1): every scoring batch got a 404 from
+Groq and all 46 articles landed in tier 3, tripping the degraded-scoring guard.
+Root cause: Groq decommissioned `llama-3.3-70b-versatile` on 2026-08-16 (they
+had emailed a deprecation notice). **Fix:** switched both scorers to the
+recommended replacement `openai/gpt-oss-120b`; since gpt-oss is a reasoning
+model that spends completion tokens on reasoning before the answer, raised
+`max_tokens` 2000 → 4000 and set `reasoning_effort: "low"`. Response parsing
+needed no changes (final answer still arrives in `message.content`; JSON mode
+supported). Done on `fix/groq-model-migration`, commit `ba53435`. **Merged to
+master, pushed to origin, and deployed to the VPS on 2026-08-19**; pipeline
+rerun manually the same day.
+
+## Open
+
+- [ ] **Confirm the 2026-08-19 manual rerun finished clean** (admin email /
+      `logs/newsletter-2026-08-19.log`): no 404s, tier distribution not 46/46
+      tier 3.
+- [ ] **Watch the next `0 7 * * 3` send and eyeball tier calibration.**
+      gpt-oss-120b may score stricter/looser than Llama 3.3 — if tier 1/2
+      counts look unusual across an edition or two, recalibrate the scoring
+      prompts (quality tweak, not a reliability issue).
+- [ ] **Also re-check the summary style rule** (previous section's open item)
+      under the new model — the anti-editorializing prompt was tuned against
+      Llama 3.3.
+
+## Done
+
+- [x] Diagnosed the 404s: model decommissioned, not an outage — verified
+      against Groq's live model list (`llama-3.3-70b-versatile` gone,
+      `openai/gpt-oss-120b` is a production model, $0.15/M input).
+- [x] `score_news.py` + `score_newsletter_content.py`: `GROQ_MODEL` →
+      `openai/gpt-oss-120b`, `max_tokens` 4000, `reasoning_effort: "low"`.
+- [x] Live-tested the new model with the production key from the VPS: HTTP 200,
+      answer in `message.content`, reasoning in a separate field the scripts
+      never read (27/38 completion tokens were reasoning — hence the bump).
+- [x] Updated stale "Llama 3.3" mentions in `README.md`,
+      `docs/NEWS_ARTICLES.md`, and the public `about.html`; left historical
+      notes in `nextstep.md` / `NEWSLETTER_PLAN.md` as-is.
+- [x] Pushed `fix/groq-model-migration`, ff-merged to master (`ba53435`),
+      pushed master to origin, scp'd both scorers to
+      `/opt/musemaniac/scripts/`, and reran the pipeline manually.
+- [x] Confirmed the Wednesday cron needs no change — the model name lived only
+      inside the two deployed scripts.
