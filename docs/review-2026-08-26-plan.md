@@ -257,9 +257,58 @@ harness (mocked Baserow).
       `hmac.compare_digest` and tolerates null fields (L1); real 404 page
       (`not_found.html`, new) via catch-all + `errorhandler(404)` (L6).
 
+### Phase 4 review follow-ups (automated /code-review of `d61ed94`, high, 2026-08-26)
+
+The review agent stalled before final synthesis; its 8 finder reports and
+verifier verdicts were recovered from the transcript and every finding
+resolved in the follow-up commit:
+
+- [x] **Double-submit delete-404**: when both racers delete the same loser
+      row, the second delete's 404 jumped past the "did my row lose" check
+      and the loser still emailed its dead token. Restructured: listing and
+      each delete tolerate failure individually; the survivor check always
+      runs.
+- [x] **`compare_digest` TypeError**: the str overload raises on non-ASCII
+      (e.g. `?token=påhitt` → 500 instead of 404). Now compares UTF-8
+      bytes.
+- [x] **Feedback timing swallowed legit submissions**: a prefilled-rating
+      one-click submit (<3s) or a quick retry after the 500 re-render was
+      silently dropped with a fake success page. Feedback now uses
+      `min_age=1` and the error re-render carries the *submitted* form_ts
+      (already age-valid) instead of minting a fresh one. Subscribe keeps
+      its 3s gate.
+- [x] **ProxyFix spoofable via direct port access**: the app bound
+      `0.0.0.0:5680`, so anything reaching the port directly could forge
+      X-Forwarded-For (only ufw's default-deny stood in the way). Now binds
+      `127.0.0.1` — Caddy proxies via localhost, nothing else can connect.
+- [x] **URL filter gap**: the http(s) filter only guarded
+      `latest_news.json` while the rendered newsletter still embedded raw
+      RSS URLs. Moved to the real sources: `collect_news.py` refuses
+      non-http(s) URLs at extraction, and `prepare_news_articles` filters
+      as defense-in-depth (covers pre-guard JSON) — which also feeds
+      `latest_news.json`, so the narrow filter was removed. This now
+      genuinely covers newsletter L8.
+- [x] **404 duplication**: catch-all route now `abort(404)`s through the
+      single `errorhandler(404)`.
+- [x] **Bot-check duplication**: shared `bot_check_failed()` helper +
+      shared `_bot_fields.html` Jinja partial included by both forms.
+- [x] **Dupe-check efficiency**: `find_rows_by_email()` uses
+      `filter__email__equal` (exact, server-side) for both the existing-
+      subscriber check and the race cleanup, replacing two full-text
+      `search` queries + client-side re-filters.
+- [x] **Pagination-collision guard**: `baserow_list_rows` strips
+      `page`/`size` from caller filters (a stray `page` would loop
+      forever).
+- [x] **Baserow helper duplication** (subscriber_app vs
+      purge_pending_subscribers): valid cleanup, deferred to Phase 7's
+      config-dedup item — the purge script is deliberately standalone ops
+      tooling; unify when Phase 7 builds the shared config/client module.
+
 Verify: subscribe/confirm/unsubscribe flows end-to-end against a test row;
-rate limit observed per-client after Caddy change; one-click unsubscribe
-POST still works from a real mail client.
+rate limit observed per-client after deploy; one-click unsubscribe
+POST still works from a real mail client. (26-check Flask test-client
+harness passing locally; deploy needs a `musemaniac-subscriber.service`
+restart.)
 
 ## Phase 5 — Email templates & dark mode (branch: `fix/email-dark-mode`)
 

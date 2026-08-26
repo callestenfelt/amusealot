@@ -34,7 +34,7 @@ from datetime import datetime, timezone, date
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 
 import requests
-from flask import Flask, request, render_template, redirect, url_for, Response, send_from_directory
+from flask import Flask, request, render_template, redirect, url_for, Response, send_from_directory, abort
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 try:
@@ -83,7 +83,9 @@ app.config["MAX_CONTENT_LENGTH"] = 256 * 1024  # reject request bodies larger th
 # for every request and the rate limiter throttles all visitors as one client.
 # Trust exactly one X-Forwarded-For hop: Caddy (v2.5+) strips any
 # client-supplied X-Forwarded-For unless trusted_proxies is configured (it
-# isn't), so the single value is always the real client IP — not spoofable.
+# isn't), so the single value is always the real client IP. This holds only
+# while nothing reaches the port except Caddy — hence the app binds 127.0.0.1
+# (see __main__) and the VPS firewall doesn't open 5680.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 
 if HAS_LIMITER:
@@ -111,7 +113,7 @@ def make_form_token():
     return f"{ts}.{sig}"
 
 
-def form_token_ok(token):
+def form_token_ok(token, min_age=MIN_FORM_AGE):
     """Validate a form_ts token: correct signature and a human-plausible age."""
     try:
         ts_str, sig = token.split(".", 1)
@@ -119,9 +121,27 @@ def form_token_ok(token):
         if not hmac.compare_digest(sig, expected):
             return False
         age = time.time() - int(ts_str)
-        return MIN_FORM_AGE <= age <= MAX_FORM_AGE
+        return min_age <= age <= MAX_FORM_AGE
     except (ValueError, AttributeError):
         return False
+
+
+def bot_check_failed(form, label, min_age=MIN_FORM_AGE):
+    """Shared honeypot + timing gate for POSTed forms.
+
+    Returns True when the submission looks bot-like; the caller renders its
+    normal success page so the drop stays silent (bots can't detect the trap).
+    """
+    # 1. Honeypot: a field hidden from humans; only bots fill it.
+    if form.get("company_website", "").strip():
+        print(f"Bot {label} blocked: honeypot filled")
+        return True
+    # 2. Timing: reject submissions that arrive implausibly fast or with a
+    #    missing/forged render token.
+    if not form_token_ok(form.get("form_ts", ""), min_age=min_age):
+        print(f"Bot {label} blocked: timing/token check failed")
+        return True
+    return False
 
 
 def verify_turnstile(token):
@@ -161,7 +181,10 @@ def baserow_list_rows(filters=None):
     while True:
         params = {"size": 200, "page": page, "user_field_names": "true"}
         if filters:
-            params.update(filters)
+            # Never let a filters dict override the pagination keys — a stray
+            # "page" would pin every iteration to the same page and loop forever
+            params.update({k: v for k, v in filters.items()
+                           if k not in ("page", "size")})
         resp = requests.get(url, params=params, headers=BASEROW_HEADERS, timeout=10)
         resp.raise_for_status()
         data = resp.json()
@@ -199,13 +222,21 @@ def baserow_delete_row(row_id):
 def find_row_by_token(field_name, token):
     """Find a row by token field using search (constant-time comparison)."""
     # Baserow search narrows the candidates; compare_digest avoids leaking
-    # token prefixes through comparison timing on the exact match.
+    # token prefixes through comparison timing on the exact match. Compare as
+    # bytes — the str overload raises TypeError on non-ASCII input (a crafted
+    # ?token=påhitt would 500 instead of 404).
     rows = baserow_list_rows({"search": token})
     for row in rows:
         value = row.get(field_name)
-        if isinstance(value, str) and hmac.compare_digest(value, token):
+        if isinstance(value, str) and hmac.compare_digest(
+                value.encode("utf-8"), token.encode("utf-8")):
             return row
     return None
+
+
+def find_rows_by_email(email):
+    """All rows with exactly this email (server-side filter, not full-text search)."""
+    return baserow_list_rows({"filter__email__equal": email})
 
 
 # --- Resend helper ---
@@ -288,9 +319,10 @@ STATIC_FILES = {
 def static_root_files(filename):
     if filename in STATIC_FILES:
         return send_from_directory(STATIC_DIR, filename)
-    # Real 404 page (previously the landing page body with a 404 status — a
-    # soft-404 that confused crawlers and looked like a working page)
-    return render_template("not_found.html"), 404
+    # Real 404 (previously the landing page body with a 404 status — a
+    # soft-404). abort() routes through the errorhandler below, keeping a
+    # single source for how 404s render.
+    abort(404)
 
 
 @app.errorhandler(404)
@@ -369,17 +401,9 @@ def landing():
 subscribe_route = app.route("/subscribe", methods=["POST"])
 
 def _subscribe():
-    # --- Bot protection (subscription-bombing defense) ---
-    # 1. Honeypot: a field hidden from humans; only bots fill it. Filled → drop
-    #    silently with the normal success page so bots can't detect the trap.
-    if request.form.get("company_website", "").strip():
-        print("Bot signup blocked: honeypot filled")
-        return render_template("subscribe_success.html")
-
-    # 2. Timing: reject submissions that arrive implausibly fast or with a
-    #    missing/forged render token. Also silent.
-    if not form_token_ok(request.form.get("form_ts", "")):
-        print("Bot signup blocked: timing/token check failed")
+    # Bot protection (subscription-bombing defense): honeypot + timing,
+    # shared with /feedback — see bot_check_failed
+    if bot_check_failed(request.form, "signup"):
         return render_template("subscribe_success.html")
 
     email = request.form.get("email", "").strip().lower()
@@ -395,8 +419,10 @@ def _subscribe():
         return render_template("subscribe_success.html",
                                error="Verification failed. Please go back and try again."), 400
 
-    # Check for existing subscriber
-    existing = find_row_by_token("email", email)
+    # Check for existing subscriber (exact server-side filter — cheaper than
+    # full-text search and needs no client-side re-check)
+    existing_rows = find_rows_by_email(email)
+    existing = existing_rows[0] if existing_rows else None
 
     if existing:
         status = existing.get("status", {})
@@ -463,20 +489,26 @@ def _subscribe():
     # Double-submit race: two parallel POSTs can both pass the "existing" check
     # above and each create a row. Re-query and keep only the oldest row
     # (lowest id) — both racers run the same deterministic cleanup, so exactly
-    # one row survives. If our row lost, skip sending our (now dead) token;
-    # the winning request sends its own confirmation email.
+    # one row survives. Each delete tolerates failure individually: the other
+    # racer may have deleted that row first (404), and that must not skip the
+    # "did my row lose" check below, or the loser would still send a
+    # confirmation email carrying its just-deleted row's token.
+    dupes = []
     try:
-        dupes = sorted((r for r in baserow_list_rows({"search": email})
-                        if r.get("email") == email), key=lambda r: r["id"])
-        for loser in dupes[1:]:
-            print(f"Deleting duplicate subscriber row {loser['id']} for {email} (double submit)")
-            baserow_delete_row(loser["id"])
-        if dupes and dupes[0]["id"] != created["id"]:
-            return render_template("subscribe_success.html")
+        dupes = sorted(find_rows_by_email(email), key=lambda r: r["id"])
     except Exception as e:
-        # Cleanup is best-effort; a leftover duplicate row is harmless enough
+        # Listing is best-effort; a leftover duplicate row is harmless enough
         # (only one gets confirmed) and can be removed manually.
         print(f"WARNING: duplicate check failed for {email}: {e}")
+    for loser in dupes[1:]:
+        try:
+            baserow_delete_row(loser["id"])
+            print(f"Deleted duplicate subscriber row {loser['id']} for {email} (double submit)")
+        except Exception as e:
+            print(f"WARNING: could not delete duplicate row {loser['id']} for {email}: {e}")
+    if dupes and dupes[0]["id"] != created["id"]:
+        # Our row lost the race — the winning request sends its own email
+        return render_template("subscribe_success.html")
 
     confirm_url = f"{BASE_URL}/confirm?token={confirm_token}"
     try:
@@ -900,12 +932,10 @@ def _feedback_post():
 
     # Bot protection (same honeypot + timing layers as /subscribe — an
     # unprotected POST here fires a Resend notification email per request).
-    # Both checks drop silently with the normal success page.
-    if request.form.get("company_website", "").strip():
-        print("Bot feedback blocked: honeypot filled")
-        return render_template("feedback_success.html")
-    if not form_token_ok(request.form.get("form_ts", "")):
-        print("Bot feedback blocked: timing/token check failed")
+    # min_age=1 (not the subscribe form's 3s): a reader following a rating
+    # link from the newsletter lands with the stars prefilled and can
+    # legitimately submit within a couple of seconds.
+    if bot_check_failed(request.form, "feedback", min_age=1):
         return render_template("feedback_success.html")
 
     edition = request.form.get("edition", "").strip()
@@ -943,8 +973,11 @@ def _feedback_post():
         create_feedback_row(row_data)
     except Exception as e:
         print(f"ERROR creating feedback row: {e}")
+        # Re-render with the SUBMITTED token, not a fresh one: it already
+        # passed the min-age check and stays valid for 2h, so an immediate
+        # retry click isn't silently swallowed as "too fast".
         return render_template("feedback.html", edition=edition, rating=rating,
-                               form_ts=make_form_token(),
+                               form_ts=request.form.get("form_ts", ""),
                                error="Something went wrong. Please try again."), 500
 
     # Send notification email
@@ -988,4 +1021,7 @@ _feedback_post = feedback_post_route(_feedback_post)
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5680, debug=False)
+    # Loopback only: the app is only ever reached through Caddy's reverse
+    # proxy. Binding wider would let anyone who reaches the port directly
+    # forge X-Forwarded-For past ProxyFix and evade the rate limiter.
+    app.run(host="127.0.0.1", port=5680, debug=False)

@@ -1,0 +1,10 @@
+{# Shared bot-protection fields — include inside any POSTing <form>.
+   Server side: bot_check_failed() in subscriber_app.py checks both. #}
+{# Honeypot: hidden from humans (off-screen, aria-hidden, untabbable). Bots fill it; we drop those. #}
+<div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">
+  <label>Leave this field blank
+    <input type="text" name="company_website" tabindex="-1" autocomplete="off">
+  </label>
+</div>
+{# Signed render timestamp for the timing check #}
+<input type="hidden" name="form_ts" value="{{ form_ts }}">

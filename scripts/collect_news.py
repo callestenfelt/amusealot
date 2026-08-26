@@ -276,6 +276,13 @@ def fetch_rss_feed(source, etag_cache, cutoff_date):
             if not title or not url:
                 continue
 
+            # RSS is untrusted input — a javascript:/data: URL would become a
+            # live link in the newsletter email and on the site. Refuse
+            # anything but http(s) at the source.
+            if not url.startswith(("http://", "https://")):
+                print(f"  Skipping entry with non-http(s) URL: {url[:60]!r}")
+                continue
+
             # Get summary/description
             summary = entry.get('summary', '') or entry.get('description', '')
             if summary:

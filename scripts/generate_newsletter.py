@@ -148,6 +148,11 @@ def get_source_stats():
 
 def prepare_news_articles(news_articles, cap=None):
     """Filter and prepare news articles by tier. Max 1 per source. Cap if specified."""
+    # Defense-in-depth: collect_news refuses non-http(s) URLs at the source,
+    # but older JSON files may predate that guard — never let one become an
+    # <a href> in the rendered newsletter or the landing-page JSON.
+    news_articles = [a for a in news_articles
+                     if str(a.get("url", "")).startswith(("http://", "https://"))]
     tier1 = [a for a in news_articles if a.get("score", {}).get("tier") == 1]
     tier2 = [a for a in news_articles if a.get("score", {}).get("tier") == 2]
 
@@ -438,18 +443,12 @@ def main():
     print(f"Email newsletter written to {email_path}")
     print(f"  Size: {email_kb:.1f} KB {'(OK)' if email_kb < 102 else '(WARNING: exceeds Gmail 102KB limit)'}")
 
-    # Write latest_news.json for the landing page (only on a real --apply run)
+    # Write latest_news.json for the landing page (only on a real --apply run).
+    # URL-scheme filtering already happened in prepare_news_articles, which
+    # feeds this list — so everything here is http(s).
     if apply:
         latest_news_path = os.path.join(script_dir, "latest_news.json")
-        # Only http(s) URLs may reach the public landing page (RSS feeds are
-        # untrusted input — a javascript:/data: URL would become a live link)
-        latest_articles = [
-            a for a in email_context["news_articles"]["newsletter"]
-            if str(a.get("url", "")).startswith(("http://", "https://"))
-        ]
-        dropped = len(email_context["news_articles"]["newsletter"]) - len(latest_articles)
-        if dropped:
-            print(f"  Warning: dropped {dropped} article(s) with non-http(s) URLs from latest_news.json")
+        latest_articles = email_context["news_articles"]["newsletter"]
         with open(latest_news_path, "w", encoding="utf-8") as f:
             json.dump({
                 "date": today_iso,
