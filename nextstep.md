@@ -13,11 +13,28 @@ clears.
 
 ## Open
 
-- [ ] Phase 0 — verify prod config (`FORM_SECRET` in `/opt/musemaniac/.env`,
-      gunicorn worker count) and confirm the 2026-08-26 send + Baserow
-      write-backs before touching the same code paths.
-- [ ] Phases 1–7 — see `docs/review-2026-08-26-plan.md` (start with
-      `fix/silent-failures`).
+- [ ] **Run the FORM_SECRET fix on the VPS** (Phase 0 leftover, needs a
+      manual run — assistant was permission-blocked). Exact one-liner is in
+      the plan file's Phase 0 section. Until then every
+      `musemaniac-subscriber.service` restart silently invalidates rendered
+      subscribe forms.
+- [ ] **Review + merge `fix/silent-failures`** (Phase 1, commit `1317844`),
+      then deploy the 5 changed scripts to the VPS via scp.
+- [ ] Phases 2–7 — see `docs/review-2026-08-26-plan.md`. Phase 2
+      (`fix/rerun-safety`) touches the same send scripts as Phase 1, so
+      branch it off master only after Phase 1 is merged.
+
+## Done
+
+- [x] Phase 0 (2026-08-26): send verified clean (59/59, 0 errors) and
+      Baserow score write-backs confirmed on all 52 new rows; `FORM_SECRET`
+      confirmed **missing** (fix pending above); subscriber app runs as a
+      single process (no gunicorn), so no multi-worker signup loss.
+- [x] Phase 1 (2026-08-26): all 7 items done on `fix/silent-failures`
+      (`1317844`) — loud failures for zero-sent/error sends, dry-run no
+      longer saves ETags, partial Baserow fetches abort, LLM score
+      validation/coercion, dropped-batch-item accounting, Groq 5xx retry.
+      Tested; awaiting review/merge/deploy.
 
 ---
 
@@ -228,13 +245,7 @@ candidates for the 2026-08-26 edition.
 
 ## Open
 
-- [ ] **Watch the 2026-08-26 send closely** — first run exercising the new
-      `--apply` paths (Baserow inserts + score write-backs + dedup). Expect a
-      one-time catch-up edition: the missed Aug 12–19 articles are included,
-      and 1 article mentioned on Aug 19 may repeat (it isn't in Baserow yet).
-- [ ] **After 2026-08-26, verify in Baserow** that new article rows have
-      relevance/tier/ai_summary set (i.e. score write-backs work — the row-id
-      capture is new code first exercised in production that day).
+(none — closed 2026-08-26, see Done)
 
 ## Done
 
@@ -250,3 +261,7 @@ candidates for the 2026-08-26 edition.
       row stays tier-empty and recovery re-includes all articles weekly.
 - [x] Decided against a manual recovery run now: inserting the missed articles
       into Baserow today would dedup them **out** of the 2026-08-26 edition.
+- [x] **2026-08-26 send verified** (first run on the new `--apply` paths):
+      59/59 sent, 0 errors, edition registered (Baserow row 44), 52 articles
+      inserted and all 52 got relevance+tier written back (1/5/46 across
+      tiers; ai_summary correctly absent — the only tier-1 was English).
