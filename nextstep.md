@@ -28,12 +28,10 @@ clears.
       `--input newsletter_email_test.html` to calle@callestenfelt.se, and
       view in Outlook desktop on Windows with dark mode on. Also check the
       confirmation/reminder emails on the next real signup if convenient.
-- [ ] **Push Phase 5 to origin** — master is 3 commits ahead
-      (2 code + 1 docs); pending the explicit "push" call.
 - [ ] Phases 6–7 — see `docs/review-2026-08-26-plan.md`. (Phases 0–5 done,
-      merged, and deployed as of 2026-08-26; 0–4 pushed to origin; no
-      Caddy change was needed for Phase 4 — Caddy v2.10 defaults already
-      strip client X-Forwarded-For.)
+      merged, deployed, and pushed to origin as of 2026-08-26; no Caddy
+      change was needed for Phase 4 — Caddy v2.10 defaults already strip
+      client X-Forwarded-For.)
 
 ## Done
 
@@ -96,7 +94,8 @@ clears.
       whats_new link styling with per-token stat gating. **Merged and
       deployed same day (generate_newsletter.py + 3 templates, originals in
       `.bak-20260826-phase5/`, compile + checksums + real-data dry-run
-      verified on VPS). Not yet pushed; Outlook dark-mode eyeball pending.**
+      verified on VPS) and pushed to origin the same day. Outlook dark-mode
+      eyeball still pending.**
 
 ---
 
