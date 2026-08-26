@@ -344,4 +344,4 @@ Low-risk cleanups; fine to trickle in or do as one sweep.
 | 2026-08-26 | 0 (verify) | — | — | FORM_SECRET fix pending manual run |
 | 2026-08-26 | 1 | fix/silent-failures | 1317844 | 2026-08-26 (5 scripts, verified on VPS) |
 | 2026-08-26 | 2 | fix/rerun-safety | 6608d96 + 1c91f6d (merged to master 2026-08-26) | 2026-08-26 (5 scripts; originals in `.bak-20260826-phase2/`; verified compiling on VPS) |
-| 2026-08-26 | 3 | fix/dedup-hash | (this commit) | not yet |
+| 2026-08-26 | 3 | fix/dedup-hash | 11741c9 + a905dfa (merged to master 2026-08-26) | 2026-08-26 (4 files incl. new `json_cache.py`; originals in `.bak-20260826-phase3/`; compile + `--commit-seen` guard verified on VPS) |
