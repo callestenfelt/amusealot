@@ -19,6 +19,12 @@
     [data-ogsc] td, [data-ogsb] td { color: #080229 !important; }
     [data-ogsc] a, [data-ogsb] a { color: #080229 !important; }
     [data-ogsc] span, [data-ogsb] span { color: #080229 !important; }
+    [data-ogsc] p, [data-ogsb] p { color: #080229 !important; }
+    /* The CTA is the one dark-on-light exception: keep it dark with light text,
+       or the generic td/a rules above would render #080229 text on the button's
+       inline #080229 background. */
+    [data-ogsc] .cta td, [data-ogsb] .cta td { background-color: #080229 !important; color: #fbfbfb !important; }
+    [data-ogsc] .cta a, [data-ogsb] .cta a { color: #fbfbfb !important; }
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:#fbfbfb;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#080229;">
@@ -31,10 +37,10 @@
 
         <!-- Header -->
         <tr>
-          <td style="padding:48px 40px 32px 40px;">
-            <span style="font-size:48px;font-weight:bold;color:#080229;letter-spacing:-3px;">AmuseAlot</span>
+          <td style="padding:48px 40px 32px 40px;background-color:#fbfbfb;color:#080229;">
+            <span style="font-size:48px;font-weight:bold;color:#080229;background-color:#fbfbfb;letter-spacing:-3px;">AmuseAlot</span>
             <br>
-            <span style="font-size:13px;color:#080229;letter-spacing:4.5px;text-transform:uppercase;">Museum Tech Newsletter</span>
+            <span style="font-size:13px;color:#080229;background-color:#fbfbfb;letter-spacing:4.5px;text-transform:uppercase;">Museum Tech Newsletter</span>
           </td>
         </tr>
 
@@ -47,7 +53,7 @@
 
         <!-- Body -->
         <tr>
-          <td style="padding:32px 40px;">
+          <td style="padding:32px 40px;background-color:#fbfbfb;color:#080229;">
             <p style="font-size:16px;line-height:1.7;margin:0 0 20px 0;">
               We noticed you signed up for AmuseAlot but haven't confirmed
               your email yet &mdash; just a friendly reminder.
@@ -58,17 +64,17 @@
             </p>
 
             <!-- CTA Button -->
-            <table cellpadding="0" cellspacing="0" border="0" role="presentation">
+            <table class="cta" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
-                <td style="background-color:#080229;padding:14px 32px;">
-                  <a href="%%CONFIRM_URL%%" style="font-size:16px;font-weight:bold;color:#fbfbfb;text-decoration:none;letter-spacing:0.5px;">
+                <td style="background-color:#080229;color:#fbfbfb;padding:14px 32px;">
+                  <a href="%%CONFIRM_URL%%" style="font-size:16px;font-weight:bold;color:#fbfbfb;background-color:#080229;text-decoration:none;letter-spacing:0.5px;">
                     Confirm Subscription
                   </a>
                 </td>
               </tr>
             </table>
 
-            <p style="font-size:13px;color:#080229;line-height:1.6;margin:32px 0 0 0;">
+            <p style="font-size:13px;color:#080229;background-color:#fbfbfb;line-height:1.6;margin:32px 0 0 0;">
               Not interested? No worries &mdash; just ignore this email and
               we won't contact you again.
             </p>
@@ -84,10 +90,10 @@
 
         <!-- Footer -->
         <tr>
-          <td style="padding:24px 40px 48px 40px;">
-            <span style="font-size:12px;color:#080229;">
+          <td style="padding:24px 40px 48px 40px;background-color:#fbfbfb;color:#080229;">
+            <span style="font-size:12px;color:#080229;background-color:#fbfbfb;">
               This is an automated message from
-              <a href="https://amusealot.com" style="color:#080229;">amusealot.com</a>
+              <a href="https://amusealot.com" style="color:#080229;background-color:#fbfbfb;">amusealot.com</a>
             </span>
           </td>
         </tr>

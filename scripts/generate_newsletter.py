@@ -19,6 +19,7 @@ No environment variables needed (except for Baserow registration in non-test mod
 import sys
 import io
 import os
+import re
 import json
 import argparse
 from datetime import date, datetime, timezone
@@ -383,20 +384,25 @@ def main():
     # Build context — full/archive version (no cap)
     context = build_context(data, news_data=news_articles)
 
-    # Substitute source stats into whats_new lines (supports {{ total_sources }} etc.)
+    # Substitute source stats into whats_new lines (supports {{ total_sources }} and
+    # {{ total_countries }}). Lines that need stats are dropped when stats are
+    # unavailable — better no line than "0 sources". Any bare <a href="..."> then
+    # gets the email link style inlined, since email clients ignore <style> blocks.
     stats = context.get("source_stats", {})
     link_style = "color:#080229;text-decoration:underline;text-underline-offset:2px;"
-    sources_link = f'<a href="https://amusealot.com/sources" style="{link_style}">{stats.get("total_sources", "")} sources</a>'
-    whats_new = [
-        line
-        .replace(
-            f'<a href="https://amusealot.com/sources">{{{{ total_sources }}}} sources</a>',
-            sources_link
-        )
-        .replace("{{ total_sources }}", str(stats.get("total_sources", "")))
-        .replace("{{ total_countries }}", str(stats.get("total_countries", "")))
-        for line in whats_new
-    ]
+    stats_available = stats.get("total_sources", 0) > 0
+    processed = []
+    for line in whats_new:
+        if "{{ total_sources }}" in line or "{{ total_countries }}" in line:
+            if not stats_available:
+                print(f"  Skipping whats_new line (source stats unavailable): {line[:60]}")
+                continue
+            line = (line
+                    .replace("{{ total_sources }}", str(stats.get("total_sources", "")))
+                    .replace("{{ total_countries }}", str(stats.get("total_countries", ""))))
+        line = re.sub(r'<a\s+href="([^"]*)"\s*>', rf'<a href="\1" style="{link_style}">', line)
+        processed.append(line)
+    whats_new = processed
     context["whats_new"] = whats_new
 
     print(f"\nSections:")
@@ -427,9 +433,31 @@ def main():
     print(f"  Size: {full_kb:.1f} KB")
 
     # --- Truncated version (email) ---
-    email_context = build_context(data, section_cap=4, news_data=news_articles)
-    email_context["whats_new"] = whats_new
-    email_html = render_newsletter(email_context)
+    # Gmail clips messages over ~102KB — and it clips from the bottom, so the
+    # footer/unsubscribe link is what disappears. Auto-tighten the per-section
+    # cap until the email fits; if even the tightest cap is still over, abort
+    # loudly (non-zero exit -> ERR trap -> admin failure email) instead of
+    # sending a clipped edition. Nothing is registered/sent past this point
+    # on failure: latest_news.json and Baserow registration come after.
+    GMAIL_CLIP_KB = 102
+    email_context = None
+    email_html = ""
+    email_kb = 0.0
+    for cap in (4, 3, 2, 1):
+        email_context = build_context(data, section_cap=cap, news_data=news_articles)
+        email_context["whats_new"] = whats_new
+        email_html = render_newsletter(email_context)
+        email_kb = len(email_html.encode("utf-8")) / 1024
+        if email_kb < GMAIL_CLIP_KB:
+            if cap < 4:
+                print(f"\n  Note: section cap tightened to {cap} to stay under {GMAIL_CLIP_KB}KB "
+                      f"({email_kb:.1f} KB) — the 'see all' links cover the cut items")
+            break
+        print(f"\n  Email version is {email_kb:.1f} KB at section cap {cap} — over the {GMAIL_CLIP_KB}KB Gmail clip limit")
+    else:
+        print(f"\nERROR: email version still {email_kb:.1f} KB at section cap 1 — refusing to "
+              f"generate an edition Gmail would clip (the unsubscribe footer goes first)")
+        sys.exit(1)
 
     if apply:
         email_path = os.path.join(editions_dir, f"newsletter_email_{today_iso}.html")
@@ -441,7 +469,7 @@ def main():
 
     email_kb = os.path.getsize(email_path) / 1024
     print(f"Email newsletter written to {email_path}")
-    print(f"  Size: {email_kb:.1f} KB {'(OK)' if email_kb < 102 else '(WARNING: exceeds Gmail 102KB limit)'}")
+    print(f"  Size: {email_kb:.1f} KB (OK)")
 
     # Write latest_news.json for the landing page (only on a real --apply run).
     # URL-scheme filtering already happened in prepare_news_articles, which
