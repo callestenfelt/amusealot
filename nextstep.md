@@ -18,11 +18,17 @@ clears.
       the plan file's Phase 0 section. Until then every
       `musemaniac-subscriber.service` restart silently invalidates rendered
       subscribe forms.
-- [ ] **Review + merge `fix/silent-failures`** (Phase 1, commit `1317844`),
-      then deploy the 5 changed scripts to the VPS via scp.
-- [ ] Phases 2–7 — see `docs/review-2026-08-26-plan.md`. Phase 2
-      (`fix/rerun-safety`) touches the same send scripts as Phase 1, so
-      branch it off master only after Phase 1 is merged.
+- [ ] **Finish Phase 2 review follow-ups on `fix/rerun-safety`** — the
+      implementation (commit `6608d96`) passed an automated /code-review
+      with 10 findings: 8 with clear fixes, 2 needing a user decision
+      (tokenless-subscriber exit code; local marker file vs per-subscriber
+      Baserow column). Full list with checkboxes in the plan file's
+      "Phase 2 review follow-ups" section. Fix before merging the branch.
+- [ ] **Push master to origin** — Phase 1 is merged locally (`ef5c94b`)
+      but not pushed.
+- [ ] Phases 3–7 — see `docs/review-2026-08-26-plan.md`. Phase 3
+      (`fix/dedup-hash`) starts with a migration decision on the content
+      hash formula.
 
 ## Done
 
@@ -34,7 +40,14 @@ clears.
       (`1317844`) — loud failures for zero-sent/error sends, dry-run no
       longer saves ETags, partial Baserow fetches abort, LLM score
       validation/coercion, dropped-batch-item accounting, Groq 5xx retry.
-      Tested; awaiting review/merge/deploy.
+      **Merged to master (`ef5c94b`) and deployed to the VPS the same day**
+      (originals backed up to `/opt/musemaniac/scripts/.bak-20260826/`);
+      verified compiling on the server. Master not yet pushed to origin.
+- [x] Phase 2 implementation (2026-08-26): all 7 items on
+      `fix/rerun-safety` (`6608d96`) — generate dry-run mode, edition-row
+      dedup, send marker + `--force`, unsubscribe hard errors, stale-date
+      refusal, reminder timezone fix + mark-before-send, run-scoped sent
+      count. Review follow-ups still open (see above) — not merged.
 
 ---
 

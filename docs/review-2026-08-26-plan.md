@@ -107,6 +107,47 @@ actually safe, and make dry runs actually dry.
 Verify: full local dry-run leaves no trace (no Baserow rows, no
 `latest_news.json` change, no editions file); re-run scenario on test data.
 
+### Phase 2 review follow-ups (automated /code-review of `6608d96`, 2026-08-26)
+
+The review confirmed the mechanics but found 10 issues, mostly interaction
+effects with the wider pipeline. Fix on this branch before merging:
+
+- [ ] **(1)** The `.sent` marker dead-ends CLAUDE.md's "Recovering from a
+      missed send" playbook: a failed `--apply` run leaves a marker (written
+      before the first email, even on zero-sent runs) and neither
+      `run_newsletter.sh` nor `cron_newsletter.sh` can forward `--force`.
+      Fix the recovery path + update the CLAUDE.md playbook.
+- [ ] **(2)** Pipeline dry run no longer rehearses this week's edition:
+      generate writes test filenames but the send step still globs dated
+      files (previews last week's file; hard-fails on empty `editions/`).
+      Pass the generated file to step 7 via `--input`.
+- [ ] **(3)** `send_reminders.py` mark-before-send has no retry/rollback: a
+      send failure after the PATCH permanently loses that reminder. Use
+      send-then-PATCH-with-retry (the plan's alternative) instead.
+- [ ] **(6)** `find_edition_row` failures cancel the registration POST that
+      used to succeed (silent WARNING). Let a lookup failure fall through
+      to POST.
+- [ ] **(7)** Success-email sent count: read `sent=N` from the `.sent`
+      marker instead of awk-parsing log lines through an async `tee`.
+- [ ] **(8)** Replace the two full-table edition scans with one
+      `filter__edition_date__equal` GET (shared approach in both scripts).
+- [ ] **(9)** `generate_newsletter.py`: collapse the four `--test`/dry-run
+      conditions to one `apply = args.apply and not args.test` boolean.
+- [ ] **(10)** `send_reminders.py`: drop the 1s sleep on the PATCH-failure
+      path.
+
+Needs a user decision (recorded when made):
+
+- [ ] **(4)** Tokenless-subscriber handling: currently one confirmed row
+      with no `unsubscribe_token` fails every weekly run *after* sending to
+      everyone else (errors>0 → exit 1 → reminders/whats_new/success email
+      skipped). Options: keep hard exit, or skip+warn loudly (exit 0 if
+      everyone else sent) — the compliance goal only requires the skip.
+- [ ] **(5)** Marker design: local per-edition file is split-brained across
+      machines (local run + scp leaves no marker on the VPS) and makes
+      mid-send recovery all-or-nothing. Accept for now, or add a
+      per-subscriber sent column in Baserow (schema change, exact resume).
+
 ## Phase 3 — Pipeline dedup identity (branch: `fix/dedup-hash`)
 
 Isolated on its own branch because it changes data identity and needs a
