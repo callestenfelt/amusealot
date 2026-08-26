@@ -79,10 +79,11 @@ echo "  AmuseAlot Newsletter Pipeline"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================"
 
-# Step 1: Collect GitHub activity
+# Step 1: Collect GitHub activity (--apply persists the seen-events cache
+# used for cross-edition dedup; dry runs leave it untouched)
 echo ""
 echo "[1/8] Collecting GitHub activity..."
-python3 "$SCRIPT_DIR/collect_github_activity.py" --days 8
+python3 "$SCRIPT_DIR/collect_github_activity.py" --days 8 $APPLY_FLAG
 
 # Step 2: Enrich events
 echo ""

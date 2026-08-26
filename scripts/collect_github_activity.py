@@ -59,6 +59,34 @@ TECH_FIELDS = {
 BOT_AUTHORS = {"dependabot[bot]", "dependabot-preview[bot]", "renovate[bot]",
                "github-actions[bot]", "snyk-bot", "codecov[bot]", "greenkeeper[bot]"}
 
+# Cross-edition dedup: event URLs collected by previous runs. The 8-day
+# lookback with a 7-day cron cadence guarantees ~1 day of overlap, which
+# produced a repeat slot every week without this.
+SEEN_EVENTS_FILE = os.path.join(os.path.dirname(__file__), "github_seen_events.json")
+SEEN_EVENTS_MAX_AGE_DAYS = 30
+
+
+def load_seen_events():
+    """Load {event_url: first_seen_date} from previous runs."""
+    if os.path.exists(SEEN_EVENTS_FILE):
+        try:
+            with open(SEEN_EVENTS_FILE, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Warning: Could not load seen-events cache: {e}")
+    return {}
+
+
+def save_seen_events(cache):
+    """Save the seen-events cache, pruning entries older than the max age."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=SEEN_EVENTS_MAX_AGE_DAYS)).date().isoformat()
+    pruned = {url: seen for url, seen in cache.items() if seen >= cutoff}
+    try:
+        with open(SEEN_EVENTS_FILE, "w", encoding="utf-8") as f:
+            json.dump(pruned, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Warning: Could not save seen-events cache: {e}")
+
 
 def github_get(url, params=None):
     """Make a GitHub API request with rate limit handling."""
@@ -364,6 +392,9 @@ def main():
     parser.add_argument("--days", type=int, default=30, help="Look back N days (default: 30)")
     parser.add_argument("--output", default=os.path.join(os.path.dirname(__file__), "github_activity.json"),
                         help="Output JSON file (default: scripts/github_activity.json)")
+    parser.add_argument("--apply", action="store_true",
+                        help="Persist the seen-events cache (default: dry-run leaves it "
+                             "untouched, so a dry run can't hide events from the next real run)")
     args = parser.parse_args()
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=args.days)
@@ -455,6 +486,15 @@ def main():
                     status += f" -> {len(items)} event(s)"
                 print(status)
 
+    # Cross-edition dedup: drop events already collected by a previous run
+    # (the lookback window overlaps the weekly cadence by ~1 day)
+    seen_events = load_seen_events()
+    before_cross = len(all_activity)
+    all_activity = [item for item in all_activity if item["url"] not in seen_events]
+    if before_cross != len(all_activity):
+        print(f"\nFiltered {before_cross - len(all_activity)} event(s) already "
+              f"collected by a previous run")
+
     # Deduplicate: for push events, keep only the latest per repo+branch
     push_best = {}  # key: (repo, branch) -> most recent push
     deduped = []
@@ -475,6 +515,17 @@ def main():
 
     # Sort by date descending
     deduped.sort(key=lambda x: x["date"], reverse=True)
+
+    # Persist what this run collected — only on --apply, for the same reason
+    # collect_news gates its ETag cache: a dry run that recorded URLs would
+    # hide those events from the next real run.
+    if args.apply:
+        today = datetime.now(timezone.utc).date().isoformat()
+        for item in deduped:
+            seen_events.setdefault(item["url"], today)
+        save_seen_events(seen_events)
+    else:
+        print("\n[DRY RUN] Not saving seen-events cache")
 
     # Save
     with open(args.output, "w", encoding="utf-8") as f:

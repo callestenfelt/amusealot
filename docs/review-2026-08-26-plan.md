@@ -160,22 +160,24 @@ User decisions (made 2026-08-26):
 Isolated on its own branch because it changes data identity and needs a
 migration story — don't bundle it with quick fixes.
 
-- [ ] **[pipeline H1]** `collect_news.py:147,257`: drop `published_date`
-      from the content hash (hash on URL, or title+URL). Date stays in the
-      cutoff filter only.
-- [ ] **Migration caution:** existing Baserow rows carry old-formula hashes,
-      so the first run after the change would see recent articles as new
-      and re-insert them. Mitigate: during a transition window compare
-      against *both* hash formulas (compute old + new for each candidate),
-      or backfill new hashes for rows inside the 14-day window before
-      deploying. Decide + document the choice here.
-- [ ] **[pipeline L6]** While in the file: add newly-inserted hashes to the
-      in-run set (same-run syndicated duplicates), move `import re` to
-      module top.
-- [ ] **[pipeline M6]** `collect_github_activity.py`: add cross-edition
-      dedup for GitHub events (persist seen event URLs, or shrink the
-      8-day window overlap) so the ~1-day lookback overlap stops producing
-      a guaranteed repeat slot every week.
+Done 2026-08-26. Decisions (user-approved): **URL-only hash** (an article is
+its URL; titles and dates are the churn sources) and **dual-formula compare**
+for migration (no Baserow writes; kept permanently at negligible cost).
+
+- [x] **[pipeline H1]** `compute_content_hash(url)` hashes the URL alone;
+      date stays in the cutoff filter only. `compute_legacy_hash` keeps the
+      old title||url||date formula for matching pre-change Baserow rows —
+      candidates are dropped if *either* hash is already in Baserow; only
+      the new hash is stored on insert (the transient `legacy_hash` key is
+      popped before the Baserow save and the intermediate JSON).
+- [x] **[pipeline L6]** Accepted hashes join the in-run set immediately
+      (same-run syndicated duplicates filtered); `import re` at module top.
+- [x] **[pipeline M6]** Cross-edition dedup via a persisted seen-URLs cache
+      (`github_seen_events.json`, pruned at 30 days), gated on a new
+      `--apply` flag exactly like the news ETag cache so dry runs stay dry;
+      `run_newsletter.sh` forwards `--apply` to step 1. File gitignored.
+      (Chosen over shrinking the 8-day window: robust to late/recovery
+      runs; harness-verified filter, prune, and dry-run behavior.)
 
 ## Phase 4 — Site security & flows (branch: `fix/site-hardening`)
 
@@ -301,3 +303,4 @@ Low-risk cleanups; fine to trickle in or do as one sweep.
 | 2026-08-26 | 0 (verify) | — | — | FORM_SECRET fix pending manual run |
 | 2026-08-26 | 1 | fix/silent-failures | 1317844 | 2026-08-26 (5 scripts, verified on VPS) |
 | 2026-08-26 | 2 | fix/rerun-safety | 6608d96 + 1c91f6d (merged to master 2026-08-26) | 2026-08-26 (5 scripts; originals in `.bak-20260826-phase2/`; verified compiling on VPS) |
+| 2026-08-26 | 3 | fix/dedup-hash | (this commit) | not yet |

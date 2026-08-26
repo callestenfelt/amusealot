@@ -16,6 +16,7 @@ scripts/scored_newsletter_content_test.json
 scripts/news_articles.json
 scripts/news_articles_scored.json
 scripts/news_etags.json
+scripts/github_seen_events.json
 scripts/latest_news.json
 scripts/newsletter_test.html
 scripts/newsletter_email_test.html

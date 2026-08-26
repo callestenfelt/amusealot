@@ -14,6 +14,7 @@ Requires environment variables: BASEROW_URL, BASEROW_TOKEN, NEWS_SOURCES_TABLE_I
 import sys
 import io
 import os
+import re
 import json
 import hashlib
 import argparse
@@ -146,8 +147,19 @@ def get_active_sources():
     return sources
 
 
-def compute_content_hash(title, url, published_date):
-    """Compute SHA256 hash for deduplication."""
+def compute_content_hash(url):
+    """Compute SHA256 hash for deduplication.
+
+    Identity is the URL alone: feeds routinely shift published dates and tweak
+    titles on the same article, and the old title||url||date formula re-inserted
+    it each time (repeats across editions). The date still participates in the
+    collection cutoff filter, just not in identity."""
+    return hashlib.sha256(url.encode('utf-8')).hexdigest()
+
+
+def compute_legacy_hash(title, url, published_date):
+    """Old-formula hash (title||url||date), kept for dedup against Baserow rows
+    inserted before the 2026-08 formula change. Cheap enough to keep forever."""
     content = f"{title}||{url}||{published_date}"
     return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
@@ -273,16 +285,12 @@ def fetch_rss_feed(source, etag_cache, cutoff_date):
             summary = entry.get('summary', '') or entry.get('description', '')
             if summary:
                 # Clean HTML tags from summary
-                import re
                 summary = re.sub(r'<[^>]+>', '', summary).strip()
                 summary = summary[:500]  # Limit length
 
             # Detect language from title + summary
             text_for_lang = f"{title} {summary}"
             language = detect_language_safe(text_for_lang)
-
-            # Compute content hash
-            content_hash = compute_content_hash(title, url, published_date)
 
             articles.append({
                 "title": title,
@@ -293,7 +301,9 @@ def fetch_rss_feed(source, etag_cache, cutoff_date):
                 "collected_date": datetime.now(timezone.utc).date().isoformat(),
                 "summary": summary,
                 "language": language,
-                "content_hash": content_hash,
+                "content_hash": compute_content_hash(url),
+                # Transient: matched against pre-2026-08 Baserow rows, then dropped
+                "legacy_hash": compute_legacy_hash(title, url, published_date),
             })
 
         print(f"  ✓ Extracted {len(articles)} articles")
@@ -425,8 +435,17 @@ def main():
         elif source["rss_url"] in etag_cache:
             new_etag_cache[source["rss_url"]] = etag_cache[source["rss_url"]]
 
-        # Filter out duplicates
-        new_articles = [a for a in articles if a["content_hash"] not in existing_hashes]
+        # Filter out duplicates. An article is a dupe if its hash (new
+        # URL-only formula) OR its legacy hash (old title||url||date formula,
+        # matching rows inserted before the change) is already in Baserow.
+        # Accepted hashes join the set immediately so the same article
+        # syndicated by a later source in this run is also filtered.
+        new_articles = []
+        for a in articles:
+            if a["content_hash"] in existing_hashes or a["legacy_hash"] in existing_hashes:
+                continue
+            existing_hashes.add(a["content_hash"])
+            new_articles.append(a)
 
         if len(articles) != len(new_articles):
             print(f"  Filtered {len(articles) - len(new_articles)} duplicates")
@@ -443,6 +462,11 @@ def main():
         save_etag_cache(new_etag_cache)
     else:
         print("\n[DRY RUN] Not saving ETag cache")
+
+    # The legacy hash was only for dedup against pre-change rows — don't let
+    # it leak into Baserow payload maps or the intermediate JSON
+    for article in all_articles:
+        article.pop("legacy_hash", None)
 
     # Save to Baserow first: it stamps each article with its Baserow row id,
     # which must end up in the JSON so score_news can write scores back

@@ -16,9 +16,12 @@ clears.
 - [ ] **Watch the next `0 7 * * 3` send (2026-09-02)** — first cron run on
       the Phase 2 code (sent marker, --input-driven send step, marker-based
       success-email count, reminder send-then-mark).
-- [ ] Phases 3–7 — see `docs/review-2026-08-26-plan.md`. Phase 3
-      (`fix/dedup-hash`) starts with a migration decision on the content
-      hash formula.
+- [ ] **Merge `fix/dedup-hash` to master and deploy** — Phase 3 complete
+      2026-08-26 (decisions: URL-only hash, dual-formula migration compare,
+      persisted GitHub seen-URLs cache). Files to deploy:
+      `collect_news.py`, `collect_github_activity.py`, `run_newsletter.sh`.
+      Needs user approval to merge; scp deploy separate.
+- [ ] Phases 4–7 — see `docs/review-2026-08-26-plan.md`.
 
 ## Done
 
