@@ -312,29 +312,76 @@ restart.)
 
 ## Phase 5 — Email templates & dark mode (branch: `fix/email-dark-mode`)
 
-Needs the full test loop from CLAUDE.md (generate `--test`, send to
-calle@callestenfelt.se, view in Outlook desktop on Windows, dark mode).
+Done 2026-08-26 (implementation `979bdce`, then an automated /code-review at
+high effort found 10 issues — all resolved in `b804a20`, see follow-ups).
+Decisions (user-approved): **auto-tighten then fail** for the 102KB gate,
+and **L2 included** (not skipped).
 
-- [ ] **[newsletter M6]** `reminder_email.html`: pair `background-color` +
-      `color` on the same element for every text-bearing cell, especially
-      the CTA (`<td>` bg / `<a>` color split = invisible confirm button
-      risk); add `p` to the `[data-ogsc]` override set; fix the explicit
-      `color` on the closing `<p>`.
-- [ ] **[newsletter L3]** `newsletter.html.j2`: bring the span-based
-      sections (stats bar, most-active, tool watch, footer) onto the
-      same-element pairing rule — footer (light text on `#080229`) first.
-- [ ] **[newsletter L4]** Add `[data-ogsc]` border override for the rating
-      boxes; restructure the `<a>`-wrapped rating table so Word-engine
-      Outlook gets a clickable target.
-- [ ] **[newsletter M7]** `generate_newsletter.py:388`: make the >102KB
-      check fail the pipeline (or auto-tighten `section_cap`) instead of
-      warn-only — Gmail clips the footer/unsubscribe first.
-- [ ] **[newsletter L6]** Guard `repo.split('/')` for slash-less repo
-      names.
-- [ ] **[newsletter L2]** (optional) Make the `whats_new` link rewrite less
-      brittle; skip the "N sources" line when stats are unavailable.
+- [x] **[newsletter M6]** `reminder_email.html`: bg+color paired on the
+      same element everywhere; CTA got a `.cta` class; `p` added to the
+      `[data-ogsc]` set; closing `<p>` paired. (The review then reworked
+      the whole `[data-ogsc]` block — see follow-up 1.)
+- [x] **[newsletter L3]** All span-based sections (stats bar, most-active,
+      tool watch, event_t2, footer incl. its links) pair bg+color on the
+      span/a itself; the `[data-ogsc]` span/a rules force those inline
+      backgrounds dark for webmail dark mode.
+- [x] **[newsletter L4]** `.rate-box` border + link `[data-ogsc]`
+      overrides; the `<a>` moved *inside* the cell as `display:block`
+      (Word-engine Outlook ignores block anchors wrapped around tables, so
+      the rows were unclickable there).
+- [x] **[newsletter M7]** Email edition over 102KB auto-tightens
+      `section_cap` 4→3→2→1, and exits 1 (→ ERR trap → failure email) if
+      even cap 1 exceeds the limit; abort happens before latest_news.json
+      and Baserow registration.
+- [x] **[newsletter L6]** `split('/')[1]` → `[-1]` in all four template
+      spots; slash-less most-active entries skip the org suffix.
+- [x] **[newsletter L2]** whats_new anchor styling is regex-based
+      (tolerates extra attributes, skips pre-styled anchors); lines are
+      dropped per-token when the stat they need is 0.
 
-Verify: test send viewed in Outlook desktop dark mode per CLAUDE.md.
+### Phase 5 review follow-ups (automated /code-review of `979bdce`, high, 2026-08-26)
+
+10 findings, all resolved in `b804a20`:
+
+- [x] **(1, severe)** Reminder's `[data-ogsc]` block pinned text dark but
+      not backgrounds light → the new inline `#fbfbfb` backgrounds would
+      render dark-on-dark in Outlook webmail dark mode. All element rules
+      now pin background AND color light; `.cta` table/td/a re-pinned dark
+      with light text afterwards.
+- [x] **(2)** `latest_news.json` was built from the tightened
+      email_context → now a fixed `cap=4`, so shrinking the email can't
+      shrink the website news box.
+- [x] **(3)** The gate couldn't converge (tool_watch + individual_events
+      were uncapped) → `build_context` caps both under `section_cap`
+      (groups and events-per-group for tool watch); both sections gained
+      "see all N in the full edition" links.
+- [x] **(4)** Rating-box padding sat on the anchor, which Word-engine
+      Outlook ignores → padding back on the td, anchor stays
+      `display:block` without padding.
+- [x] **(5)** whats_new `link_style` violated the CLAUDE.md pairing rule →
+      now includes `background-color:#EDEBF5` (links render in the
+      lavender What's-new box).
+- [x] **(6)** Cap loop re-fetched Baserow source stats per iteration (up
+      to 5×, with mid-loop-blip inconsistency risk) → fetched once in
+      `main()` and passed into every `build_context`.
+- [x] **(7)** Webmail overrides mis-scoped → `[data-ogsc] a` pins
+      background dark; `.wn-box a/span` pin the panel tone `#1C1736`.
+- [x] **(8)** `confirmation_email.html` (the sibling copy) still had the
+      original unpaired-color bug → brought fully in line with the
+      reminder (same pairing, same corrected `[data-ogsc]` + `.cta`).
+- [x] **(9)** Anchor regex only matched a lone double-quoted href →
+      tolerates extra attributes/whitespace, skips anchors with `style=`.
+- [x] **(10)** `stats_available` gated both tokens on sources alone
+      ("0 countries" could ship) → per-token gating.
+- Minors also fixed: dead pre-loop inits, redundant `getsize` recompute,
+  Jinja template cached across the 5 renders per run.
+
+Verify: 53-check scratchpad harness green (pairing audits over all three
+email templates, both dark-mode pinning directions, cap convergence,
+fixed-cap latest_news under a tightened email, hard-fail leaves no side
+effects); dry-run on the VPS against real data renders clean (39.9 KB).
+**Still open: test send viewed in Outlook desktop on Windows dark mode per
+CLAUDE.md** — the one client no harness can simulate.
 
 ## Phase 6 — Pipeline coverage & robustness (branch: `fix/pipeline-coverage`)
 
@@ -401,3 +448,4 @@ Low-risk cleanups; fine to trickle in or do as one sweep.
 | 2026-08-26 | 2 | fix/rerun-safety | 6608d96 + 1c91f6d (merged to master 2026-08-26) | 2026-08-26 (5 scripts; originals in `.bak-20260826-phase2/`; verified compiling on VPS) |
 | 2026-08-26 | 3 | fix/dedup-hash | 11741c9 + a905dfa (merged to master 2026-08-26) | 2026-08-26 (4 files incl. new `json_cache.py`; originals in `.bak-20260826-phase3/`; compile + `--commit-seen` guard verified on VPS) |
 | 2026-08-26 | 4 | fix/site-hardening | d61ed94 + 04a0935 (merged to master 2026-08-26) | 2026-08-26 (4 scripts + 6 templates; originals in `.bak-20260826-phase4/`; service restarted, now bound to 127.0.0.1; live smoke tests: bot fields, real 404, unsubscribe GET, privacy, sitemap all green) |
+| 2026-08-26 | 5 | fix/email-dark-mode | 979bdce + b804a20 (merged to master 2026-08-26) | 2026-08-26 (generate_newsletter.py + 3 templates; originals in `.bak-20260826-phase5/`; compile + checksums + real-data dry-run verified on VPS; Outlook-desktop dark-mode eyeball still pending; not yet pushed to origin) |

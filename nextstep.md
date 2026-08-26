@@ -23,11 +23,17 @@ clears.
 - [ ] **Verify the new unsubscribe flow from a real mail client** when the
       occasion arises — the GET confirm-page and RFC 8058 one-click POST
       are harness-verified; the plan's last tick is a real-client check.
-- [ ] Phases 5–7 — see `docs/review-2026-08-26-plan.md`. Phase 5
-      (`fix/email-dark-mode`) needs the full Outlook-on-Windows dark-mode
-      test loop from CLAUDE.md. (Phases 0–4 done, merged, deployed, and
-      pushed to origin as of 2026-08-26; no Caddy change was needed for Phase 4 — Caddy v2.10
-      defaults already strip client X-Forwarded-For.)
+- [ ] **Phase 5 Outlook eyeball test** — the code is deployed; per
+      CLAUDE.md, generate with `--test`, send with
+      `--input newsletter_email_test.html` to calle@callestenfelt.se, and
+      view in Outlook desktop on Windows with dark mode on. Also check the
+      confirmation/reminder emails on the next real signup if convenient.
+- [ ] **Push Phase 5 to origin** — master is 3 commits ahead
+      (2 code + 1 docs); pending the explicit "push" call.
+- [ ] Phases 6–7 — see `docs/review-2026-08-26-plan.md`. (Phases 0–5 done,
+      merged, and deployed as of 2026-08-26; 0–4 pushed to origin; no
+      Caddy change was needed for Phase 4 — Caddy v2.10 defaults already
+      strip client X-Forwarded-For.)
 
 ## Done
 
@@ -78,6 +84,19 @@ clears.
       (4 scripts + 6 templates, originals in `.bak-20260826-phase4/`,
       service restarted on 127.0.0.1, live smoke tests green), and pushed
       to origin the same day.**
+- [x] Phase 5 (2026-08-26): email dark mode on `fix/email-dark-mode`
+      (`979bdce` + follow-ups `b804a20` after a 10-finding /code-review) —
+      same-element bg+color pairing across all three email templates
+      (newsletter, reminder, confirmation) with corrected `[data-ogsc]`
+      pinning in both directions; rating rows made clickable in Word-engine
+      Outlook (anchor inside the cell, padding on the td); 102KB Gmail gate
+      auto-tightens `section_cap` 4→1 then fails loudly, with tool watch +
+      individual creators now cappable ("see all" links) and
+      `latest_news.json` on a fixed cap; `split('/')[-1]` guards; regex
+      whats_new link styling with per-token stat gating. **Merged and
+      deployed same day (generate_newsletter.py + 3 templates, originals in
+      `.bak-20260826-phase5/`, compile + checksums + real-data dry-run
+      verified on VPS). Not yet pushed; Outlook dark-mode eyeball pending.**
 
 ---
 
