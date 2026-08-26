@@ -77,30 +77,30 @@ simulate a send with an invalid Resend key and confirm exit 1.
 Theme: the documented recovery playbook is "re-run it" — make re-running
 actually safe, and make dry runs actually dry.
 
-- [ ] **[newsletter H2]** `run_newsletter.sh:92` + `generate_newsletter.py`:
+- [x] **[newsletter H2]** `run_newsletter.sh:92` + `generate_newsletter.py`:
       give generate a real dry-run mode and forward `--apply` like the other
       steps. Without `--apply`: no edition row registered, no
       `latest_news.json` overwrite, no dated file the public archive serves.
-- [ ] **[newsletter M1]** `generate_newsletter.py:280` +
+- [x] **[newsletter M1]** `generate_newsletter.py:280` +
       `register_past_edition.py:66`: check for an existing edition row for
       that date before POSTing (update or skip instead of duplicating).
-- [ ] **[newsletter M2]** `send_newsletter.py`: add send idempotency — an
+- [x] **[newsletter M2]** `send_newsletter.py`: add send idempotency — an
       "edition sent" marker checked before sending (per-subscriber column
       like `reminder_sent_at`, or minimally a per-edition sent flag +
       refusal to re-send without `--force`), so a mid-send crash + re-run
       doesn't double-send.
-- [ ] **[newsletter M3]** `send_newsletter.py:163,204`: make a missing
+- [x] **[newsletter M3]** `send_newsletter.py:163,204`: make a missing
       `%%UNSUBSCRIBE_URL%%` placeholder and an empty `unsubscribe_token`
       hard errors under `--apply` (skip that recipient / abort), not
       warnings. Compliance, not cosmetics.
-- [ ] **[newsletter L5]** `send_newsletter.py:44`: refuse to `--apply` an
+- [x] **[newsletter L5]** `send_newsletter.py:44`: refuse to `--apply` an
       edition whose date isn't today unless `--force` — stops a manual run
       from silently re-sending last week's file.
-- [ ] **[newsletter M4+M5]** `send_reminders.py`: fix timezone parsing
+- [x] **[newsletter M4+M5]** `send_reminders.py`: fix timezone parsing
       (`fromisoformat(...).astimezone(utc)` with naive fallback; handle `Z`
       suffix) and mark `reminder_sent_at` *before* sending (or retry the
       PATCH) so a Baserow blip can't cause duplicate "one-time" reminders.
-- [ ] **[pipeline/newsletter L1]** `run_newsletter.sh:118`: scope the
+- [x] **[pipeline/newsletter L1]** `run_newsletter.sh:118`: scope the
       sent-count grep to the current run (e.g. grep from a run-start marker)
       so same-day re-runs don't inflate the admin email.
 
@@ -251,4 +251,5 @@ Low-risk cleanups; fine to trickle in or do as one sweep.
 | Date | Phase | Branch | Commits | Deployed |
 |------|-------|--------|---------|----------|
 | 2026-08-26 | 0 (verify) | — | — | FORM_SECRET fix pending manual run |
-| 2026-08-26 | 1 | fix/silent-failures | (this commit) | not yet |
+| 2026-08-26 | 1 | fix/silent-failures | 1317844 | 2026-08-26 (5 scripts, verified on VPS) |
+| 2026-08-26 | 2 | fix/rerun-safety | (this commit) | not yet |

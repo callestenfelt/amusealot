@@ -56,6 +56,11 @@ if [[ "${1:-}" == "--apply" ]]; then
     APPLY_FLAG="--apply"
 fi
 
+# Unique marker so the success email can count sends from THIS run only —
+# the day's log file accumulates across re-runs.
+RUN_START_MARKER="RUN-START pid=$$ $(date '+%Y-%m-%d %H:%M:%S')"
+echo "$RUN_START_MARKER"
+
 echo "========================================"
 echo "  AmuseAlot Newsletter Pipeline"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
@@ -86,10 +91,11 @@ echo ""
 echo "[5/8] Scoring GitHub content..."
 python3 "$SCRIPT_DIR/score_newsletter_content.py"
 
-# Step 6: Generate HTML
+# Step 6: Generate HTML (without --apply it writes test filenames and skips
+# latest_news.json + Baserow edition registration)
 echo ""
 echo "[6/8] Generating newsletter..."
-python3 "$SCRIPT_DIR/generate_newsletter.py"
+python3 "$SCRIPT_DIR/generate_newsletter.py" $APPLY_FLAG
 
 # Step 7: Send (passes --apply through if provided)
 echo ""
@@ -115,7 +121,11 @@ echo "========================================"
 
 # Admin success notification (only when actually sending)
 if [[ "${1:-}" == "--apply" ]]; then
-    SENT_COUNT=$(grep -c "Sent to " "$LOG_FILE" 2>/dev/null || true)
+    # Count "Sent to" lines only after this run's start marker, so a same-day
+    # re-run doesn't inflate the number with the earlier run's sends.
+    SENT_COUNT=$(awk -v marker="$RUN_START_MARKER" \
+        'index($0, marker) {count=0; next} /Sent to / {count++} END {print count+0}' \
+        "$LOG_FILE" 2>/dev/null || echo 0)
     python3 "$SCRIPT_DIR/notify_admin.py" \
         --status success \
         --message "Newsletter sent on $(date '+%Y-%m-%d %H:%M:%S') — ${SENT_COUNT} email(s) sent.

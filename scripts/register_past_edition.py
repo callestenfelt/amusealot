@@ -63,9 +63,29 @@ def main():
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
+    # Refuse to create a duplicate row for a date that is already registered
+    # (this script writes empty stats, so updating would clobber a real row).
+    page = 1
+    while True:
+        resp = requests.get(
+            f"{BASEROW_URL}/api/database/rows/table/{EDITION_TABLE_ID}/",
+            params={"size": 200, "page": page, "user_field_names": "true"},
+            headers=BASEROW_HEADERS,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        for row in data.get("results", []):
+            if row.get("edition_date") == edition_date:
+                print(f"Edition {edition_date} is already registered (Baserow row {row['id']}) — nothing to do.")
+                sys.exit(0)
+        if not data.get("next"):
+            break
+        page += 1
+
     print(f"Registering edition {edition_date} in Baserow (table {EDITION_TABLE_ID})...")
     url = f"{BASEROW_URL}/api/database/rows/table/{EDITION_TABLE_ID}/"
-    resp = requests.post(url, json=row_data, params={"user_field_names": "true"}, headers=BASEROW_HEADERS)
+    resp = requests.post(url, json=row_data, params={"user_field_names": "true"}, headers=BASEROW_HEADERS, timeout=10)
     resp.raise_for_status()
     row = resp.json()
     print(f"  Done — Baserow row {row.get('id')}")

@@ -135,6 +135,8 @@ def main():
                         help="Actually send emails (default: dry-run)")
     parser.add_argument("--test", metavar="EMAIL",
                         help="Send only to this email address (for testing)")
+    parser.add_argument("--force", action="store_true",
+                        help="Override the already-sent marker and the edition-date-is-today check")
     args = parser.parse_args()
 
     # Resolve input file
@@ -159,10 +161,38 @@ def main():
     print(f"  Subject: {subject}")
     print(f"  Size: {len(base_html) / 1024:.1f} KB")
 
-    # Check for unsubscribe placeholder
+    real_send = args.apply and not args.test
+
+    # Check for unsubscribe placeholder. On a real send this is a compliance
+    # requirement (List-Unsubscribe / CAN-SPAM), not a cosmetic one — abort.
     if "%%UNSUBSCRIBE_URL%%" not in base_html:
+        if real_send:
+            print("ERROR: Newsletter does not contain %%UNSUBSCRIBE_URL%% placeholder — refusing to send")
+            sys.exit(1)
         print("WARNING: Newsletter does not contain %%UNSUBSCRIBE_URL%% placeholder")
         print("  Unsubscribe links will not be personalized")
+
+    # Refuse to send an edition whose date isn't today (e.g. a manual run
+    # accidentally picking up last week's file) unless --force.
+    if real_send:
+        today_iso = datetime.now().date().isoformat()
+        file_date = date_match.group(1) if date_match else None
+        if file_date != today_iso and not args.force:
+            print(f"ERROR: Edition date {file_date or '(none in filename)'} is not today ({today_iso}).")
+            print("  Pass --force to send an out-of-date edition deliberately.")
+            sys.exit(1)
+
+    # Per-edition sent marker: a crashed --apply run leaves the marker behind,
+    # so a blind re-run can't double-send. --force overrides after human review.
+    sent_marker = input_file + ".sent"
+    if real_send:
+        if os.path.exists(sent_marker) and not args.force:
+            with open(sent_marker, encoding="utf-8") as f:
+                print(f"ERROR: This edition already has a send marker ({sent_marker}):")
+                print(f"  {f.read().strip()}")
+            print("  A previous --apply run started sending it. Re-running would double-send.")
+            print("  Pass --force to send again deliberately.")
+            sys.exit(1)
 
     # Fetch subscribers
     if args.test:
@@ -195,6 +225,17 @@ def main():
         print("Pass --apply to actually send.")
         return
 
+    # Write the sent marker BEFORE the first email goes out, so even a
+    # mid-send crash leaves evidence that this edition started sending.
+    if real_send:
+        try:
+            with open(sent_marker, "w", encoding="utf-8") as f:
+                f.write(f"send started {datetime.now(timezone.utc).isoformat()} "
+                        f"to {len(subscribers)} subscriber(s)\n")
+        except OSError as e:
+            print(f"ERROR: Could not write sent marker {sent_marker}: {e}")
+            sys.exit(1)
+
     # Send
     print(f"\n--- SENDING ({len(subscribers)} emails) ---")
     sent = 0
@@ -207,6 +248,12 @@ def main():
             continue
 
         unsub_token = sub.get("unsubscribe_token") or ""
+        if not unsub_token and real_send:
+            # No working unsubscribe link for this recipient — compliance
+            # problem, not cosmetics. Skip them and count it as an error.
+            errors += 1
+            print(f"  ERROR: row {sub.get('id')} ({email}) has no unsubscribe_token — skipping recipient")
+            continue
         unsub_url = f"{BASE_URL}/unsubscribe?token={unsub_token}"
         personalized = personalize_html(base_html, sub)
 
@@ -232,6 +279,14 @@ def main():
     print(f"  Sent: {sent}")
     print(f"  Errors: {errors}")
     print(f"  Total: {len(subscribers)}")
+
+    if real_send:
+        try:
+            with open(sent_marker, "a", encoding="utf-8") as f:
+                f.write(f"send finished {datetime.now(timezone.utc).isoformat()} "
+                        f"sent={sent} errors={errors}\n")
+        except OSError as e:
+            print(f"  Warning: could not update sent marker: {e}")
 
     # A run that sent nothing (e.g. revoked Resend key) or hit errors must not
     # exit 0, or the pipeline reports success and nobody notices the missed send.

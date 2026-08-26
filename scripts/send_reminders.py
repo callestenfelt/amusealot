@@ -82,14 +82,18 @@ def get_pending_needing_reminder():
             continue
 
         try:
-            sub_date = datetime.fromisoformat(subscribed_at).replace(tzinfo=timezone.utc)
+            # Baserow may return "...Z", an explicit offset, a naive datetime,
+            # or a date-only string. Respect an existing offset (the old
+            # .replace(tzinfo=utc) silently mislabeled non-UTC timestamps);
+            # only assume UTC for naive values.
+            sub_date = datetime.fromisoformat(subscribed_at.replace("Z", "+00:00"))
         except ValueError:
-            # Date-only field from Baserow (YYYY-MM-DD)
-            try:
-                sub_date = datetime.strptime(subscribed_at, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            except ValueError:
-                print(f"  WARNING: Cannot parse subscribed_at '{subscribed_at}' for {sub.get('email')}")
-                continue
+            print(f"  WARNING: Cannot parse subscribed_at '{subscribed_at}' for {sub.get('email')}")
+            continue
+        if sub_date.tzinfo is None:
+            sub_date = sub_date.replace(tzinfo=timezone.utc)
+        else:
+            sub_date = sub_date.astimezone(timezone.utc)
 
         if sub_date <= cutoff:
             eligible.append(sub)
@@ -183,13 +187,23 @@ def main():
         confirm_url = f"{BASE_URL}/confirm?token={confirm_token}"
         html = template_html.replace("%%CONFIRM_URL%%", confirm_url)
 
+        # Mark as reminded in Baserow BEFORE sending: if the PATCH fails we
+        # skip this subscriber (they get the reminder on the next run), which
+        # can't happen the other way around — send-then-PATCH turns a Baserow
+        # blip into a duplicate "one-time" reminder on every subsequent run.
+        try:
+            update_reminder_sent(row_id)
+        except Exception as e:
+            errors += 1
+            print(f"  ERROR marking reminder_sent_at for {email} (row {row_id}), not sending: {e}")
+            if i < len(eligible) - 1:
+                time.sleep(SEND_DELAY)
+            continue
+
         try:
             result = send_reminder_email(email, html)
             email_id = result.get("id", "?")
             print(f"  [{i+1}/{len(eligible)}] Sent reminder to {email} (id: {email_id})")
-
-            # Mark as reminded in Baserow
-            update_reminder_sent(row_id)
             sent += 1
         except requests.exceptions.HTTPError as e:
             errors += 1
