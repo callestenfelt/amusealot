@@ -222,34 +222,40 @@ and dates are the churn sources) and **persisted seen-URLs cache** for GitHub
 
 ## Phase 4 — Site security & flows (branch: `fix/site-hardening`)
 
-- [ ] **[site H1]** Rate limiting behind Caddy: add
-      `ProxyFix(app.wsgi_app, x_for=1)` and configure Caddy to set
-      `X-Forwarded-For` from the client (verify Caddy strips any
-      client-supplied value — otherwise the limiter becomes spoofable).
-      Needs a VPS Caddy config change alongside the code deploy.
-- [ ] **[site M2]** `/unsubscribe`: GET renders a confirmation page with a
-      POST button; the state change happens only on POST. Keep the
-      tokenized POST path working for RFC 8058 one-click. (Stops SafeLinks/
-      Mimecast prefetch from silently unsubscribing real readers.)
-- [ ] **[site M3]** `/feedback`: add the honeypot + `form_ts` layers (reuse
-      the subscribe-form pattern) — it currently fires a Resend email per
-      unprotected POST.
-- [ ] **[site M5]** Subscribe double-submit race: after create, re-query by
-      email and delete the loser row (or add a Baserow unique constraint if
-      available) so duplicate subscriber rows can't accumulate.
-- [ ] **[site M1]** Privacy policy: name Cloudflare as a processor for the
-      Turnstile check; drop the optional `remoteip` field from siteverify
-      (`subscriber_app.py:130`) to keep the no-IP claim true.
-- [ ] **[site M4]** (optional, decide) Bind `form_ts` to client IP or make
-      it single-use — currently one 3s wait buys 2h of replays; Turnstile
-      is the real gate, so this may be accepted as-is. Record the decision.
-- [ ] **[site lows, cheap batch]** `basename()` on edition `file_name`
-      (L3); validate `http(s)://` scheme on article URLs when writing
-      `latest_news.json` (L5 — also covers newsletter L8 at the source);
-      escape/validate dates in sitemap (L4); `--days >= 1` guard in
-      `purge_pending_subscribers.py` (L8); paginate + `compare_digest` in
-      `find_row_by_token` (L1); real 404 page instead of soft-404 landing
-      (L6).
+Done 2026-08-26. All items verified with a 19-check Flask test-client
+harness (mocked Baserow).
+
+- [x] **[site H1]** `ProxyFix(app.wsgi_app, x_for=1)` added. **No Caddy
+      config change needed**: the VPS runs Caddy v2.10.2, and since v2.5
+      `reverse_proxy` drops any client-supplied `X-Forwarded-For` unless
+      `trusted_proxies` is configured (it isn't), replacing it with the
+      real client IP — so the single trusted hop is not spoofable.
+- [x] **[site M2]** `/unsubscribe` GET now renders a confirmation page
+      (`unsubscribe_confirm.html`, new) whose button POSTs back; the state
+      change happens only on POST. RFC 8058 one-click (query-token POST)
+      verified still working. Already-unsubscribed GETs show the success
+      page directly (idempotent, no state to protect).
+- [x] **[site M3]** `/feedback` got the honeypot + `form_ts` layers (same
+      markup/logic as the subscribe form); both drop silently with the
+      normal success page.
+- [x] **[site M5]** After creating a subscriber row, the app re-queries by
+      email and deletes all but the lowest-id row; a losing request skips
+      sending its (dead) confirmation email. Both racers run the same
+      deterministic cleanup.
+- [x] **[site M1]** Privacy policy names Cloudflare (Turnstile) as a
+      processor with an honest description of the flow; the optional
+      `remoteip` field removed from siteverify so the no-IP claim is true.
+- [x] **[site M4]** **Decision: accepted as-is** — `form_ts` stays
+      IP-unbound and multi-use. Turnstile is the real gate; binding to IP
+      would break legitimate mobile/NAT users and add statefulness for
+      marginal gain against a layer that's only defense-in-depth.
+- [x] **[site lows]** All six: `basename()` on edition `file_name` (L3);
+      http(s)-scheme filter on `latest_news.json` URLs (L5, covers
+      newsletter L8 at the source); sitemap only emits `DATE_RE`-valid
+      edition dates (L4); `--days >= 1` guard in purge script (L8);
+      `baserow_list_rows` paginates + `find_row_by_token` uses
+      `hmac.compare_digest` and tolerates null fields (L1); real 404 page
+      (`not_found.html`, new) via catch-all + `errorhandler(404)` (L6).
 
 Verify: subscribe/confirm/unsubscribe flows end-to-end against a test row;
 rate limit observed per-client after Caddy change; one-click unsubscribe

@@ -71,10 +71,16 @@ def parse_arg_days(argv):
     if "--days" in argv:
         i = argv.index("--days")
         try:
-            return int(argv[i + 1])
+            days = int(argv[i + 1])
         except (IndexError, ValueError):
             print("ERROR: --days requires an integer, e.g. --days 60")
             sys.exit(1)
+        if days < 1:
+            # --days 0 (or negative) would make TODAY's legitimate unconfirmed
+            # signups purgeable — refuse.
+            print("ERROR: --days must be at least 1")
+            sys.exit(1)
+        return days
     return DEFAULT_DAYS
 
 

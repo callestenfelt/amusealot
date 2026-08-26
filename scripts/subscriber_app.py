@@ -35,6 +35,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='repla
 
 import requests
 from flask import Flask, request, render_template, redirect, url_for, Response, send_from_directory
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 try:
     from flask_limiter import Limiter
@@ -78,6 +79,13 @@ BASEROW_HEADERS = {
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), "templates", "web"))
 app.config["MAX_CONTENT_LENGTH"] = 256 * 1024  # reject request bodies larger than 256 KB
 
+# The app sits behind Caddy on localhost, so request.remote_addr is 127.0.0.1
+# for every request and the rate limiter throttles all visitors as one client.
+# Trust exactly one X-Forwarded-For hop: Caddy (v2.5+) strips any
+# client-supplied X-Forwarded-For unless trusted_proxies is configured (it
+# isn't), so the single value is always the real client IP — not spoofable.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
+
 if HAS_LIMITER:
     limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
@@ -116,11 +124,14 @@ def form_token_ok(token):
         return False
 
 
-def verify_turnstile(token, remoteip=None):
+def verify_turnstile(token):
     """Verify a Cloudflare Turnstile token. Returns True if disabled (no secret).
 
     Fails closed: a missing token or a verification error counts as failure, so a
     Cloudflare outage briefly blocks signups rather than letting bots through.
+
+    Deliberately does NOT send the optional remoteip field — the privacy policy
+    promises we don't hand visitor IPs to third parties.
     """
     if not TURNSTILE_SECRET:
         return True  # gate not configured — honeypot + timing still apply
@@ -128,8 +139,6 @@ def verify_turnstile(token, remoteip=None):
         return False
     try:
         data = {"secret": TURNSTILE_SECRET, "response": token}
-        if remoteip:
-            data["remoteip"] = remoteip
         resp = requests.post(
             "https://challenges.cloudflare.com/turnstile/v0/siteverify",
             data=data,
@@ -145,14 +154,21 @@ def verify_turnstile(token, remoteip=None):
 # --- Baserow helpers ---
 
 def baserow_list_rows(filters=None):
-    """Fetch rows from the subscribers table with optional filters."""
+    """Fetch rows from the subscribers table with optional filters (paginated)."""
     url = f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/"
-    params = {"size": 200, "user_field_names": "true"}
-    if filters:
-        params.update(filters)
-    resp = requests.get(url, params=params, headers=BASEROW_HEADERS, timeout=10)
-    resp.raise_for_status()
-    return resp.json().get("results", [])
+    rows = []
+    page = 1
+    while True:
+        params = {"size": 200, "page": page, "user_field_names": "true"}
+        if filters:
+            params.update(filters)
+        resp = requests.get(url, params=params, headers=BASEROW_HEADERS, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        rows.extend(data.get("results", []))
+        if not data.get("next"):
+            return rows
+        page += 1
 
 
 def baserow_create_row(data):
@@ -173,12 +189,21 @@ def baserow_update_row(row_id, data):
     return resp.json()
 
 
+def baserow_delete_row(row_id):
+    """Delete a row from the subscribers table."""
+    url = f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/{row_id}/"
+    resp = requests.delete(url, headers=BASEROW_HEADERS, timeout=10)
+    resp.raise_for_status()
+
+
 def find_row_by_token(field_name, token):
-    """Find a row by token field using search."""
-    # Use Baserow search to find token
+    """Find a row by token field using search (constant-time comparison)."""
+    # Baserow search narrows the candidates; compare_digest avoids leaking
+    # token prefixes through comparison timing on the exact match.
     rows = baserow_list_rows({"search": token})
     for row in rows:
-        if row.get(field_name) == token:
+        value = row.get(field_name)
+        if isinstance(value, str) and hmac.compare_digest(value, token):
             return row
     return None
 
@@ -263,9 +288,14 @@ STATIC_FILES = {
 def static_root_files(filename):
     if filename in STATIC_FILES:
         return send_from_directory(STATIC_DIR, filename)
-    return render_template("landing.html", canonical_url=BASE_URL + "/",
-                           form_ts=make_form_token(),
-                           turnstile_sitekey=TURNSTILE_SITEKEY), 404
+    # Real 404 page (previously the landing page body with a 404 status — a
+    # soft-404 that confused crawlers and looked like a working page)
+    return render_template("not_found.html"), 404
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return render_template("not_found.html"), 404
 
 
 # --- SEO routes ---
@@ -294,12 +324,13 @@ def sitemap_xml():
         (f"{BASE_URL}/archive", today),
         (f"{BASE_URL}/privacy", today),
     ]
-    # Add archive editions
+    # Add archive editions (dates come from Baserow — only well-formed
+    # YYYY-MM-DD values may reach the XML, both as URL path and lastmod)
     try:
         editions = get_editions()
         for ed in editions:
             ed_date = ed.get("edition_date", "")
-            if ed_date:
+            if ed_date and DATE_RE.match(ed_date):
                 urls.append((f"{BASE_URL}/archive/{ed_date}", ed_date))
     except Exception as e:
         print(f"ERROR building sitemap editions: {e}")
@@ -359,8 +390,7 @@ def _subscribe():
 
     # 3. Turnstile hard gate (active only when TURNSTILE_SECRET is set). The
     #    widget is visible, so a failure gets honest user-facing feedback.
-    if not verify_turnstile(request.form.get("cf-turnstile-response", ""),
-                            remoteip=request.remote_addr):
+    if not verify_turnstile(request.form.get("cf-turnstile-response", "")):
         print(f"Subscribe blocked: Turnstile verification failed for {email}")
         return render_template("subscribe_success.html",
                                error="Verification failed. Please go back and try again."), 400
@@ -416,7 +446,7 @@ def _subscribe():
     now = date.today().isoformat()
 
     try:
-        baserow_create_row({
+        created = baserow_create_row({
             "email": email,
             "status": "pending",
             "subscribed_at": now,
@@ -429,6 +459,24 @@ def _subscribe():
         # backend errors to visitors (they can simply try again later).
         print(f"ERROR creating subscriber row for {email}: {e}")
         return render_template("subscribe_success.html")
+
+    # Double-submit race: two parallel POSTs can both pass the "existing" check
+    # above and each create a row. Re-query and keep only the oldest row
+    # (lowest id) — both racers run the same deterministic cleanup, so exactly
+    # one row survives. If our row lost, skip sending our (now dead) token;
+    # the winning request sends its own confirmation email.
+    try:
+        dupes = sorted((r for r in baserow_list_rows({"search": email})
+                        if r.get("email") == email), key=lambda r: r["id"])
+        for loser in dupes[1:]:
+            print(f"Deleting duplicate subscriber row {loser['id']} for {email} (double submit)")
+            baserow_delete_row(loser["id"])
+        if dupes and dupes[0]["id"] != created["id"]:
+            return render_template("subscribe_success.html")
+    except Exception as e:
+        # Cleanup is best-effort; a leftover duplicate row is harmless enough
+        # (only one gets confirmed) and can be removed manually.
+        print(f"WARNING: duplicate check failed for {email}: {e}")
 
     confirm_url = f"{BASE_URL}/confirm?token={confirm_token}"
     try:
@@ -486,9 +534,15 @@ def confirm():
 @app.route("/unsubscribe", methods=["GET", "POST"])
 @_rate_limit("30/minute")
 def unsubscribe():
+    # State only changes on POST. Mail-security scanners (Outlook SafeLinks,
+    # Mimecast, corporate prefetchers) GET every link in an email — if GET
+    # unsubscribed, a scanner could silently remove a real reader. The GET
+    # renders a confirmation page whose button POSTs back; RFC 8058 one-click
+    # (List-Unsubscribe-Post) already POSTs directly, so mail clients'
+    # unsubscribe buttons keep working with no page in between.
     token = request.args.get("token", "").strip()
     if not token:
-        # RFC 8058: POST body may contain List-Unsubscribe=One-Click-Unsubscribe
+        # RFC 8058: the token may arrive in the POST body
         token = request.form.get("token", "").strip()
     if not token:
         return render_template("unsubscribe_error.html"), 400
@@ -502,6 +556,9 @@ def unsubscribe():
 
     if status_value == "unsubscribed":
         return render_template("unsubscribe_success.html")
+
+    if request.method == "GET":
+        return render_template("unsubscribe_confirm.html", token=token)
 
     now = date.today().isoformat()
     try:
@@ -743,6 +800,8 @@ def archive_edition(edition_date):
     file_name = edition.get("file_name", "") if edition else ""
     if not file_name:
         file_name = f"newsletter_{edition_date}.html"
+    # file_name comes from Baserow — never let a path component escape editions/
+    file_name = os.path.basename(file_name)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(script_dir, "editions", file_name)
@@ -822,7 +881,9 @@ def _feedback_get():
         rating = 0
     if rating < 1 or rating > 5:
         rating = 0
-    return render_template("feedback.html", edition=edition, rating=rating, canonical_url=BASE_URL + "/feedback")
+    return render_template("feedback.html", edition=edition, rating=rating,
+                           form_ts=make_form_token(),
+                           canonical_url=BASE_URL + "/feedback")
 
 
 if HAS_LIMITER:
@@ -836,6 +897,16 @@ feedback_post_route = app.route("/feedback", methods=["POST"])
 def _feedback_post():
     if not FEEDBACK_TABLE_ID:
         return "Feedback not configured", 503
+
+    # Bot protection (same honeypot + timing layers as /subscribe — an
+    # unprotected POST here fires a Resend notification email per request).
+    # Both checks drop silently with the normal success page.
+    if request.form.get("company_website", "").strip():
+        print("Bot feedback blocked: honeypot filled")
+        return render_template("feedback_success.html")
+    if not form_token_ok(request.form.get("form_ts", "")):
+        print("Bot feedback blocked: timing/token check failed")
+        return render_template("feedback_success.html")
 
     edition = request.form.get("edition", "").strip()
     rating_str = request.form.get("rating", "").strip()
@@ -873,6 +944,7 @@ def _feedback_post():
     except Exception as e:
         print(f"ERROR creating feedback row: {e}")
         return render_template("feedback.html", edition=edition, rating=rating,
+                               form_ts=make_form_token(),
                                error="Something went wrong. Please try again."), 500
 
     # Send notification email

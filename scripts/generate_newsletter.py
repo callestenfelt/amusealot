@@ -441,7 +441,15 @@ def main():
     # Write latest_news.json for the landing page (only on a real --apply run)
     if apply:
         latest_news_path = os.path.join(script_dir, "latest_news.json")
-        latest_articles = email_context["news_articles"]["newsletter"]
+        # Only http(s) URLs may reach the public landing page (RSS feeds are
+        # untrusted input — a javascript:/data: URL would become a live link)
+        latest_articles = [
+            a for a in email_context["news_articles"]["newsletter"]
+            if str(a.get("url", "")).startswith(("http://", "https://"))
+        ]
+        dropped = len(email_context["news_articles"]["newsletter"]) - len(latest_articles)
+        if dropped:
+            print(f"  Warning: dropped {dropped} article(s) with non-http(s) URLs from latest_news.json")
         with open(latest_news_path, "w", encoding="utf-8") as f:
             json.dump({
                 "date": today_iso,
