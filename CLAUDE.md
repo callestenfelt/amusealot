@@ -55,6 +55,7 @@ All three layers are **live in production** (Turnstile enabled 2026-05-20; keys 
    - `ssh root@77.42.40.207 "nano /opt/musemaniac/.env"` and replace `GITHUB_TOKEN=...`
    - Verify: `ssh ... 'set -a; . /opt/musemaniac/.env; curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/user'` — expect `200`
 3. SSH in and run manually: `cd /opt/musemaniac && ./scripts/cron_newsletter.sh`
+   - **Sent-marker check:** each `--apply` send writes `scripts/editions/newsletter_email_YYYY-MM-DD.html.sent`. If the failed run sent 0 emails, the marker is removed automatically and the re-run just works. If it crashed mid-send (marker exists with no `send finished` line, or `sent=N` with N > 0), the send step refuses to re-run. Read the marker/log to see how far it got, then either fix and accept duplicates with `./scripts/run_newsletter.sh --apply --force` (re-sends to everyone, including the N already served — there is no per-subscriber resume), or send manually. `--force` also overrides the edition-date-is-today check, so only use it on the edition you mean to send.
 4. If the cron itself didn't run, check for `^M` line endings: `grep -a newsletter /var/log/syslog | tail -5`
    - Fix: `crontab -l | sed 's/\r//' | crontab -`
 

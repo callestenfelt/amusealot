@@ -240,6 +240,7 @@ def main():
     print(f"\n--- SENDING ({len(subscribers)} emails) ---")
     sent = 0
     errors = 0
+    skipped_no_token = 0
 
     for i, sub in enumerate(subscribers):
         email = sub.get("email", "")
@@ -250,9 +251,12 @@ def main():
         unsub_token = sub.get("unsubscribe_token") or ""
         if not unsub_token and real_send:
             # No working unsubscribe link for this recipient — compliance
-            # problem, not cosmetics. Skip them and count it as an error.
-            errors += 1
-            print(f"  ERROR: row {sub.get('id')} ({email}) has no unsubscribe_token — skipping recipient")
+            # problem, so never email them. But it's a data problem needing a
+            # manual Baserow fix, not a send failure: don't fail the whole run
+            # (that would also skip reminders and the success email every week).
+            skipped_no_token += 1
+            print(f"  WARNING: row {sub.get('id')} ({email}) has no unsubscribe_token — "
+                  f"skipping recipient (fix the row in Baserow)")
             continue
         unsub_url = f"{BASE_URL}/unsubscribe?token={unsub_token}"
         personalized = personalize_html(base_html, sub)
@@ -278,18 +282,31 @@ def main():
     print(f"\n--- DONE ---")
     print(f"  Sent: {sent}")
     print(f"  Errors: {errors}")
+    if skipped_no_token:
+        print(f"  Skipped (no unsubscribe_token): {skipped_no_token}")
     print(f"  Total: {len(subscribers)}")
 
     if real_send:
-        try:
-            with open(sent_marker, "a", encoding="utf-8") as f:
-                f.write(f"send finished {datetime.now(timezone.utc).isoformat()} "
-                        f"sent={sent} errors={errors}\n")
-        except OSError as e:
-            print(f"  Warning: could not update sent marker: {e}")
+        if sent == 0:
+            # Nothing actually went out, so the marker holds no evidence — it
+            # would only block the documented "fix the cause and re-run"
+            # recovery path. Remove it so the re-run doesn't need --force.
+            try:
+                os.remove(sent_marker)
+                print(f"  Removed sent marker (0 emails sent; a re-run is safe)")
+            except OSError as e:
+                print(f"  Warning: could not remove sent marker {sent_marker}: {e}")
+        else:
+            try:
+                with open(sent_marker, "a", encoding="utf-8") as f:
+                    f.write(f"send finished {datetime.now(timezone.utc).isoformat()} "
+                            f"sent={sent} errors={errors}\n")
+            except OSError as e:
+                print(f"  Warning: could not update sent marker: {e}")
 
     # A run that sent nothing (e.g. revoked Resend key) or hit errors must not
     # exit 0, or the pipeline reports success and nobody notices the missed send.
+    # skipped_no_token deliberately does NOT fail the run (see above).
     if sent == 0:
         print("ERROR: 0 emails sent")
         sys.exit(1)

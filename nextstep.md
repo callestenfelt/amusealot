@@ -18,12 +18,13 @@ clears.
       the plan file's Phase 0 section. Until then every
       `musemaniac-subscriber.service` restart silently invalidates rendered
       subscribe forms.
-- [ ] **Finish Phase 2 review follow-ups on `fix/rerun-safety`** — the
-      implementation (commit `6608d96`) passed an automated /code-review
-      with 10 findings: 8 with clear fixes, 2 needing a user decision
-      (tokenless-subscriber exit code; local marker file vs per-subscriber
-      Baserow column). Full list with checkboxes in the plan file's
-      "Phase 2 review follow-ups" section. Fix before merging the branch.
+- [ ] **Merge `fix/rerun-safety` to master and deploy** — Phase 2 is now
+      complete: implementation (`6608d96`) plus all 10 review follow-ups
+      (fixed 2026-08-26; decisions recorded: tokenless rows skip+warn with
+      exit 0, local `.sent` marker accepted). Touched on deploy:
+      `send_newsletter.py`, `send_reminders.py`, `generate_newsletter.py`,
+      `register_past_edition.py`, `run_newsletter.sh` (+ CLAUDE.md playbook).
+      Needs user approval to merge; scp deploy is a separate step.
 - [ ] **Push master to origin** — Phase 1 is merged locally (`ef5c94b`)
       but not pushed.
 - [ ] Phases 3–7 — see `docs/review-2026-08-26-plan.md`. Phase 3

@@ -101,17 +101,28 @@ def get_pending_needing_reminder():
     return eligible
 
 
-def update_reminder_sent(row_id):
-    """Set reminder_sent_at to today's date in Baserow."""
+def update_reminder_sent(row_id, attempts=3):
+    """Set reminder_sent_at to today's date in Baserow, retrying transient failures.
+
+    Returns True on success, False if every attempt failed."""
     from datetime import date
-    resp = requests.patch(
-        f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/{row_id}/",
-        params={"user_field_names": "true"},
-        headers=BASEROW_HEADERS,
-        json={"reminder_sent_at": date.today().isoformat()},
-        timeout=30,
-    )
-    resp.raise_for_status()
+    for attempt in range(1, attempts + 1):
+        try:
+            resp = requests.patch(
+                f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/{row_id}/",
+                params={"user_field_names": "true"},
+                headers=BASEROW_HEADERS,
+                json={"reminder_sent_at": date.today().isoformat()},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as e:
+            print(f"  WARNING: marking reminder_sent_at for row {row_id} failed "
+                  f"(attempt {attempt}/{attempts}): {e}")
+            if attempt < attempts:
+                time.sleep(2 * attempt)
+    return False
 
 
 def send_reminder_email(to_email, html):
@@ -187,24 +198,17 @@ def main():
         confirm_url = f"{BASE_URL}/confirm?token={confirm_token}"
         html = template_html.replace("%%CONFIRM_URL%%", confirm_url)
 
-        # Mark as reminded in Baserow BEFORE sending: if the PATCH fails we
-        # skip this subscriber (they get the reminder on the next run), which
-        # can't happen the other way around — send-then-PATCH turns a Baserow
-        # blip into a duplicate "one-time" reminder on every subsequent run.
-        try:
-            update_reminder_sent(row_id)
-        except Exception as e:
-            errors += 1
-            print(f"  ERROR marking reminder_sent_at for {email} (row {row_id}), not sending: {e}")
-            if i < len(eligible) - 1:
-                time.sleep(SEND_DELAY)
-            continue
-
+        # Send first, then mark. Mark-before-send permanently loses the
+        # reminder when the send fails after the PATCH; send-then-mark only
+        # risks a duplicate if all PATCH retries fail — and that case errors
+        # loudly below so the row can be fixed before the next run.
+        send_ok = False
         try:
             result = send_reminder_email(email, html)
             email_id = result.get("id", "?")
             print(f"  [{i+1}/{len(eligible)}] Sent reminder to {email} (id: {email_id})")
             sent += 1
+            send_ok = True
         except requests.exceptions.HTTPError as e:
             errors += 1
             print(f"  ERROR sending to {email}: {e}")
@@ -213,6 +217,11 @@ def main():
         except Exception as e:
             errors += 1
             print(f"  ERROR sending to {email}: {e}")
+
+        if send_ok and not update_reminder_sent(row_id):
+            errors += 1
+            print(f"  ERROR: {email} (row {row_id}) was reminded but could not be marked — "
+                  f"set reminder_sent_at manually in Baserow or the next run re-sends")
 
         # Rate limit delay (skip after last)
         if i < len(eligible) - 1:

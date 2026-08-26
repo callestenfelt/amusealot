@@ -244,22 +244,20 @@ def render_newsletter(context):
 def find_edition_row(baserow_url, headers, edition_table_id, edition_date):
     """Return the row id of an existing edition row for this date, or None."""
     import requests
-    page = 1
-    while True:
-        resp = requests.get(
-            f"{baserow_url}/api/database/rows/table/{edition_table_id}/",
-            params={"size": 200, "page": page, "user_field_names": "true"},
-            headers=headers,
-            timeout=10,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        for row in data.get("results", []):
-            if row.get("edition_date") == edition_date:
-                return row["id"]
-        if not data.get("next"):
-            return None
-        page += 1
+    # Server-side filter: one GET instead of paging the whole editions table.
+    resp = requests.get(
+        f"{baserow_url}/api/database/rows/table/{edition_table_id}/",
+        params={
+            "size": 10,
+            "user_field_names": "true",
+            "filter__edition_date__equal": edition_date,
+        },
+        headers=headers,
+        timeout=10,
+    )
+    resp.raise_for_status()
+    results = resp.json().get("results", [])
+    return results[0]["id"] if results else None
 
 
 def register_edition(context, file_name):
@@ -302,10 +300,18 @@ def register_edition(context, file_name):
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
+    # Re-runs on the same day must update the existing row, not add a duplicate.
+    # A failed lookup must not cancel registration though: fall through to POST —
+    # a possible duplicate row is far more recoverable than a silently missing
+    # archive entry.
     try:
-        # Re-runs on the same day must update the existing row, not add a duplicate
         existing_id = find_edition_row(baserow_url, headers, edition_table_id,
                                        context["generation_date_iso"])
+    except Exception as e:
+        print(f"\nWARNING: Edition lookup failed ({e}) — registering a new row anyway")
+        existing_id = None
+
+    try:
         if existing_id:
             url = f"{baserow_url}/api/database/rows/table/{edition_table_id}/{existing_id}/"
             resp = requests.patch(url, json=row_data, params={"user_field_names": "true"}, headers=headers, timeout=10)
@@ -337,10 +343,11 @@ def main():
                              "registration, no latest_news.json)")
     args = parser.parse_args()
 
-    # Without --apply this is a dry-run: same outputs as --test, so nothing a
-    # dry pipeline run does can leak into the public archive or Baserow.
-    dry_run = not args.apply and not args.test
-    if dry_run:
+    # One boolean gates every real side effect (dated files, latest_news.json,
+    # Baserow registration). --test wins over --apply, and no --apply is a
+    # dry-run: both write test filenames and touch nothing else.
+    apply = args.apply and not args.test
+    if not args.apply and not args.test:
         print("\n⚠️  DRY RUN MODE - Use --apply to write dated edition files and register the edition\n")
 
     # Load scored data
@@ -402,10 +409,10 @@ def main():
     # --- Full version (archive) ---
     full_html = render_newsletter(context)
 
-    if args.test or dry_run:
-        full_path = os.path.join(script_dir, "newsletter_test.html")
-    else:
+    if apply:
         full_path = os.path.join(editions_dir, f"newsletter_{today_iso}.html")
+    else:
+        full_path = os.path.join(script_dir, "newsletter_test.html")
 
     with open(full_path, "w", encoding="utf-8") as f:
         f.write(full_html)
@@ -419,10 +426,10 @@ def main():
     email_context["whats_new"] = whats_new
     email_html = render_newsletter(email_context)
 
-    if args.test or dry_run:
-        email_path = os.path.join(script_dir, "newsletter_email_test.html")
-    else:
+    if apply:
         email_path = os.path.join(editions_dir, f"newsletter_email_{today_iso}.html")
+    else:
+        email_path = os.path.join(script_dir, "newsletter_email_test.html")
 
     with open(email_path, "w", encoding="utf-8") as f:
         f.write(email_html)
@@ -432,7 +439,7 @@ def main():
     print(f"  Size: {email_kb:.1f} KB {'(OK)' if email_kb < 102 else '(WARNING: exceeds Gmail 102KB limit)'}")
 
     # Write latest_news.json for the landing page (only on a real --apply run)
-    if not args.test and not dry_run:
+    if apply:
         latest_news_path = os.path.join(script_dir, "latest_news.json")
         latest_articles = email_context["news_articles"]["newsletter"]
         with open(latest_news_path, "w", encoding="utf-8") as f:
@@ -452,12 +459,12 @@ def main():
         print(f"\nLatest news written to {latest_news_path} ({len(latest_articles)} articles)")
 
     # Register edition in Baserow (only on a real --apply run) — archive version only
-    if args.test:
-        print("\nTest mode: skipping Baserow registration")
-    elif dry_run:
-        print("\nDry run: skipping latest_news.json and Baserow registration")
-    else:
+    if apply:
         register_edition(context, os.path.basename(full_path))
+    elif args.test:
+        print("\nTest mode: skipping Baserow registration")
+    else:
+        print("\nDry run: skipping latest_news.json and Baserow registration")
 
 
 if __name__ == "__main__":

@@ -3,8 +3,10 @@
 # End-to-end newsletter pipeline: collect → enrich → collect news → score news → score → generate → send → remind
 #
 # Usage:
-#   ./run_newsletter.sh          # Dry run (shows what would be sent)
-#   ./run_newsletter.sh --apply  # Actually send
+#   ./run_newsletter.sh                  # Dry run (shows what would be sent)
+#   ./run_newsletter.sh --apply          # Actually send
+#   ./run_newsletter.sh --apply --force  # Recovery: override the .sent marker
+#                                        # (re-sends to everyone — see CLAUDE.md)
 #
 # Requires .env to be loaded (BASEROW_URL, BASEROW_TOKEN, GITHUB_TOKEN,
 # GROQ_API_KEY, RESEND_API_KEY, RESEND_FROM, MUSEMANIAC_BASE_URL, SUBSCRIBER_TABLE_ID,
@@ -45,21 +47,32 @@ $tail" || true
 }
 trap _on_failure ERR
 
-# Only --apply is a meaningful pass-through. Compute it once and forward only it
-# to the scripts that take it: send_reminders.py understands only --apply, so
-# forwarding "$@" verbatim would make it error on any other arg (e.g. --input/--test).
-# collect_news/score_news also get it: without --apply they never write articles
-# or scores to Baserow, which disables cross-edition dedup and leaves nothing
-# for score_news's unscored-row recovery to heal after a failed run.
+# Only --apply and --force are meaningful pass-throughs, and each script gets
+# only the flag(s) it understands — forwarding "$@" verbatim would make e.g.
+# send_reminders.py error on --force. collect_news/score_news get --apply:
+# without it they never write articles or scores to Baserow, which disables
+# cross-edition dedup and leaves nothing for score_news's unscored-row
+# recovery to heal after a failed run. --force goes only to send_newsletter.py
+# (recovery path: override the .sent marker / stale-date check after a
+# partially-sent run — see CLAUDE.md "Recovering from a missed send").
 APPLY_FLAG=""
-if [[ "${1:-}" == "--apply" ]]; then
-    APPLY_FLAG="--apply"
-fi
+FORCE_FLAG=""
+for arg in "$@"; do
+    case "$arg" in
+        --apply) APPLY_FLAG="--apply" ;;
+        --force) FORCE_FLAG="--force" ;;
+        *) echo "Unknown argument: $arg (expected --apply and/or --force)"; exit 2 ;;
+    esac
+done
 
-# Unique marker so the success email can count sends from THIS run only —
-# the day's log file accumulates across re-runs.
-RUN_START_MARKER="RUN-START pid=$$ $(date '+%Y-%m-%d %H:%M:%S')"
-echo "$RUN_START_MARKER"
+# The edition file this run generates and sends. Computed here so the send
+# step previews THIS run's output (dry runs write test filenames), and so the
+# success email can read the sent count from this edition's .sent marker.
+if [[ -n "$APPLY_FLAG" ]]; then
+    EMAIL_FILE="$SCRIPT_DIR/editions/newsletter_email_$(date '+%Y-%m-%d').html"
+else
+    EMAIL_FILE="$SCRIPT_DIR/newsletter_email_test.html"
+fi
 
 echo "========================================"
 echo "  AmuseAlot Newsletter Pipeline"
@@ -97,10 +110,11 @@ echo ""
 echo "[6/8] Generating newsletter..."
 python3 "$SCRIPT_DIR/generate_newsletter.py" $APPLY_FLAG
 
-# Step 7: Send (passes --apply through if provided)
+# Step 7: Send — always the file step 6 just generated (dry runs would
+# otherwise glob last week's dated edition, or fail on an empty editions/)
 echo ""
 echo "[7/8] Sending newsletter..."
-python3 "$SCRIPT_DIR/send_newsletter.py" $APPLY_FLAG
+python3 "$SCRIPT_DIR/send_newsletter.py" --input "$EMAIL_FILE" $APPLY_FLAG $FORCE_FLAG
 
 # Step 8: Send confirmation reminders to pending subscribers
 echo ""
@@ -108,7 +122,7 @@ echo "[8/8] Sending confirmation reminders..."
 python3 "$SCRIPT_DIR/send_reminders.py" $APPLY_FLAG
 
 # Clear "What's new" after a real send so it doesn't repeat next week
-if [[ "${1:-}" == "--apply" ]]; then
+if [[ -n "$APPLY_FLAG" ]]; then
     > "$SCRIPT_DIR/whats_new.txt"
     echo ""
     echo "Cleared whats_new.txt"
@@ -120,12 +134,12 @@ echo "  Pipeline complete"
 echo "========================================"
 
 # Admin success notification (only when actually sending)
-if [[ "${1:-}" == "--apply" ]]; then
-    # Count "Sent to" lines only after this run's start marker, so a same-day
-    # re-run doesn't inflate the number with the earlier run's sends.
-    SENT_COUNT=$(awk -v marker="$RUN_START_MARKER" \
-        'index($0, marker) {count=0; next} /Sent to / {count++} END {print count+0}' \
-        "$LOG_FILE" 2>/dev/null || echo 0)
+if [[ -n "$APPLY_FLAG" ]]; then
+    # Read the sent count from this edition's .sent marker (its final
+    # "send finished ... sent=N" line) — the day's log accumulates across
+    # re-runs and the tee is async, so parsing the log is unreliable.
+    SENT_COUNT=$(grep -o 'sent=[0-9]*' "$EMAIL_FILE.sent" 2>/dev/null | tail -1 | cut -d= -f2)
+    SENT_COUNT="${SENT_COUNT:-0}"
     python3 "$SCRIPT_DIR/notify_admin.py" \
         --status success \
         --message "Newsletter sent on $(date '+%Y-%m-%d %H:%M:%S') — ${SENT_COUNT} email(s) sent.

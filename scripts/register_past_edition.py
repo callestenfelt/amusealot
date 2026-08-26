@@ -65,23 +65,23 @@ def main():
 
     # Refuse to create a duplicate row for a date that is already registered
     # (this script writes empty stats, so updating would clobber a real row).
-    page = 1
-    while True:
-        resp = requests.get(
-            f"{BASEROW_URL}/api/database/rows/table/{EDITION_TABLE_ID}/",
-            params={"size": 200, "page": page, "user_field_names": "true"},
-            headers=BASEROW_HEADERS,
-            timeout=10,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        for row in data.get("results", []):
-            if row.get("edition_date") == edition_date:
-                print(f"Edition {edition_date} is already registered (Baserow row {row['id']}) — nothing to do.")
-                sys.exit(0)
-        if not data.get("next"):
-            break
-        page += 1
+    # Server-side filter: one GET instead of paging the whole editions table
+    # (same approach as generate_newsletter.find_edition_row).
+    resp = requests.get(
+        f"{BASEROW_URL}/api/database/rows/table/{EDITION_TABLE_ID}/",
+        params={
+            "size": 10,
+            "user_field_names": "true",
+            "filter__edition_date__equal": edition_date,
+        },
+        headers=BASEROW_HEADERS,
+        timeout=10,
+    )
+    resp.raise_for_status()
+    existing = resp.json().get("results", [])
+    if existing:
+        print(f"Edition {edition_date} is already registered (Baserow row {existing[0]['id']}) — nothing to do.")
+        sys.exit(0)
 
     print(f"Registering edition {edition_date} in Baserow (table {EDITION_TABLE_ID})...")
     url = f"{BASEROW_URL}/api/database/rows/table/{EDITION_TABLE_ID}/"
