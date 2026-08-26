@@ -113,23 +113,62 @@ def commit_seen_events():
           f"({len(pending)} pending, cache now {len(cache)} before pruning)")
 
 
+# Non-rate-limit 403s (token permission problem, org gone private, abuse
+# block without headers). Surfaced per-URL during the run, listed in the
+# summary, and — because a couple of oddball sources must not kill the weekly
+# send while a systemic token problem must — the run aborts only when several
+# accumulate (decision 2026-08-26: surface + systemic abort, not abort-on-any).
+FORBIDDEN_403S = []
+FORBIDDEN_403S_ABORT_THRESHOLD = 6
+
+API_CALLS = [0]  # module-level so pagination helpers count too
+
+
 def github_get(url, params=None):
-    """Make a GitHub API request with rate limit handling."""
-    resp = requests.get(url, params=params, headers=GITHUB_HEADERS, timeout=30)
-    if resp.status_code == 401:
-        # Bad/expired token. Abort loudly — silent 401s previously produced
-        # newsletters with 0 GitHub events.
-        raise SystemExit(
-            f"GitHub API returned 401 (Bad credentials) for {url}. "
-            "Check GITHUB_TOKEN — likely expired, revoked, or missing scopes."
-        )
-    if resp.status_code == 403:
-        reset = int(resp.headers.get("X-RateLimit-Reset", 0))
-        wait = max(reset - time.time(), 0) + 2
-        print(f"  Rate limited! Waiting {wait:.0f}s...")
-        time.sleep(wait)
+    """Make a GitHub API request with rate limit handling.
+
+    403/429 with Retry-After (secondary rate limit) or an exhausted primary
+    quota waits and retries. A 403 that is NOT rate limiting is recorded in
+    FORBIDDEN_403S and returned as-is (callers treat non-200 as no data);
+    main() surfaces the list and aborts if it grows past the threshold.
+    """
+    for attempt in range(3):
+        API_CALLS[0] += 1
         resp = requests.get(url, params=params, headers=GITHUB_HEADERS, timeout=30)
-    return resp
+        if resp.status_code == 401:
+            # Bad/expired token. Abort loudly — silent 401s previously produced
+            # newsletters with 0 GitHub events.
+            raise SystemExit(
+                f"GitHub API returned 401 (Bad credentials) for {url}. "
+                "Check GITHUB_TOKEN — likely expired, revoked, or missing scopes."
+            )
+        if resp.status_code not in (403, 429):
+            return resp
+
+        retry_after = resp.headers.get("Retry-After")
+        remaining = resp.headers.get("X-RateLimit-Remaining")
+        if retry_after:
+            # Secondary rate limit: GitHub says exactly how long to back off.
+            wait = int(retry_after) + 1
+            print(f"  Secondary rate limit (HTTP {resp.status_code})! Waiting {wait}s...")
+        elif remaining == "0":
+            # Primary quota exhausted: wait until the reset timestamp.
+            reset = int(resp.headers.get("X-RateLimit-Reset", 0))
+            wait = max(reset - time.time(), 0) + 2
+            print(f"  Rate limited! Waiting {wait:.0f}s...")
+        else:
+            # 403 with quota left and no Retry-After: not rate limiting —
+            # permissions/visibility problem. Surface it, don't retry.
+            FORBIDDEN_403S.append(url)
+            print(f"  WARNING: GitHub returned 403 (not rate-limited) for {url} — "
+                  "token permissions or source visibility problem")
+            return resp
+        time.sleep(wait)
+
+    raise SystemExit(
+        f"GitHub rate limit did not clear after 3 waits for {url} — aborting "
+        "so the pipeline retries instead of shipping a thin edition."
+    )
 
 
 def get_sources():
@@ -261,38 +300,49 @@ def get_technologies():
     return technologies
 
 
-def collect_new_repos(org_login, cutoff_date):
-    """Find repos created after cutoff_date for an org."""
+def collect_new_repos(org_login, cutoff_date, max_pages=3):
+    """Find repos created after cutoff_date for an org.
+
+    Paginated (created-desc, so we stop at the first repo older than the
+    cutoff): the old per_page=10 single fetch meant an org creating >10
+    repos in a week — or forks padding the first 10 — silently hid the rest.
+    """
     items = []
-    resp = github_get(f"{GITHUB_API}/orgs/{org_login}/repos",
-                      {"sort": "created", "direction": "desc", "per_page": 10})
-    if resp.status_code != 200:
-        return items
+    for page in range(1, max_pages + 1):
+        resp = github_get(f"{GITHUB_API}/orgs/{org_login}/repos",
+                          {"sort": "created", "direction": "desc",
+                           "per_page": 100, "page": page})
+        if resp.status_code != 200:
+            return items
 
-    for repo in resp.json():
-        if repo.get("fork"):
-            continue
-        created = repo.get("created_at", "")
-        if not created:
-            continue
-        created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
-        if created_dt < cutoff_date:
-            break  # Sorted by created desc, so no more new ones
+        repos = resp.json()
+        for repo in repos:
+            created = repo.get("created_at", "")
+            if not created:
+                continue
+            created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+            if created_dt < cutoff_date:
+                return items  # Sorted by created desc, so no more new ones
+            if repo.get("fork"):
+                continue
 
-        items.append({
-            "org": org_login,
-            "event_type": "new_repo",
-            "repo": repo["full_name"],
-            "title": repo["name"],
-            "description": (repo.get("description") or "")[:200],
-            "url": repo["html_url"],
-            "date": created[:10],
-            "details": {
-                "language": repo.get("language"),
-                "stars": repo.get("stargazers_count", 0),
-                "topics": repo.get("topics", []),
-            }
-        })
+            items.append({
+                "org": org_login,
+                "event_type": "new_repo",
+                "repo": repo["full_name"],
+                "title": repo["name"],
+                "description": (repo.get("description") or "")[:200],
+                "url": repo["html_url"],
+                "date": created[:10],
+                "details": {
+                    "language": repo.get("language"),
+                    "stars": repo.get("stargazers_count", 0),
+                    "topics": repo.get("topics", []),
+                }
+            })
+
+        if len(repos) < 100:
+            return items  # last page
 
     return items
 
@@ -378,6 +428,32 @@ def _extract_event(event, org_label, cutoff_date, repo_override=None):
     return None
 
 
+def _paged_events(endpoint, cutoff_date, max_pages=3):
+    """Fetch an events feed page by page until it reaches the cutoff date.
+
+    per_page=100 with date-based continuation replaces the old single
+    per_page=30 fetch, where a burst of bot events (dependabot etc.) could
+    fill the window and hide real activity — the stop decision is now the
+    timestamp of the last event on the page, never the item count. GitHub
+    caps event feeds at 300 events / 3 pages at this page size.
+    """
+    events = []
+    for page in range(1, max_pages + 1):
+        resp = github_get(endpoint, {"per_page": 100, "page": page})
+        if resp.status_code != 200:
+            break  # 404/410 (no events, gone) tolerated; 403 surfaced in github_get
+        page_events = resp.json()
+        if not page_events:
+            break
+        events.extend(page_events)
+        last_date = page_events[-1].get("created_at", "")
+        if last_date and datetime.fromisoformat(last_date.replace("Z", "+00:00")) < cutoff_date:
+            break  # feed is newest-first; the rest is older than the window
+        if len(page_events) < 100:
+            break  # last page
+    return events
+
+
 def collect_events(org_login, cutoff_date, is_individual=False):
     """Fetch org/user events and extract releases and significant pushes."""
     # Use different endpoint for individuals vs organizations
@@ -386,12 +462,8 @@ def collect_events(org_login, cutoff_date, is_individual=False):
     else:
         endpoint = f"{GITHUB_API}/orgs/{org_login}/events"
 
-    resp = github_get(endpoint, {"per_page": 30})
-    if resp.status_code != 200:
-        return []
-
     items = []
-    for event in resp.json():
+    for event in _paged_events(endpoint, cutoff_date):
         item = _extract_event(event, org_login, cutoff_date)
         if item:
             items.append(item)
@@ -400,12 +472,8 @@ def collect_events(org_login, cutoff_date, is_individual=False):
 
 def collect_repo_events(repo_full_name, entity_login, cutoff_date):
     """Fetch events for a specific repo and extract releases and significant pushes."""
-    resp = github_get(f"{GITHUB_API}/repos/{repo_full_name}/events", {"per_page": 30})
-    if resp.status_code != 200:
-        return []
-
     items = []
-    for event in resp.json():
+    for event in _paged_events(f"{GITHUB_API}/repos/{repo_full_name}/events", cutoff_date):
         item = _extract_event(event, entity_login, cutoff_date, repo_override=repo_full_name)
         if item:
             items.append(item)
@@ -440,7 +508,6 @@ def main():
     all_activity = []
     sources_with_activity = 0
     technologies_with_activity = 0
-    api_calls = 0
 
     print(f"\nScanning {len(sources)} sources...\n")
 
@@ -456,12 +523,10 @@ def main():
             items = []
             for repo in tracked_repos:
                 items.extend(collect_repo_events(repo, login, cutoff))
-                api_calls += 1
         else:
-            # Org-wide mode (or user-wide for individuals): fetch all repos + events (2 API calls)
+            # Org-wide mode (or user-wide for individuals): fetch all repos + events
             new_repos = collect_new_repos(login, cutoff) if not is_individual else []
             events = collect_events(login, cutoff, is_individual=is_individual)
-            api_calls += 2 if not is_individual else 1
             items = new_repos + events
 
         if items:
@@ -495,9 +560,7 @@ def main():
             for repo in tracked_repos:
                 # Use repo owner as the "login" for API calls
                 repo_owner = repo.split("/")[0] if "/" in repo else repo
-                repo_events = collect_repo_events(repo, repo_owner, cutoff)
-                api_calls += 1
-                items.extend(repo_events)
+                items.extend(collect_repo_events(repo, repo_owner, cutoff))
 
             if items:
                 technologies_with_activity += 1
@@ -518,6 +581,24 @@ def main():
                 if items:
                     status += f" -> {len(items)} event(s)"
                 print(status)
+
+    # Non-rate-limit 403s: surface every affected URL, and abort (before any
+    # output or pending-cache write) if enough accumulated to look systemic —
+    # a bad token scope 403s everything, and shipping "0 events" silently is
+    # exactly the failure mode this pipeline is built to refuse.
+    if FORBIDDEN_403S:
+        print(f"\n{'!'*60}")
+        print(f"WARNING: {len(FORBIDDEN_403S)} GitHub URL(s) returned non-rate-limit 403:")
+        for url in FORBIDDEN_403S:
+            print(f"  {url}")
+        print("Check token permissions / source visibility for these.")
+        print(f"{'!'*60}")
+        if len(FORBIDDEN_403S) >= FORBIDDEN_403S_ABORT_THRESHOLD:
+            raise SystemExit(
+                f"{len(FORBIDDEN_403S)} forbidden responses (threshold "
+                f"{FORBIDDEN_403S_ABORT_THRESHOLD}) — looks systemic (token "
+                "permissions?). Aborting so the pipeline is retried."
+            )
 
     # Cross-edition dedup: drop events already collected by a previously SENT
     # edition (the lookback window overlaps the weekly cadence by ~1 day).
@@ -580,7 +661,7 @@ def main():
     if technologies:
         print(f"Technologies scanned: {len(technologies)}")
         print(f"Technologies with activity: {technologies_with_activity}")
-    print(f"API calls made: {api_calls}")
+    print(f"API calls made: {API_CALLS[0]}")
     print(f"Total events found: {len(deduped)}")
 
     by_type = {}
