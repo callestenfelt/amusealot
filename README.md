@@ -36,7 +36,7 @@ musemaniac/
     score_newsletter_content.py    # AI scoring of GitHub events
     generate_newsletter.py         # Render HTML newsletter (web + email)
     send_newsletter.py             # Send via Resend API
-    send_reminder.py               # Send reminder to non-openers
+    send_reminders.py              # Send confirmation reminders to pending subscribers
     run_newsletter.sh              # End-to-end pipeline script
     subscriber_app.py              # Flask web app (subscribe/confirm/unsubscribe/sources/feedback)
     purge_pending_subscribers.py   # Remove stale pending subscribers (bot signups); dry-run by default

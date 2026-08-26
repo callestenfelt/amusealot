@@ -22,7 +22,7 @@
 - Test dark mode after design changes: generate with `python generate_newsletter.py --test`, then send the test file explicitly with `python send_newsletter.py --input newsletter_email_test.html --test calle@callestenfelt.se --apply` (without `--input`, send picks the latest *dated* edition in `editions/`, not the `--test` output). Then view in **Outlook desktop on Windows with dark mode on** (the client the fix targets) — webmail/Apple Mail won't exercise the Word-engine path.
 
 ## Subscribe form bot protection
-The `/subscribe` form has three layers against subscription-bombing (bots firing double-opt-in confirmation emails at third parties, which burns Resend quota and harms sender reputation):
+The `/subscribe` form has three layers against subscription-bombing (bots firing double-opt-in confirmation emails at third parties, which burns Resend quota and harms sender reputation). Since 2026-08-26 the `/feedback` form shares layers 1–2 (via the `bot_check_failed()` helper and the `_bot_fields.html` template partial — change them in those two places, not per-form), with a 1s minimum age instead of 3s because prefilled-rating one-click submits are legitimate:
 1. **Honeypot** — hidden `company_website` field; if filled, the request is dropped silently (normal success page, no Baserow write, no email).
 2. **Timing** — `form_ts` is an HMAC-signed render timestamp; submissions faster than 3s or older than 2h are dropped silently.
 3. **Cloudflare Turnstile** — hard CAPTCHA gate, active only when `TURNSTILE_SITEKEY` + `TURNSTILE_SECRET` are set in `.env`. Privacy-friendly (no cookies), so it keeps the site's "no tracking, no cookies" promise. Fails closed (a Cloudflare outage briefly blocks signups rather than letting bots through).
@@ -46,6 +46,7 @@ All three layers are **live in production** (Turnstile enabled 2026-05-20; keys 
   - `/opt/musemaniac/logs/newsletter_YYYY-MM-DD.log` (underscore) — written by `cron_newsletter.sh` via shell redirect; only the cron path writes here
   - `/opt/musemaniac/logs/newsletter-YYYY-MM-DD.log` (hyphen) — written by `run_newsletter.sh` via `tee -a`; both cron and manual runs write here
 - Admin notifications: success/failure emails go to `calle@callestenfelt.se` via `notify_admin.py`
+- Pipeline state files (all in `/opt/musemaniac/scripts/`, all gitignored): `news_etags.json` (RSS ETag cache), `editions/*.sent` (per-edition send markers, see recovery below), and `github_seen_events.json` + `github_seen_events_pending.json` (cross-edition GitHub dedup). The seen-events cache is deliberately two-phase: collection (`--apply`) writes only the *pending* file, and `run_newsletter.sh` commits it via `--commit-seen` **after the send succeeds** — don't "simplify" this into a collect-time write; that would burn collected events on a mid-pipeline failure and break the recovery re-run.
 - `GITHUB_TOKEN` in `/opt/musemaniac/.env`: fine-grained PAT, "Public Repositories (read-only)" mode, expires annually. Rotate before expiry; a bad token now aborts the pipeline loudly (401 → SystemExit), but only after the cron has missed a send.
 
 ## Recovering from a missed send

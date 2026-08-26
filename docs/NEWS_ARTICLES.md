@@ -9,7 +9,7 @@ Museums publish important technical and digital heritage announcements through i
 ## How it works
 
 1. **Collection**: `collect_news.py` fetches RSS feeds from tracked news sources in Baserow
-2. **Deduplication**: Content hashing (SHA256 of title + URL + date) prevents duplicate collection
+2. **Deduplication**: Content hashing (SHA256 of the URL — an article *is* its URL; feeds shift dates and retitle articles, so those fields left the formula 2026-08-26) prevents duplicate collection. Dedup also matches URL-hashes computed from stored Baserow rows, so rows inserted under the old title+URL+date formula still dedup correctly.
 3. **Caching**: ETag headers minimize bandwidth and respect 304 Not Modified responses
 4. **Language detection**: Automatically detects article language via langdetect
 5. **Scoring**: `score_news.py` uses Groq/GPT-OSS 120B to score articles for relevance (1-10 → tier 1/2/3)
@@ -231,11 +231,16 @@ save_json("news_etags.json", etag_cache)
 ```python
 import hashlib
 
-def compute_content_hash(title, url, published_date):
-    """Generate SHA256 hash for deduplication."""
-    content = f"{title}|{url}|{published_date}"
-    return "sha256:" + hashlib.sha256(content.encode('utf-8')).hexdigest()
+def compute_content_hash(url):
+    """SHA256 of the URL alone — titles and published dates churn on feeds,
+    so they're excluded from identity (they caused cross-edition repeats
+    under the pre-2026-08 title||url||date formula)."""
+    return hashlib.sha256(url.encode('utf-8')).hexdigest()
 ```
+
+The dedup set fetched from Baserow contains both each row's stored
+`content_hash` **and** a URL-hash computed from its stored `url` field, so
+rows written under the old formula keep matching without any migration.
 
 ### Language Detection
 
