@@ -79,8 +79,9 @@ echo "  AmuseAlot Newsletter Pipeline"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================"
 
-# Step 1: Collect GitHub activity (--apply persists the seen-events cache
-# used for cross-edition dedup; dry runs leave it untouched)
+# Step 1: Collect GitHub activity (--apply records collected event URLs to a
+# pending file; the cross-edition dedup cache is only committed after the
+# send succeeds — see the --commit-seen call below step 7)
 echo ""
 echo "[1/8] Collecting GitHub activity..."
 python3 "$SCRIPT_DIR/collect_github_activity.py" --days 8 $APPLY_FLAG
@@ -116,6 +117,16 @@ python3 "$SCRIPT_DIR/generate_newsletter.py" $APPLY_FLAG
 echo ""
 echo "[7/8] Sending newsletter..."
 python3 "$SCRIPT_DIR/send_newsletter.py" --input "$EMAIL_FILE" $APPLY_FLAG $FORCE_FLAG
+
+# The edition is sent — NOW commit the GitHub seen-events cache (pending file
+# written by step 1). Committing any earlier would burn the collected events
+# on a mid-pipeline failure: the recovery re-run would filter them all out
+# and ship an edition with an empty GitHub section.
+if [[ -n "$APPLY_FLAG" ]]; then
+    echo ""
+    echo "Committing GitHub seen-events cache..."
+    python3 "$SCRIPT_DIR/collect_github_activity.py" --commit-seen
+fi
 
 # Step 8: Send confirmation reminders to pending subscribers
 echo ""

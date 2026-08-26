@@ -160,24 +160,65 @@ User decisions (made 2026-08-26):
 Isolated on its own branch because it changes data identity and needs a
 migration story — don't bundle it with quick fixes.
 
-Done 2026-08-26. Decisions (user-approved): **URL-only hash** (an article is
-its URL; titles and dates are the churn sources) and **dual-formula compare**
-for migration (no Baserow writes; kept permanently at negligible cost).
+Done 2026-08-26 (two rounds: implementation, then an automated /code-review
+at high effort found 10 issues — all resolved, see follow-ups below).
+Decisions (user-approved): **URL-only hash** (an article is its URL; titles
+and dates are the churn sources) and **persisted seen-URLs cache** for GitHub
+(over shrinking the 8-day window).
 
 - [x] **[pipeline H1]** `compute_content_hash(url)` hashes the URL alone;
-      date stays in the cutoff filter only. `compute_legacy_hash` keeps the
-      old title||url||date formula for matching pre-change Baserow rows —
-      candidates are dropped if *either* hash is already in Baserow; only
-      the new hash is stored on insert (the transient `legacy_hash` key is
-      popped before the Baserow save and the intermediate JSON).
+      date stays in the cutoff filter only.
+- [x] **Migration** — the user picked dual-formula compare, but the review
+      (finding 5) showed it misses its own target case: the legacy hash is
+      recomputed from the feed's *current* title/date, so churned articles
+      (the reason for the change) wouldn't match. Superseded by a strictly
+      better approach in the same no-Baserow-writes spirit:
+      `get_existing_hashes` now also adds `sha256(stored URL)` for every
+      Baserow row, making dedup formula-independent forever. The legacy
+      formula is deleted entirely.
 - [x] **[pipeline L6]** Accepted hashes join the in-run set immediately
       (same-run syndicated duplicates filtered); `import re` at module top.
-- [x] **[pipeline M6]** Cross-edition dedup via a persisted seen-URLs cache
-      (`github_seen_events.json`, pruned at 30 days), gated on a new
-      `--apply` flag exactly like the news ETag cache so dry runs stay dry;
-      `run_newsletter.sh` forwards `--apply` to step 1. File gitignored.
-      (Chosen over shrinking the 8-day window: robust to late/recovery
-      runs; harness-verified filter, prune, and dry-run behavior.)
+- [x] **[pipeline M6]** Cross-edition dedup via a seen-URLs cache
+      (`github_seen_events.json`, pruned at 30 days). Two-phase after
+      review finding 1: collection (`--apply`) writes candidates to a
+      *pending* file only; `run_newsletter.sh` commits it to the cache via
+      `--commit-seen` right after the send step succeeds — so a failed run
+      burns nothing and the documented recovery re-run still ships a full
+      GitHub section. Both files gitignored.
+
+### Phase 3 review follow-ups (automated /code-review of `11741c9`, high, 2026-08-26)
+
+10 findings, all resolved in the follow-up commit:
+
+- [x] **(1)** Cache persisted at step 1 broke failure recovery → two-phase
+      pending/commit design (commit only after send success).
+- [x] **(2)** Collected-but-unpublished events burned → *partially
+      accepted*: the pending file still records all collected URLs, so an
+      event cut by a transient scoring error inside the ~1-day overlap
+      slice stays suppressed. Rare (one-day slice × scoring-failure rate)
+      and bounded by the 8-day window; revisit with a published-URL-derived
+      cache only if it visibly bites.
+- [x] **(3)** Persist read post-collapse list while filter read
+      pre-collapse → pending is built from `all_activity` (pre-collapse),
+      so a superseded push can't resurface and win next week.
+- [x] **(4)** Non-unique cache keys → `is_cacheable_url()` excludes empty
+      URLs and the per-branch `/commits/{branch}` fallback from both the
+      filter and the pending file.
+- [x] **(5)** Legacy compare missed churned articles → superseded by
+      URL-derived hashes from Baserow (see Migration above).
+- [x] **(6)** Legacy branch skipped the in-run set add → moot; with
+      URL-derived hashes the matching entry *is* `sha256(url)`, so the
+      invariant holds structurally.
+- [x] **(7)** Bare `--apply` with the `--days 30` default poisoning the
+      cache → defused by the pending design: bare `--apply` only writes
+      the pending file, which the next pipeline run's step 1 overwrites
+      before anything commits.
+- [x] **(8)** Non-atomic cache writes → new shared `json_cache.py` writes
+      via temp file + `os.replace`; the news ETag cache now uses it too.
+- [x] **(9)** Transient `legacy_hash` key contract → gone with the legacy
+      formula.
+- [x] **(10)** Duplicated cache-I/O idiom → shared `json_cache.py` helper
+      used by both scripts (deploy it alongside).
 
 ## Phase 4 — Site security & flows (branch: `fix/site-hardening`)
 

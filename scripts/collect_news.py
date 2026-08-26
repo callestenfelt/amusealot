@@ -72,28 +72,20 @@ ARTICLES_FIELDS = {
     "content_hash": "field_7280",
 }
 
+from json_cache import load_json_cache, save_json_cache
+
 SCRIPT_DIR = Path(__file__).parent
 ETAG_CACHE_FILE = SCRIPT_DIR / "news_etags.json"
 
 
 def load_etag_cache():
     """Load ETag cache from previous runs."""
-    if ETAG_CACHE_FILE.exists():
-        try:
-            with open(ETAG_CACHE_FILE, encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Warning: Could not load ETag cache: {e}")
-    return {}
+    return load_json_cache(str(ETAG_CACHE_FILE), "ETag cache")
 
 
 def save_etag_cache(cache):
-    """Save ETag cache for next run."""
-    try:
-        with open(ETAG_CACHE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(cache, f, indent=2, ensure_ascii=False)
-    except Exception as e:
-        print(f"Warning: Could not save ETag cache: {e}")
+    """Save ETag cache for next run (atomic write)."""
+    save_json_cache(str(ETAG_CACHE_FILE), cache, "ETag cache")
 
 
 def get_active_sources():
@@ -157,13 +149,6 @@ def compute_content_hash(url):
     return hashlib.sha256(url.encode('utf-8')).hexdigest()
 
 
-def compute_legacy_hash(title, url, published_date):
-    """Old-formula hash (title||url||date), kept for dedup against Baserow rows
-    inserted before the 2026-08 formula change. Cheap enough to keep forever."""
-    content = f"{title}||{url}||{published_date}"
-    return hashlib.sha256(content.encode('utf-8')).hexdigest()
-
-
 def detect_language_safe(text):
     """Detect language with fallback to 'en'."""
     try:
@@ -175,7 +160,14 @@ def detect_language_safe(text):
 
 
 def get_existing_hashes():
-    """Fetch all existing content_hash values from Baserow for deduplication."""
+    """Fetch the dedup identity set from Baserow: stored content_hash values
+    PLUS a URL-only hash computed from each row's stored URL.
+
+    The URL-derived hashes make dedup independent of which hash formula a row
+    was inserted under — pre-2026-08 rows store title||url||date hashes that a
+    re-seen article no longer matches once the feed shifts its date or title
+    (the exact churn the URL-only formula exists to fix), but its stored URL
+    still identifies it."""
     print("Fetching existing article hashes from Baserow...")
     hashes = set()
     page = 1
@@ -198,6 +190,9 @@ def get_existing_hashes():
                 content_hash = row.get(ARTICLES_FIELDS["content_hash"], "")
                 if content_hash:
                     hashes.add(content_hash)
+                url = (row.get(ARTICLES_FIELDS["url"]) or "").strip()
+                if url:
+                    hashes.add(compute_content_hash(url))
 
             if not data.get("next"):
                 break
@@ -302,8 +297,6 @@ def fetch_rss_feed(source, etag_cache, cutoff_date):
                 "summary": summary,
                 "language": language,
                 "content_hash": compute_content_hash(url),
-                # Transient: matched against pre-2026-08 Baserow rows, then dropped
-                "legacy_hash": compute_legacy_hash(title, url, published_date),
             })
 
         print(f"  ✓ Extracted {len(articles)} articles")
@@ -435,14 +428,13 @@ def main():
         elif source["rss_url"] in etag_cache:
             new_etag_cache[source["rss_url"]] = etag_cache[source["rss_url"]]
 
-        # Filter out duplicates. An article is a dupe if its hash (new
-        # URL-only formula) OR its legacy hash (old title||url||date formula,
-        # matching rows inserted before the change) is already in Baserow.
+        # Filter out duplicates (existing_hashes holds stored hashes AND
+        # URL-derived hashes for every Baserow row — see get_existing_hashes).
         # Accepted hashes join the set immediately so the same article
         # syndicated by a later source in this run is also filtered.
         new_articles = []
         for a in articles:
-            if a["content_hash"] in existing_hashes or a["legacy_hash"] in existing_hashes:
+            if a["content_hash"] in existing_hashes:
                 continue
             existing_hashes.add(a["content_hash"])
             new_articles.append(a)
@@ -462,11 +454,6 @@ def main():
         save_etag_cache(new_etag_cache)
     else:
         print("\n[DRY RUN] Not saving ETag cache")
-
-    # The legacy hash was only for dedup against pre-change rows — don't let
-    # it leak into Baserow payload maps or the intermediate JSON
-    for article in all_articles:
-        article.pop("legacy_hash", None)
 
     # Save to Baserow first: it stamps each article with its Baserow row id,
     # which must end up in the JSON so score_news can write scores back

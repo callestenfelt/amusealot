@@ -17,10 +17,13 @@ clears.
       the Phase 2 code (sent marker, --input-driven send step, marker-based
       success-email count, reminder send-then-mark).
 - [ ] **Merge `fix/dedup-hash` to master and deploy** — Phase 3 complete
-      2026-08-26 (decisions: URL-only hash, dual-formula migration compare,
-      persisted GitHub seen-URLs cache). Files to deploy:
-      `collect_news.py`, `collect_github_activity.py`, `run_newsletter.sh`.
-      Needs user approval to merge; scp deploy separate.
+      2026-08-26 incl. all 10 findings from an automated /code-review
+      (decisions: URL-only hash; migration via URL-derived hashes from
+      Baserow rows, superseding the dual-formula plan; GitHub seen-URLs
+      cache with pending/commit-at-send-success design). Files to deploy:
+      `collect_news.py`, `collect_github_activity.py`, `run_newsletter.sh`,
+      **`json_cache.py` (new)**. Needs user approval to merge; scp deploy
+      separate.
 - [ ] Phases 4–7 — see `docs/review-2026-08-26-plan.md`.
 
 ## Done

@@ -19,11 +19,14 @@ Requires environment variables: BASEROW_URL, BASEROW_TOKEN, GITHUB_TOKEN
 import sys
 import io
 import os
+import re
 import json
 import time
 import argparse
 from datetime import datetime, timedelta, timezone
 import requests
+
+from json_cache import load_json_cache, save_json_cache
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 
@@ -59,33 +62,55 @@ TECH_FIELDS = {
 BOT_AUTHORS = {"dependabot[bot]", "dependabot-preview[bot]", "renovate[bot]",
                "github-actions[bot]", "snyk-bot", "codecov[bot]", "greenkeeper[bot]"}
 
-# Cross-edition dedup: event URLs collected by previous runs. The 8-day
-# lookback with a 7-day cron cadence guarantees ~1 day of overlap, which
-# produced a repeat slot every week without this.
+# Cross-edition dedup: event URLs collected by previous SENT editions. The
+# 8-day lookback with a 7-day cron cadence guarantees ~1 day of overlap,
+# which produced a repeat slot every week without this.
+#
+# Two-file design: collection (--apply) only writes candidates to the PENDING
+# file; the cache itself is committed by a separate --commit-seen invocation
+# that run_newsletter.sh makes right after the send step succeeds. A run that
+# fails anywhere before the send therefore never burns its events — the
+# documented "fix and re-run" recovery re-collects them all.
 SEEN_EVENTS_FILE = os.path.join(os.path.dirname(__file__), "github_seen_events.json")
+SEEN_EVENTS_PENDING_FILE = os.path.join(os.path.dirname(__file__), "github_seen_events_pending.json")
 SEEN_EVENTS_MAX_AGE_DAYS = 30
 
+# Push events without head/before hashes fall back to a per-repo+branch
+# commits URL that is identical for every such push — caching one would
+# filter all future fallback pushes to that branch for 30 days.
+_NON_UNIQUE_URL_RE = re.compile(r"^https://github\.com/[^/]+/[^/]+/commits/[^/]+$")
 
-def load_seen_events():
-    """Load {event_url: first_seen_date} from previous runs."""
-    if os.path.exists(SEEN_EVENTS_FILE):
-        try:
-            with open(SEEN_EVENTS_FILE, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Warning: Could not load seen-events cache: {e}")
-    return {}
+
+def is_cacheable_url(url):
+    """Only durable, per-event-unique URLs may become 30-day cache keys."""
+    return bool(url) and not _NON_UNIQUE_URL_RE.match(url)
 
 
 def save_seen_events(cache):
-    """Save the seen-events cache, pruning entries older than the max age."""
+    """Save the seen-events cache (atomic), pruning entries older than max age."""
     cutoff = (datetime.now(timezone.utc) - timedelta(days=SEEN_EVENTS_MAX_AGE_DAYS)).date().isoformat()
     pruned = {url: seen for url, seen in cache.items() if seen >= cutoff}
-    try:
-        with open(SEEN_EVENTS_FILE, "w", encoding="utf-8") as f:
-            json.dump(pruned, f, indent=2, ensure_ascii=False)
-    except Exception as e:
-        print(f"Warning: Could not save seen-events cache: {e}")
+    save_json_cache(SEEN_EVENTS_FILE, pruned, "seen-events cache")
+
+
+def commit_seen_events():
+    """Merge the pending file (written by the last --apply collection) into the
+    seen-events cache. Called by run_newsletter.sh after a successful send."""
+    if not os.path.exists(SEEN_EVENTS_PENDING_FILE):
+        print(f"ERROR: No pending seen-events file ({SEEN_EVENTS_PENDING_FILE}) — "
+              "was the collection step run with --apply?")
+        sys.exit(1)
+    pending = load_json_cache(SEEN_EVENTS_PENDING_FILE, "pending seen-events")
+    cache = load_json_cache(SEEN_EVENTS_FILE, "seen-events cache")
+    added = 0
+    for url, first_seen in pending.items():
+        if url not in cache:
+            cache[url] = first_seen
+            added += 1
+    save_seen_events(cache)
+    os.remove(SEEN_EVENTS_PENDING_FILE)
+    print(f"Committed {added} new event URL(s) to the seen-events cache "
+          f"({len(pending)} pending, cache now {len(cache)} before pruning)")
 
 
 def github_get(url, params=None):
@@ -393,9 +418,17 @@ def main():
     parser.add_argument("--output", default=os.path.join(os.path.dirname(__file__), "github_activity.json"),
                         help="Output JSON file (default: scripts/github_activity.json)")
     parser.add_argument("--apply", action="store_true",
-                        help="Persist the seen-events cache (default: dry-run leaves it "
-                             "untouched, so a dry run can't hide events from the next real run)")
+                        help="Record collected event URLs to the pending seen-events file "
+                             "(committed to the cache by --commit-seen after a successful "
+                             "send; default: dry-run records nothing)")
+    parser.add_argument("--commit-seen", action="store_true",
+                        help="Commit the pending seen-events file into the cache and exit "
+                             "(run by the pipeline after the send step succeeds)")
     args = parser.parse_args()
+
+    if args.commit_seen:
+        commit_seen_events()
+        return
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=args.days)
     print(f"Collecting GitHub activity from the last {args.days} days (since {cutoff.strftime('%Y-%m-%d')})")
@@ -486,14 +519,17 @@ def main():
                     status += f" -> {len(items)} event(s)"
                 print(status)
 
-    # Cross-edition dedup: drop events already collected by a previous run
-    # (the lookback window overlaps the weekly cadence by ~1 day)
-    seen_events = load_seen_events()
+    # Cross-edition dedup: drop events already collected by a previously SENT
+    # edition (the lookback window overlaps the weekly cadence by ~1 day).
+    # Only cacheable URLs are ever in the cache, but guard anyway so an empty
+    # or fallback URL can never match a cache key.
+    seen_events = load_json_cache(SEEN_EVENTS_FILE, "seen-events cache")
     before_cross = len(all_activity)
-    all_activity = [item for item in all_activity if item["url"] not in seen_events]
+    all_activity = [item for item in all_activity
+                    if not (is_cacheable_url(item["url"]) and item["url"] in seen_events)]
     if before_cross != len(all_activity):
         print(f"\nFiltered {before_cross - len(all_activity)} event(s) already "
-              f"collected by a previous run")
+              f"collected by a previous edition")
 
     # Deduplicate: for push events, keep only the latest per repo+branch
     push_best = {}  # key: (repo, branch) -> most recent push
@@ -516,16 +552,20 @@ def main():
     # Sort by date descending
     deduped.sort(key=lambda x: x["date"], reverse=True)
 
-    # Persist what this run collected — only on --apply, for the same reason
-    # collect_news gates its ETag cache: a dry run that recorded URLs would
-    # hide those events from the next real run.
+    # Record this run's candidates to the PENDING file — from the pre-collapse
+    # list (all_activity), not `deduped`: a push superseded by push_best in
+    # this run must still be cached, or it resurfaces and wins next week's
+    # uncontested election as a stale repeat. Cache commit happens only after
+    # the send succeeds (--commit-seen), so a failed run burns nothing; and
+    # only on --apply, so a dry run can't hide events from the next real run.
     if args.apply:
         today = datetime.now(timezone.utc).date().isoformat()
-        for item in deduped:
-            seen_events.setdefault(item["url"], today)
-        save_seen_events(seen_events)
+        pending = {item["url"]: today for item in all_activity
+                   if is_cacheable_url(item["url"])}
+        save_json_cache(SEEN_EVENTS_PENDING_FILE, pending, "pending seen-events")
+        print(f"\nRecorded {len(pending)} event URL(s) to the pending seen-events file")
     else:
-        print("\n[DRY RUN] Not saving seen-events cache")
+        print("\n[DRY RUN] Not recording pending seen-events")
 
     # Save
     with open(args.output, "w", encoding="utf-8") as f:
