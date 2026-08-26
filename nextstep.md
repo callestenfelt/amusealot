@@ -19,10 +19,13 @@ clears.
       (URL-only content hash with URL-derived migration dedup, GitHub
       seen-events pending/commit cache). Also eyeball the edition for
       repeats vs the 2026-08-26 one — the new dedup should remove them.
-- [ ] Phases 4–7 — see `docs/review-2026-08-26-plan.md`. Phase 4
-      (`fix/site-hardening`) includes a VPS Caddy config change alongside
-      the code deploy. (Phases 0–3 are done, merged, deployed, and pushed
-      to origin as of 2026-08-26.)
+- [ ] **Push master to origin** — Phase 4 is merged locally (`04a0935`)
+      and deployed, but not pushed (needs explicit request).
+- [ ] Phases 5–7 — see `docs/review-2026-08-26-plan.md`. Phase 5
+      (`fix/email-dark-mode`) needs the full Outlook-on-Windows dark-mode
+      test loop from CLAUDE.md. (Phases 0–4 done, merged, and deployed as
+      of 2026-08-26; no Caddy change was needed for Phase 4 — Caddy v2.10
+      defaults already strip client X-Forwarded-For.)
 
 ## Done
 
