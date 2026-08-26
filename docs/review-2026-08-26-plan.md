@@ -22,18 +22,20 @@ without explicit approval; deploys via scp are a separate step after merge.
 Do these first; two review findings are "verify config", and today
 (2026-08-26) was the first send exercising the new `--apply` Baserow paths.
 
-- [ ] Confirm the 2026-08-26 send ran clean and Baserow write-backs worked
-      (relevance/tier/ai_summary set on new article rows) — these are the
-      existing open items in `nextstep.md`, and Phase 2 rework touches the
-      same code, so establish a known-good baseline first.
-- [ ] **[site H2]** Verify `FORM_SECRET` is set in `/opt/musemaniac/.env`.
-      If missing, every app restart silently invalidates rendered subscribe
-      forms (visitor sees "Check your email", nothing sent). If unset:
-      set it, restart `musemaniac-subscriber.service`. This is config, not
-      code — fixable same day.
-- [ ] Check how many gunicorn workers the subscriber service runs (relevant
-      to the same finding — multi-worker + per-process secret loses
-      (n−1)/n of signups even without restarts).
+- [x] Confirm the 2026-08-26 send ran clean and Baserow write-backs worked —
+      **verified 2026-08-26**: 59/59 sent, 0 errors; all 52 collected rows
+      have relevance+tier in Baserow (tiers 1/5/46); ai_summary correctly
+      absent (the only tier-1 was English). Edition registered as row 44.
+- [ ] **[site H2]** Verify `FORM_SECRET` is set in `/opt/musemaniac/.env` —
+      **verified MISSING 2026-08-26** (`subscriber_app.py:68` falls back to
+      a random per-process secret; systemd unit does load the `.env` via
+      `EnvironmentFile`). Fix still pending (needs a manual run — the
+      assistant's attempt was permission-blocked):
+      `ssh root@77.42.40.207 'cp /opt/musemaniac/.env /opt/musemaniac/.env.bak-20260826 && echo "FORM_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))")" >> /opt/musemaniac/.env && systemctl restart musemaniac-subscriber.service && systemctl is-active musemaniac-subscriber.service'`
+- [x] Check how many gunicorn workers the subscriber service runs —
+      **checked 2026-08-26**: none; the unit runs plain
+      `python3 subscriber_app.py` (single process), so restart-invalidation
+      is the only exposure, not multi-worker signup loss.
 
 ## Phase 1 — Silent-failure cluster (branch: `fix/silent-failures`)
 
@@ -41,30 +43,30 @@ The highest-impact code fixes, all small, all in the pipeline/send path.
 Theme: failures must abort loudly (non-zero exit → ERR trap → admin failure
 email) instead of "succeeding" thin or empty.
 
-- [ ] **[newsletter H1]** `send_newsletter.py`: exit non-zero when
+- [x] **[newsletter H1]** `send_newsletter.py`: exit non-zero when
       `sent == 0` (and consider when `errors > 0`), so a revoked Resend key
       triggers the failure email instead of a success email saying
       "0 email(s) sent". Same fix in `send_reminders.py:207`.
-- [ ] **[pipeline H2]** `collect_news.py:437`: gate `save_etag_cache()` on
+- [x] **[pipeline H2]** `collect_news.py:437`: gate `save_etag_cache()` on
       `args.apply`. A dry-run currently poisons the next real run into
       skipping feeds via 304 — this exact chain caused the Aug 19 thin
       edition (see nextstep.md post-mortem), so it's production-proven.
-- [ ] **[pipeline H3]** `collect_news.py:163` `get_existing_hashes()`:
+- [x] **[pipeline H3]** `collect_news.py:163` `get_existing_hashes()`:
       abort (SystemExit) on mid-pagination errors instead of returning a
       partial set that silently disables dedup and mass-re-inserts articles.
-- [ ] **[pipeline M1]** `collect_news.py:104` `get_active_sources()`: same
+- [x] **[pipeline M1]** `collect_news.py:104` `get_active_sources()`: same
       fix — abort instead of silently returning a partial source list. Also
       harden the two row-parsing spots that raise on null fields
       (lines ~125, ~131).
-- [ ] **[pipeline M3]** Scoring scripts: count LLM-dropped batch items
+- [x] **[pipeline M3]** Scoring scripts: count LLM-dropped batch items
       (model returns fewer indices than the batch) as `scoring_error`, not
       `unscored`, so the ≥50% abort guard actually sees them; in
       `score_news.py` make sure unmatched articles still reach the output
       instead of vanishing. Ignore duplicate indices from the model.
-- [ ] **[pipeline M8]** `score_news.py:290`: validate LLM output before the
+- [x] **[pipeline M8]** `score_news.py:290`: validate LLM output before the
       Baserow PATCH — `tier` ∈ {1,2,3} as int, `relevance` ∈ 1–10 as int;
       coerce `"1"` → 1 so the English-summary branch doesn't silently skip.
-- [ ] **[pipeline M9]** Both scorers: retry Groq 5xx (like 429/timeout),
+- [x] **[pipeline M9]** Both scorers: retry Groq 5xx (like 429/timeout),
       not just fail the batch.
 
 Verify: `py_compile` all touched scripts; dry-run the pipeline locally;
@@ -248,4 +250,5 @@ Low-risk cleanups; fine to trickle in or do as one sweep.
 
 | Date | Phase | Branch | Commits | Deployed |
 |------|-------|--------|---------|----------|
-|      |       |        |         |          |
+| 2026-08-26 | 0 (verify) | — | — | FORM_SECRET fix pending manual run |
+| 2026-08-26 | 1 | fix/silent-failures | (this commit) | not yet |

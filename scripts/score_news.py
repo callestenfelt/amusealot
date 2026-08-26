@@ -120,9 +120,9 @@ def groq_request(messages, json_mode=True):
         try:
             resp = requests.post(GROQ_URL, headers=headers, json=body, timeout=30)
 
-            if resp.status_code == 429:
+            if resp.status_code == 429 or resp.status_code >= 500:
                 wait = (attempt + 1) * 10  # 10s, 20s, 30s
-                print(f"    Rate limited (429), waiting {wait}s...")
+                print(f"    Groq HTTP {resp.status_code}, waiting {wait}s...")
                 time.sleep(wait)
                 continue
 
@@ -212,6 +212,15 @@ Return JSON with exactly two fields:
     return result if result else None
 
 
+def _coerce_int(value, lo, hi):
+    """Coerce an LLM-returned value to int within [lo, hi]; None if invalid."""
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        return None
+    return v if lo <= v <= hi else None
+
+
 def _select_value(field):
     """Baserow single-selects come back as {'value': ...}; plain text as str."""
     if isinstance(field, dict):
@@ -284,6 +293,12 @@ def fetch_unscored_articles():
 def update_article_scores_in_baserow(article_id, score_data, apply_mode):
     """Update article scores in Baserow."""
     if not apply_mode:
+        return
+
+    # Belt-and-braces: never PATCH values Baserow's single-select would reject
+    if score_data["tier"] not in (1, 2, 3) or _coerce_int(score_data["relevance"], 1, 10) is None:
+        print(f"    Warning: invalid score data for row {article_id}, skipping Baserow update: "
+              f"tier={score_data['tier']!r} relevance={score_data['relevance']!r}")
         return
 
     try:
@@ -387,34 +402,64 @@ def main():
             continue
 
         # Map scores back to articles
+        matched = set()
         for score_data in scores["articles"]:
-            idx = score_data.get("index", 0) - 1  # Convert to 0-based
-            if 0 <= idx < len(batch):
-                article = batch[idx]
+            idx = _coerce_int(score_data.get("index"), 1, len(batch))
+            if idx is None:
+                continue
+            idx -= 1  # Convert to 0-based
+            if idx in matched:
+                continue  # model returned the same index twice; keep the first
+
+            # Validate LLM output; "1"-style strings are coerced, junk is rejected
+            tier = _coerce_int(score_data.get("tier"), 1, 3)
+            relevance = _coerce_int(score_data.get("relevance"), 1, 10)
+            if tier is None or relevance is None:
+                continue  # treated as unmatched below → scoring_error default
+
+            matched.add(idx)
+            article = batch[idx]
+            article["score"] = {
+                "relevance": relevance,
+                "tier": tier,
+                "reasoning": score_data.get("reasoning", ""),
+                "ai_summary": None
+            }
+
+            # Generate English title + summary for tier 1 and tier 2 non-English articles
+            if article["score"]["tier"] in (1, 2) and article.get("language") != "en":
+                print(f"  Generating English title+summary for: {article['title'][:50]}...")
+                time.sleep(DELAY_BETWEEN_CALLS)
+
+                result = generate_english_summary(article)
+                if result:
+                    if isinstance(result, dict):
+                        article["score"]["ai_title"] = result.get("title")
+                        article["score"]["ai_summary"] = result.get("summary")
+                    else:
+                        article["score"]["ai_summary"] = result
+
+            # Update Baserow if apply mode
+            if "id" in article:  # Only if article has Baserow ID
+                update_article_scores_in_baserow(article["id"], article["score"], args.apply)
+
+            scored_articles.append(article)
+
+        # Articles the model dropped (or returned invalid scores for) must not
+        # vanish: default them to tier 3 and count them toward the abort guard.
+        dropped = [i for i in range(len(batch)) if i not in matched]
+        if dropped:
+            print(f"  Warning: model returned no valid score for {len(dropped)} "
+                  f"of {len(batch)} articles; defaulting to tier 3")
+            failed_count += len(dropped)
+            for i in dropped:
+                article = batch[i]
                 article["score"] = {
-                    "relevance": score_data.get("relevance", 1),
-                    "tier": score_data.get("tier", 3),
-                    "reasoning": score_data.get("reasoning", ""),
+                    "relevance": 1,
+                    "tier": 3,
+                    "reasoning": "Scoring failed: no valid score returned by model",
                     "ai_summary": None
                 }
-
-                # Generate English title + summary for tier 1 and tier 2 non-English articles
-                if article["score"]["tier"] in (1, 2) and article.get("language") != "en":
-                    print(f"  Generating English title+summary for: {article['title'][:50]}...")
-                    time.sleep(DELAY_BETWEEN_CALLS)
-
-                    result = generate_english_summary(article)
-                    if result:
-                        if isinstance(result, dict):
-                            article["score"]["ai_title"] = result.get("title")
-                            article["score"]["ai_summary"] = result.get("summary")
-                        else:
-                            article["score"]["ai_summary"] = result
-
-                # Update Baserow if apply mode
-                if "id" in article:  # Only if article has Baserow ID
-                    update_article_scores_in_baserow(article["id"], article["score"], args.apply)
-
                 scored_articles.append(article)
 
         # Rate limiting between batches

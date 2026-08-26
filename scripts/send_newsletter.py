@@ -174,6 +174,11 @@ def main():
         print(f"  Found {len(subscribers)} confirmed subscriber(s)")
 
     if not subscribers:
+        if args.apply:
+            # 0 confirmed subscribers on a real send means the fetch/filter is
+            # broken, not that the list emptied overnight — fail loudly.
+            print("\nERROR: No subscribers to send to — aborting so this is not reported as success")
+            sys.exit(1)
         print("\nNo subscribers to send to. Done.")
         return
 
@@ -227,6 +232,15 @@ def main():
     print(f"  Sent: {sent}")
     print(f"  Errors: {errors}")
     print(f"  Total: {len(subscribers)}")
+
+    # A run that sent nothing (e.g. revoked Resend key) or hit errors must not
+    # exit 0, or the pipeline reports success and nobody notices the missed send.
+    if sent == 0:
+        print("ERROR: 0 emails sent")
+        sys.exit(1)
+    if errors > 0:
+        print(f"ERROR: {errors} send(s) failed")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

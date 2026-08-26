@@ -209,6 +209,15 @@ def main():
     print(f"  Errors: {errors}")
     print(f"  Total: {len(eligible)}")
 
+    # 0 eligible returns early above and is normal; eligible subscribers with
+    # nothing sent, or any send errors, must fail the run loudly.
+    if sent == 0:
+        print("ERROR: 0 reminders sent")
+        sys.exit(1)
+    if errors > 0:
+        print(f"ERROR: {errors} reminder send(s) failed")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

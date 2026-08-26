@@ -75,9 +75,9 @@ def groq_request(messages, json_mode=True):
         try:
             resp = requests.post(GROQ_URL, headers=headers, json=body, timeout=30)
 
-            if resp.status_code == 429:
+            if resp.status_code == 429 or resp.status_code >= 500:
                 wait = (attempt + 1) * 10  # 10s, 20s, 30s
-                print(f"    Rate limited (429), waiting {wait}s...")
+                print(f"    Groq HTTP {resp.status_code}, waiting {wait}s...")
                 time.sleep(wait)
                 continue
 
@@ -306,6 +306,37 @@ def generate_spotlight(event):
     return result.get("writeup", ""), None
 
 
+def apply_batch_scores(batch, scores, scores_map, global_index):
+    """Map model scores onto batch events.
+
+    Events the model dropped, duplicated, or returned invalid tier/relevance
+    for get the scoring_error default, so the ≥50% abort guard counts them.
+    """
+    matched = set()
+    for s in scores:
+        idx = s.get("index")
+        if not isinstance(idx, int) or not 0 <= idx < len(batch) or idx in matched:
+            continue
+        try:
+            s["tier"] = int(s.get("tier"))
+            s["relevance"] = int(s.get("relevance"))
+        except (TypeError, ValueError):
+            continue  # invalid score → event stays unmatched → scoring_error
+        if s["tier"] not in (1, 2, 3) or not 1 <= s["relevance"] <= 10:
+            continue
+        matched.add(idx)
+        scores_map[global_index[id(batch[idx])]] = s
+        print(f"    [T{s['tier']}] {batch[idx]['repo']}: {s.get('summary', '')[:80]}")
+
+    dropped = [i for i in range(len(batch)) if i not in matched]
+    if dropped:
+        print(f"    Warning: model returned no valid score for {len(dropped)} "
+              f"of {len(batch)} events; defaulting to tier 3")
+        for i in dropped:
+            scores_map[global_index[id(batch[i])]] = {
+                "relevance": 1, "summary": "", "tier": 3, "skip_reason": "scoring_error"}
+
+
 def assign_section(event_type, tier):
     """Assign newsletter section based on event type and tier."""
     if tier >= 3:
@@ -382,13 +413,7 @@ def main():
             for e in batch:
                 scores_map[global_index[id(e)]] = {"relevance": 1, "summary": "", "tier": 3, "skip_reason": "scoring_error"}
         else:
-            for s in scores:
-                event_idx_in_batch = s.get("index", 0)
-                if event_idx_in_batch < len(batch):
-                    global_idx = global_index[id(batch[event_idx_in_batch])]
-                    scores_map[global_idx] = s
-                    tier_label = f"T{s.get('tier', '?')}"
-                    print(f"    [{tier_label}] {batch[event_idx_in_batch]['repo']}: {s.get('summary', '')[:80]}")
+            apply_batch_scores(batch, scores, scores_map, global_index)
 
         time.sleep(DELAY_BETWEEN_CALLS)
 
@@ -403,13 +428,7 @@ def main():
             for e in by_type["new_repo"]:
                 scores_map[global_index[id(e)]] = {"relevance": 1, "summary": "", "tier": 3, "skip_reason": "scoring_error"}
         else:
-            for s in scores:
-                event_idx_in_batch = s.get("index", 0)
-                if event_idx_in_batch < len(by_type["new_repo"]):
-                    global_idx = global_index[id(by_type["new_repo"][event_idx_in_batch])]
-                    scores_map[global_idx] = s
-                    tier_label = f"T{s.get('tier', '?')}"
-                    print(f"    [{tier_label}] {by_type['new_repo'][event_idx_in_batch]['repo']}: {s.get('summary', '')[:80]}")
+            apply_batch_scores(by_type["new_repo"], scores, scores_map, global_index)
 
         time.sleep(DELAY_BETWEEN_CALLS)
 
@@ -424,13 +443,7 @@ def main():
             for e in by_type["release"]:
                 scores_map[global_index[id(e)]] = {"relevance": 1, "summary": "", "tier": 3, "skip_reason": "scoring_error"}
         else:
-            for s in scores:
-                event_idx_in_batch = s.get("index", 0)
-                if event_idx_in_batch < len(by_type["release"]):
-                    global_idx = global_index[id(by_type["release"][event_idx_in_batch])]
-                    scores_map[global_idx] = s
-                    tier_label = f"T{s.get('tier', '?')}"
-                    print(f"    [{tier_label}] {by_type['release'][event_idx_in_batch]['repo']}: {s.get('summary', '')[:80]}")
+            apply_batch_scores(by_type["release"], scores, scores_map, global_index)
 
         time.sleep(DELAY_BETWEEN_CALLS)
 

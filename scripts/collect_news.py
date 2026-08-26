@@ -118,18 +118,18 @@ def get_active_sources():
             for row in data["results"]:
                 # Filter for active RSS sources
                 active = row.get(SOURCES_FIELDS["active"])
-                source_type = row.get(SOURCES_FIELDS["source_type"], {})
+                source_type = row.get(SOURCES_FIELDS["source_type"]) or {}
                 source_type_value = source_type.get("value") if isinstance(source_type, dict) else source_type
 
                 if active and source_type_value == "rss":
-                    rss_url = row.get(SOURCES_FIELDS["rss_url"], "").strip()
+                    rss_url = (row.get(SOURCES_FIELDS["rss_url"]) or "").strip()
                     if rss_url:
                         sources.append({
                             "id": row["id"],
-                            "name": row.get(SOURCES_FIELDS["name"], ""),
+                            "name": row.get(SOURCES_FIELDS["name"]) or "",
                             "rss_url": rss_url,
-                            "country": row.get(SOURCES_FIELDS["country"], {}).get("value", ""),
-                            "language": row.get(SOURCES_FIELDS["language"], {}).get("value", ""),
+                            "country": (row.get(SOURCES_FIELDS["country"]) or {}).get("value", ""),
+                            "language": (row.get(SOURCES_FIELDS["language"]) or {}).get("value", ""),
                         })
 
             if not data.get("next"):
@@ -137,8 +137,10 @@ def get_active_sources():
             page += 1
 
         except Exception as e:
+            # A partial source list silently shrinks coverage for the whole
+            # edition — abort so the pipeline fails loudly instead.
             print(f"ERROR fetching sources: {e}")
-            break
+            sys.exit(1)
 
     print(f"Found {len(sources)} active RSS sources")
     return sources
@@ -190,8 +192,10 @@ def get_existing_hashes():
             page += 1
 
         except Exception as e:
-            print(f"Warning: Could not fetch existing hashes: {e}")
-            break
+            # A partial hash set silently disables dedup and mass-re-inserts
+            # articles on --apply — abort instead of continuing with it.
+            print(f"ERROR: Could not fetch existing hashes: {e}")
+            sys.exit(1)
 
     print(f"Found {len(hashes)} existing articles")
     return hashes
@@ -433,8 +437,12 @@ def main():
         if articles:  # Only update if we successfully fetched
             update_source_last_collected(source["id"], args.apply)
 
-    # Save ETag cache
-    save_etag_cache(new_etag_cache)
+    # Save ETag cache — only on --apply. A dry-run that saved ETags would make
+    # the next real run skip those feeds via 304 (cause of the Aug 19 thin edition).
+    if args.apply:
+        save_etag_cache(new_etag_cache)
+    else:
+        print("\n[DRY RUN] Not saving ETag cache")
 
     # Save to Baserow first: it stamps each article with its Baserow row id,
     # which must end up in the JSON so score_news can write scores back
