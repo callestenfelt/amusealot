@@ -18,13 +18,9 @@ clears.
       the plan file's Phase 0 section. Until then every
       `musemaniac-subscriber.service` restart silently invalidates rendered
       subscribe forms.
-- [ ] **Deploy Phase 2 to the VPS (scp)** — `fix/rerun-safety` is complete
-      and **merged to master (`1c91f6d`, 2026-08-26)**: implementation
-      (`6608d96`) plus all 10 review follow-ups (decisions recorded:
-      tokenless rows skip+warn with exit 0, local `.sent` marker accepted).
-      Files to scp: `send_newsletter.py`, `send_reminders.py`,
-      `generate_newsletter.py`, `register_past_edition.py`,
-      `run_newsletter.sh`.
+- [ ] **Watch the next `0 7 * * 3` send (2026-09-02)** — first cron run on
+      the Phase 2 code (sent marker, --input-driven send step, marker-based
+      success-email count, reminder send-then-mark).
 - [ ] **Push master to origin** — Phase 1 is merged locally (`ef5c94b`)
       but not pushed.
 - [ ] Phases 3–7 — see `docs/review-2026-08-26-plan.md`. Phase 3
@@ -44,11 +40,17 @@ clears.
       **Merged to master (`ef5c94b`) and deployed to the VPS the same day**
       (originals backed up to `/opt/musemaniac/scripts/.bak-20260826/`);
       verified compiling on the server. Master not yet pushed to origin.
-- [x] Phase 2 implementation (2026-08-26): all 7 items on
-      `fix/rerun-safety` (`6608d96`) — generate dry-run mode, edition-row
-      dedup, send marker + `--force`, unsubscribe hard errors, stale-date
-      refusal, reminder timezone fix + mark-before-send, run-scoped sent
-      count. Review follow-ups still open (see above) — not merged.
+- [x] Phase 2 (2026-08-26): implementation (`6608d96`) — generate dry-run
+      mode, edition-row dedup, send marker + `--force`, unsubscribe hard
+      errors, stale-date refusal, reminder timezone fix — plus all 10
+      review follow-ups (`1c91f6d`): marker auto-removal on zero-sent runs,
+      `--force` through `run_newsletter.sh`, dry runs rehearse this week's
+      edition via `--input`, reminder send-then-PATCH with retry, edition
+      lookup fall-through + filtered GET, single `apply` boolean,
+      marker-based success-email count, tokenless rows skip+warn (exit 0).
+      **Merged to master (`1c91f6d`) and deployed to the VPS the same day**
+      (originals in `/opt/musemaniac/scripts/.bak-20260826-phase2/`;
+      verified compiling on the server). Master not yet pushed to origin.
 
 ---
 

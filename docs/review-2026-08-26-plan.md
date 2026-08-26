@@ -298,4 +298,4 @@ Low-risk cleanups; fine to trickle in or do as one sweep.
 |------|-------|--------|---------|----------|
 | 2026-08-26 | 0 (verify) | — | — | FORM_SECRET fix pending manual run |
 | 2026-08-26 | 1 | fix/silent-failures | 1317844 | 2026-08-26 (5 scripts, verified on VPS) |
-| 2026-08-26 | 2 | fix/rerun-safety | 6608d96 + 1c91f6d (merged to master 2026-08-26) | not yet (scp deploy pending) |
+| 2026-08-26 | 2 | fix/rerun-safety | 6608d96 + 1c91f6d (merged to master 2026-08-26) | 2026-08-26 (5 scripts; originals in `.bak-20260826-phase2/`; verified compiling on VPS) |
