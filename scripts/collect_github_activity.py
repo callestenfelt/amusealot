@@ -116,21 +116,56 @@ def commit_seen_events():
 # Non-rate-limit 403s (token permission problem, org gone private, abuse
 # block without headers). Surfaced per-URL during the run, listed in the
 # summary, and — because a couple of oddball sources must not kill the weekly
-# send while a systemic token problem must — the run aborts only when several
-# accumulate (decision 2026-08-26: surface + systemic abort, not abort-on-any).
+# send while a systemic token problem must — the run aborts only when the
+# DISTINCT OWNERS affected pass a threshold scaled to the source count
+# (decision 2026-08-26: surface + systemic abort, not abort-on-any). Counting
+# owners, not URLs, keeps one source with many tracked repos (or one org's
+# repos+events pair) from tripping the "systemic" verdict alone.
 FORBIDDEN_403S = []
-FORBIDDEN_403S_ABORT_THRESHOLD = 6
+FORBIDDEN_MIN_OWNERS = 5
+FORBIDDEN_SOURCE_FRACTION = 0.1
+
+_OWNER_RE = re.compile(r"api\.github\.com/(?:orgs|users|repos)/([^/?#]+)")
+
+# A single rate-limit wait longer than this aborts instead of sleeping: the
+# 7AM cron would otherwise stall silently for up to the full reset window
+# (an hour or more) before even the failure email could fire.
+MAX_RATE_LIMIT_WAIT_SECONDS = 900
 
 API_CALLS = [0]  # module-level so pagination helpers count too
+
+
+def forbidden_owners():
+    """Distinct GitHub owners (org/user/repo-owner) among the forbidden URLs."""
+    owners = set()
+    for url in FORBIDDEN_403S:
+        m = _OWNER_RE.search(url)
+        owners.add(m.group(1).lower() if m else url)
+    return owners
+
+
+def _rate_limit_sleep(wait, url):
+    """Sleep out a rate-limit wait, unless it is long enough that stalling the
+    pipeline is worse than failing it (the weekly cron does NOT retry — a
+    human re-runs cron_newsletter.sh per the CLAUDE.md recovery playbook)."""
+    if wait > MAX_RATE_LIMIT_WAIT_SECONDS:
+        raise SystemExit(
+            f"GitHub rate limit for {url} needs a {wait:.0f}s wait (cap "
+            f"{MAX_RATE_LIMIT_WAIT_SECONDS}s) — aborting now so the failure "
+            "email fires promptly. The weekly cron will NOT retry on its own: "
+            "re-run ./scripts/cron_newsletter.sh manually once the limit clears."
+        )
+    time.sleep(wait)
 
 
 def github_get(url, params=None):
     """Make a GitHub API request with rate limit handling.
 
-    403/429 with Retry-After (secondary rate limit) or an exhausted primary
-    quota waits and retries. A 403 that is NOT rate limiting is recorded in
+    Throttling responses — 429 (always throttling, headers or not), or 403
+    with Retry-After / an exhausted primary quota — wait and retry, with the
+    per-wait cap above. A 403 that is NOT rate limiting is recorded in
     FORBIDDEN_403S and returned as-is (callers treat non-200 as no data);
-    main() surfaces the list and aborts if it grows past the threshold.
+    main() surfaces the list and aborts if the affected owners look systemic.
     """
     for attempt in range(3):
         API_CALLS[0] += 1
@@ -148,14 +183,23 @@ def github_get(url, params=None):
         retry_after = resp.headers.get("Retry-After")
         remaining = resp.headers.get("X-RateLimit-Remaining")
         if retry_after:
-            # Secondary rate limit: GitHub says exactly how long to back off.
-            wait = int(retry_after) + 1
+            # Secondary rate limit: GitHub says how long to back off — but
+            # RFC 9110 also allows an HTTP-date here, and proxies send junk.
+            try:
+                wait = int(retry_after) + 1
+            except ValueError:
+                wait = 60
             print(f"  Secondary rate limit (HTTP {resp.status_code})! Waiting {wait}s...")
         elif remaining == "0":
             # Primary quota exhausted: wait until the reset timestamp.
             reset = int(resp.headers.get("X-RateLimit-Reset", 0))
             wait = max(reset - time.time(), 0) + 2
             print(f"  Rate limited! Waiting {wait:.0f}s...")
+        elif resp.status_code == 429:
+            # 429 is throttling by definition, even with no headers at all
+            # (GitHub docs: wait at least 60s when no Retry-After is given).
+            wait = 60
+            print(f"  HTTP 429 with no Retry-After — waiting {wait}s...")
         else:
             # 403 with quota left and no Retry-After: not rate limiting —
             # permissions/visibility problem. Surface it, don't retry.
@@ -163,11 +207,12 @@ def github_get(url, params=None):
             print(f"  WARNING: GitHub returned 403 (not rate-limited) for {url} — "
                   "token permissions or source visibility problem")
             return resp
-        time.sleep(wait)
+        _rate_limit_sleep(wait, url)
 
     raise SystemExit(
-        f"GitHub rate limit did not clear after 3 waits for {url} — aborting "
-        "so the pipeline retries instead of shipping a thin edition."
+        f"GitHub rate limit did not clear after 3 waits for {url} — aborting. "
+        "The weekly cron will NOT retry on its own: re-run "
+        "./scripts/cron_newsletter.sh manually once the limit clears."
     )
 
 
@@ -587,17 +632,25 @@ def main():
     # a bad token scope 403s everything, and shipping "0 events" silently is
     # exactly the failure mode this pipeline is built to refuse.
     if FORBIDDEN_403S:
+        owners = forbidden_owners()
         print(f"\n{'!'*60}")
-        print(f"WARNING: {len(FORBIDDEN_403S)} GitHub URL(s) returned non-rate-limit 403:")
-        for url in FORBIDDEN_403S:
+        print(f"WARNING: {len(set(FORBIDDEN_403S))} GitHub URL(s) across "
+              f"{len(owners)} owner(s) returned non-rate-limit 403:")
+        for url in sorted(set(FORBIDDEN_403S)):
             print(f"  {url}")
         print("Check token permissions / source visibility for these.")
         print(f"{'!'*60}")
-        if len(FORBIDDEN_403S) >= FORBIDDEN_403S_ABORT_THRESHOLD:
+        # Systemic = a broad slice of DISTINCT owners forbidden (bad token
+        # scope 403s everything); a few private-gone orgs accumulating over
+        # time must keep sailing past this.
+        threshold = max(FORBIDDEN_MIN_OWNERS,
+                        round(len(sources) * FORBIDDEN_SOURCE_FRACTION))
+        if len(owners) >= threshold:
             raise SystemExit(
-                f"{len(FORBIDDEN_403S)} forbidden responses (threshold "
-                f"{FORBIDDEN_403S_ABORT_THRESHOLD}) — looks systemic (token "
-                "permissions?). Aborting so the pipeline is retried."
+                f"{len(owners)} distinct owner(s) forbidden (threshold "
+                f"{threshold} for {len(sources)} sources) — looks systemic "
+                "(token permissions?). Aborting; fix the token and re-run "
+                "./scripts/cron_newsletter.sh manually."
             )
 
     # Cross-edition dedup: drop events already collected by a previously SENT
