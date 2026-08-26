@@ -14,17 +14,21 @@
   <![endif]-->
   <style type="text/css">
     :root { color-scheme: light only; }
+    /* This transactional email stays LIGHT even in webmail dark mode (Outlook.com /
+       new Outlook / Outlook mobile inject data-ogsc/data-ogsb). Every element now
+       carries an inline light background for the Word-engine pairing rule, so these
+       rules must pin BOTH background and text — pinning only the text would let the
+       client rewrite the inline backgrounds dark while the text stays dark. The CTA
+       is the one dark cell: its .cta rules re-pin it dark-with-light-text below. */
     [data-ogsc] body, [data-ogsb] body { background-color: #fbfbfb !important; color: #080229 !important; }
     [data-ogsc] table, [data-ogsb] table { background-color: #fbfbfb !important; }
-    [data-ogsc] td, [data-ogsb] td { color: #080229 !important; }
-    [data-ogsc] a, [data-ogsb] a { color: #080229 !important; }
-    [data-ogsc] span, [data-ogsb] span { color: #080229 !important; }
-    [data-ogsc] p, [data-ogsb] p { color: #080229 !important; }
-    /* The CTA is the one dark-on-light exception: keep it dark with light text,
-       or the generic td/a rules above would render #080229 text on the button's
-       inline #080229 background. */
+    [data-ogsc] td, [data-ogsb] td { background-color: #fbfbfb !important; color: #080229 !important; }
+    [data-ogsc] p, [data-ogsb] p { background-color: #fbfbfb !important; color: #080229 !important; }
+    [data-ogsc] span, [data-ogsb] span { background-color: #fbfbfb !important; color: #080229 !important; }
+    [data-ogsc] a, [data-ogsb] a { background-color: #fbfbfb !important; color: #080229 !important; }
+    [data-ogsc] .cta, [data-ogsb] .cta { background-color: #080229 !important; }
     [data-ogsc] .cta td, [data-ogsb] .cta td { background-color: #080229 !important; color: #fbfbfb !important; }
-    [data-ogsc] .cta a, [data-ogsb] .cta a { color: #fbfbfb !important; }
+    [data-ogsc] .cta a, [data-ogsb] .cta a { background-color: #080229 !important; color: #fbfbfb !important; }
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:#fbfbfb;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#080229;">

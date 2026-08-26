@@ -14,11 +14,21 @@
   <![endif]-->
   <style type="text/css">
     :root { color-scheme: light only; }
+    /* This transactional email stays LIGHT even in webmail dark mode (Outlook.com /
+       new Outlook / Outlook mobile inject data-ogsc/data-ogsb). Every element now
+       carries an inline light background for the Word-engine pairing rule, so these
+       rules must pin BOTH background and text — pinning only the text would let the
+       client rewrite the inline backgrounds dark while the text stays dark. The CTA
+       is the one dark cell: its .cta rules re-pin it dark-with-light-text below. */
     [data-ogsc] body, [data-ogsb] body { background-color: #fbfbfb !important; color: #080229 !important; }
     [data-ogsc] table, [data-ogsb] table { background-color: #fbfbfb !important; }
-    [data-ogsc] td, [data-ogsb] td { color: #080229 !important; }
-    [data-ogsc] a, [data-ogsb] a { color: #080229 !important; }
-    [data-ogsc] span, [data-ogsb] span { color: #080229 !important; }
+    [data-ogsc] td, [data-ogsb] td { background-color: #fbfbfb !important; color: #080229 !important; }
+    [data-ogsc] p, [data-ogsb] p { background-color: #fbfbfb !important; color: #080229 !important; }
+    [data-ogsc] span, [data-ogsb] span { background-color: #fbfbfb !important; color: #080229 !important; }
+    [data-ogsc] a, [data-ogsb] a { background-color: #fbfbfb !important; color: #080229 !important; }
+    [data-ogsc] .cta, [data-ogsb] .cta { background-color: #080229 !important; }
+    [data-ogsc] .cta td, [data-ogsb] .cta td { background-color: #080229 !important; color: #fbfbfb !important; }
+    [data-ogsc] .cta a, [data-ogsb] .cta a { background-color: #080229 !important; color: #fbfbfb !important; }
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:#fbfbfb;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#080229;">
@@ -31,10 +41,10 @@
 
         <!-- Header -->
         <tr>
-          <td style="padding:48px 40px 32px 40px;">
-            <span style="font-size:48px;font-weight:bold;color:#080229;letter-spacing:-3px;">AmuseAlot</span>
+          <td style="padding:48px 40px 32px 40px;background-color:#fbfbfb;color:#080229;">
+            <span style="font-size:48px;font-weight:bold;color:#080229;background-color:#fbfbfb;letter-spacing:-3px;">AmuseAlot</span>
             <br>
-            <span style="font-size:13px;color:#080229;letter-spacing:4.5px;text-transform:uppercase;">Museum Tech Newsletter</span>
+            <span style="font-size:13px;color:#080229;background-color:#fbfbfb;letter-spacing:4.5px;text-transform:uppercase;">Museum Tech Newsletter</span>
           </td>
         </tr>
 
@@ -47,7 +57,7 @@
 
         <!-- Body -->
         <tr>
-          <td style="padding:32px 40px;">
+          <td style="padding:32px 40px;background-color:#fbfbfb;color:#080229;">
             <p style="font-size:16px;line-height:1.7;margin:0 0 20px 0;">
               Someone (hopefully you) subscribed to the AmuseAlot newsletter
               with this email address.
@@ -57,17 +67,17 @@
             </p>
 
             <!-- CTA Button -->
-            <table cellpadding="0" cellspacing="0" border="0" role="presentation">
+            <table class="cta" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
-                <td style="background-color:#080229;padding:14px 32px;">
-                  <a href="%%CONFIRM_URL%%" style="font-size:16px;font-weight:bold;color:#fbfbfb;text-decoration:none;letter-spacing:0.5px;">
+                <td style="background-color:#080229;color:#fbfbfb;padding:14px 32px;">
+                  <a href="%%CONFIRM_URL%%" style="font-size:16px;font-weight:bold;color:#fbfbfb;background-color:#080229;text-decoration:none;letter-spacing:0.5px;">
                     Confirm Subscription
                   </a>
                 </td>
               </tr>
             </table>
 
-            <p style="font-size:13px;color:#080229;line-height:1.6;margin:32px 0 0 0;">
+            <p style="font-size:13px;color:#080229;background-color:#fbfbfb;line-height:1.6;margin:32px 0 0 0;">
               If you didn't request this, you can safely ignore this email.
               No subscription will be created without your confirmation.
             </p>
@@ -83,10 +93,10 @@
 
         <!-- Footer -->
         <tr>
-          <td style="padding:24px 40px 48px 40px;">
-            <span style="font-size:12px;color:#080229;">
+          <td style="padding:24px 40px 48px 40px;background-color:#fbfbfb;color:#080229;">
+            <span style="font-size:12px;color:#080229;background-color:#fbfbfb;">
               This is an automated message from
-              <a href="https://amusealot.com" style="color:#080229;">amusealot.com</a>
+              <a href="https://amusealot.com" style="color:#080229;background-color:#fbfbfb;">amusealot.com</a>
             </span>
           </td>
         </tr>

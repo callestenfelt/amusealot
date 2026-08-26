@@ -179,20 +179,22 @@ def prepare_news_articles(news_articles, cap=None):
     }
 
 
-def build_context(data, section_cap=None, news_data=None):
+def build_context(data, section_cap=None, news_data=None, source_stats=None):
     """Assemble full template context from scored newsletter data.
 
-    section_cap: if set, caps new_repos/releases/pushes/news to this many items
-                 and shows "see all" links. None = full/archive version (no cap).
+    section_cap: if set, caps every variable-size section to this many items
+                 (new_repos/releases/pushes/news via the template's loop cap;
+                 individual_events and tool_watch sliced here) and shows
+                 "see all" links. None = full/archive version (no cap).
+    source_stats: pass a pre-fetched stats dict to avoid re-hitting Baserow
+                  (the 102KB auto-tighten loop rebuilds the context per cap).
     """
     sections = prepare_sections(data["scored_events"])
     tool_watch = data.get("tool_watch", {})
     individual_events = prepare_individual_events(data["scored_events"])
 
-    # Get source statistics
-    source_stats = get_source_stats()
-    if source_stats["total_sources"] == 0:
-        print("  Warning: source stats unavailable (BASEROW credentials missing?) — showing '—' in newsletter")
+    if source_stats is None:
+        source_stats = get_source_stats()
 
     # Prepare news articles if provided
     news_articles = {"newsletter": [], "total": 0}
@@ -203,6 +205,18 @@ def build_context(data, section_cap=None, news_data=None):
     total_new_repos = len(sections["new_repos"])
     total_releases = len(sections["releases"])
     total_pushes = len(sections["pushes"])
+
+    # Individual creators and tool watch have no in-template loop cap, so the
+    # 102KB auto-tighten gate must bound them here or it could never converge
+    # on a week where those sections dominate the size. The full/archive
+    # version (section_cap=None) is untouched.
+    total_individual_events = len(individual_events)
+    total_tool_events = sum(len(events) for events in tool_watch.values())
+    if section_cap:
+        individual_events = individual_events[:section_cap]
+        tool_watch = {parent: events[:section_cap]
+                      for parent, events in list(tool_watch.items())[:section_cap]}
+    shown_tool_events = sum(len(events) for events in tool_watch.values())
 
     ctx = {
         "generation_date": date.today().strftime("%B %d, %Y"),
@@ -219,8 +233,11 @@ def build_context(data, section_cap=None, news_data=None):
         "has_pushes": total_pushes > 0,
         "has_tool_watch": len(tool_watch) > 0,
         "tool_watch": tool_watch,
+        "total_tool_events": total_tool_events,
+        "shown_tool_events": shown_tool_events,
         "individual_events": individual_events,
         "has_individual_events": len(individual_events) > 0,
+        "total_individual_events": total_individual_events,
         "news_articles": news_articles,
         "has_news": len(news_articles["newsletter"]) > 0,
         "section_cap": section_cap,
@@ -229,22 +246,27 @@ def build_context(data, section_cap=None, news_data=None):
     return ctx
 
 
+_template = None
+
+
 def render_newsletter(context):
     """Render the Jinja2 template with the given context."""
-    template_dir = os.path.join(os.path.dirname(__file__), "templates")
-    # autoescape=True (not select_autoescape(["html"])) because the template is
-    # named newsletter.html.j2 — select_autoescape matches on the final extension
-    # (".j2"), so it would leave escaping OFF and render RSS titles / AI summaries
-    # raw. Literal HTML in the template is unaffected; "What's new" opts back out
-    # with an explicit | safe.
-    env = Environment(
-        loader=FileSystemLoader(template_dir),
-        autoescape=True,
-        trim_blocks=True,
-        lstrip_blocks=True,
-    )
-    template = env.get_template("newsletter.html.j2")
-    return template.render(context)
+    global _template
+    if _template is None:
+        template_dir = os.path.join(os.path.dirname(__file__), "templates")
+        # autoescape=True (not select_autoescape(["html"])) because the template is
+        # named newsletter.html.j2 — select_autoescape matches on the final extension
+        # (".j2"), so it would leave escaping OFF and render RSS titles / AI summaries
+        # raw. Literal HTML in the template is unaffected; "What's new" opts back out
+        # with an explicit | safe.
+        env = Environment(
+            loader=FileSystemLoader(template_dir),
+            autoescape=True,
+            trim_blocks=True,
+            lstrip_blocks=True,
+        )
+        _template = env.get_template("newsletter.html.j2")
+    return _template.render(context)
 
 
 def find_edition_row(baserow_url, headers, edition_table_id, edition_date):
@@ -381,26 +403,44 @@ def main():
         with open(whats_new_path, "r", encoding="utf-8") as f:
             whats_new = [line.strip() for line in f if line.strip()]
 
-    # Build context — full/archive version (no cap)
-    context = build_context(data, news_data=news_articles)
+    # Fetch source stats ONCE — the 102KB auto-tighten loop below rebuilds the
+    # email context per cap, and each build_context would otherwise re-page the
+    # whole Baserow sources table (and a mid-loop blip would ship an email whose
+    # stats tiles contradict the whats_new text substituted here).
+    source_stats = get_source_stats()
+    if source_stats["total_sources"] == 0:
+        print("  Warning: source stats unavailable (BASEROW credentials missing?) — showing '—' in newsletter")
 
-    # Substitute source stats into whats_new lines (supports {{ total_sources }} and
-    # {{ total_countries }}). Lines that need stats are dropped when stats are
-    # unavailable — better no line than "0 sources". Any bare <a href="..."> then
-    # gets the email link style inlined, since email clients ignore <style> blocks.
-    stats = context.get("source_stats", {})
-    link_style = "color:#080229;text-decoration:underline;text-underline-offset:2px;"
-    stats_available = stats.get("total_sources", 0) > 0
+    # Build context — full/archive version (no cap)
+    context = build_context(data, news_data=news_articles, source_stats=source_stats)
+
+    # Substitute source stats into whats_new lines (supports {{ total_sources }}
+    # and {{ total_countries }}). A line is dropped when a stat it needs is
+    # unavailable — better no line than "0 sources". Any anchor without an
+    # inline style then gets the email link style (paired with the lavender
+    # What's-new box background per the CLAUDE.md rule), since email clients
+    # that need inlining ignore the <style> block.
+    link_style = "color:#080229;background-color:#EDEBF5;text-decoration:underline;text-underline-offset:2px;"
+    token_values = {
+        "{{ total_sources }}": source_stats.get("total_sources", 0),
+        "{{ total_countries }}": source_stats.get("total_countries", 0),
+    }
+
+    def style_anchor(match):
+        attrs = match.group(1).strip()
+        if "style=" in attrs:
+            return match.group(0)
+        return f'<a {attrs} style="{link_style}">'
+
     processed = []
     for line in whats_new:
-        if "{{ total_sources }}" in line or "{{ total_countries }}" in line:
-            if not stats_available:
-                print(f"  Skipping whats_new line (source stats unavailable): {line[:60]}")
-                continue
-            line = (line
-                    .replace("{{ total_sources }}", str(stats.get("total_sources", "")))
-                    .replace("{{ total_countries }}", str(stats.get("total_countries", ""))))
-        line = re.sub(r'<a\s+href="([^"]*)"\s*>', rf'<a href="\1" style="{link_style}">', line)
+        missing = [tok for tok, val in token_values.items() if tok in line and not val]
+        if missing:
+            print(f"  Skipping whats_new line ({missing[0]} unavailable): {line[:60]}")
+            continue
+        for tok, val in token_values.items():
+            line = line.replace(tok, str(val))
+        line = re.sub(r"<a\s+([^>]+?)\s*>", style_anchor, line)
         processed.append(line)
     whats_new = processed
     context["whats_new"] = whats_new
@@ -440,11 +480,9 @@ def main():
     # sending a clipped edition. Nothing is registered/sent past this point
     # on failure: latest_news.json and Baserow registration come after.
     GMAIL_CLIP_KB = 102
-    email_context = None
-    email_html = ""
-    email_kb = 0.0
     for cap in (4, 3, 2, 1):
-        email_context = build_context(data, section_cap=cap, news_data=news_articles)
+        email_context = build_context(data, section_cap=cap, news_data=news_articles,
+                                      source_stats=source_stats)
         email_context["whats_new"] = whats_new
         email_html = render_newsletter(email_context)
         email_kb = len(email_html.encode("utf-8")) / 1024
@@ -467,7 +505,6 @@ def main():
     with open(email_path, "w", encoding="utf-8") as f:
         f.write(email_html)
 
-    email_kb = os.path.getsize(email_path) / 1024
     print(f"Email newsletter written to {email_path}")
     print(f"  Size: {email_kb:.1f} KB (OK)")
 
@@ -476,7 +513,9 @@ def main():
     # feeds this list — so everything here is http(s).
     if apply:
         latest_news_path = os.path.join(script_dir, "latest_news.json")
-        latest_articles = email_context["news_articles"]["newsletter"]
+        # Fixed cap, independent of the email's auto-tightened section_cap —
+        # shrinking the email for Gmail must not shrink the website's news box.
+        latest_articles = prepare_news_articles(news_articles, cap=4)["newsletter"]
         with open(latest_news_path, "w", encoding="utf-8") as f:
             json.dump({
                 "date": today_iso,
