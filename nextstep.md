@@ -21,8 +21,6 @@ clears.
 - [ ] **Watch the next `0 7 * * 3` send (2026-09-02)** — first cron run on
       the Phase 2 code (sent marker, --input-driven send step, marker-based
       success-email count, reminder send-then-mark).
-- [ ] **Push master to origin** — Phase 1 is merged locally (`ef5c94b`)
-      but not pushed.
 - [ ] Phases 3–7 — see `docs/review-2026-08-26-plan.md`. Phase 3
       (`fix/dedup-hash`) starts with a migration decision on the content
       hash formula.
@@ -50,7 +48,8 @@ clears.
       marker-based success-email count, tokenless rows skip+warn (exit 0).
       **Merged to master (`1c91f6d`) and deployed to the VPS the same day**
       (originals in `/opt/musemaniac/scripts/.bak-20260826-phase2/`;
-      verified compiling on the server). Master not yet pushed to origin.
+      verified compiling on the server). Master pushed to origin
+      2026-08-26 (`ecc1c8c`, covering Phases 1+2).
 
 ---
 
