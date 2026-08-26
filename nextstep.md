@@ -1,5 +1,26 @@
 # Next steps
 
+# Code review round 2: fix plan (August 2026)
+
+A second multi-agent code review (2026-08-26, three parallel reviewers:
+newsletter / site / pipeline) produced 58 findings (7 high, 21 medium,
+30 low). **The durable, ordered fix plan lives in
+`docs/review-2026-08-26-plan.md`** — seven phases, each its own feature
+branch, with per-item checkboxes and a progress log. The full findings
+report is `docs/review-2026-08-26.html`. Work from the plan file, not from
+this section; this entry is just the pointer so the plan survives context
+clears.
+
+## Open
+
+- [ ] Phase 0 — verify prod config (`FORM_SECRET` in `/opt/musemaniac/.env`,
+      gunicorn worker count) and confirm the 2026-08-26 send + Baserow
+      write-backs before touching the same code paths.
+- [ ] Phases 1–7 — see `docs/review-2026-08-26-plan.md` (start with
+      `fix/silent-failures`).
+
+---
+
 Living checklist of follow-ups after the May 2026 subscription-bombing defense
 work. The core fix is **done**: three-layer bot protection (honeypot + timing +
 Cloudflare Turnstile) is live in production, Turnstile was enabled and verified on

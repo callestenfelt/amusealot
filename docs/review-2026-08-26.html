@@ -1,0 +1,298 @@
+<title>Amusealot Code Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#fbfbfb; --panel:#EDEBF5; --panel-line:#d9d5e8;
+  --ink:#080229; --ink-soft:#3d3660; --ink-faint:#6f6a8c;
+  --accent:#5b4ba6; --accent-soft:#e6e2f4;
+  --high:#b3261e; --high-bg:#f9e7e5;
+  --med:#9a6200; --med-bg:#f7edd8;
+  --low:#5a5a72; --low-bg:#ebebf0;
+  --good:#1c6b46; --good-bg:#e2f0e8;
+  --card:#ffffff; --line:#e3e1ec;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c0821; --panel:#171136; --panel-line:#2b2452;
+    --ink:#eceafb; --ink-soft:#b7b1d8; --ink-faint:#8d87b0;
+    --accent:#a99ae6; --accent-soft:#241c4e;
+    --high:#ff8a80; --high-bg:#3a1512;
+    --med:#e6b566; --med-bg:#33260c;
+    --low:#a3a1bd; --low-bg:#211d3d;
+    --good:#7cc9a3; --good-bg:#10301f;
+    --card:#120d2b; --line:#272148;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c0821; --panel:#171136; --panel-line:#2b2452;
+  --ink:#eceafb; --ink-soft:#b7b1d8; --ink-faint:#8d87b0;
+  --accent:#a99ae6; --accent-soft:#241c4e;
+  --high:#ff8a80; --high-bg:#3a1512;
+  --med:#e6b566; --med-bg:#33260c;
+  --low:#a3a1bd; --low-bg:#211d3d;
+  --good:#7cc9a3; --good-bg:#10301f;
+  --card:#120d2b; --line:#272148;
+}
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--ink); margin:0;
+  font:400 16px/1.6 "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;}
+.wrap{max-width:860px; margin:0 auto; padding:48px 24px 96px}
+header.masthead{border-bottom:3px solid var(--ink); padding-bottom:20px; margin-bottom:36px}
+.eyebrow{font:500 12px/1 "IBM Plex Mono", monospace; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px}
+h1{font:700 clamp(34px,6vw,52px)/1.05 "Bricolage Grotesque","IBM Plex Sans",sans-serif; margin:0 0 12px; text-wrap:balance}
+.standfirst{color:var(--ink-soft); max-width:62ch; margin:0}
+h2{font:600 26px/1.2 "Bricolage Grotesque","IBM Plex Sans",sans-serif; margin:56px 0 6px; text-wrap:balance}
+h3{font:600 19px/1.3 "Bricolage Grotesque","IBM Plex Sans",sans-serif; margin:28px 0 10px}
+.sub{color:var(--ink-faint); font-size:14px; margin:0 0 18px}
+code, .path{font:500 13px/1.5 "IBM Plex Mono", ui-monospace, monospace}
+.path{color:var(--accent); word-break:break-all}
+.scoreboard{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:28px 0 0}
+.score{background:var(--panel); border:1px solid var(--panel-line); border-radius:10px; padding:14px 16px}
+.score .n{font:700 34px/1 "Bricolage Grotesque",sans-serif; font-variant-numeric:tabular-nums}
+.score .lbl{font-size:13px; color:var(--ink-soft); margin-top:4px}
+.score.hi .n{color:var(--high)} .score.md .n{color:var(--med)} .score.lo .n{color:var(--low)}
+.chip{display:inline-block; font:600 11px/1 "IBM Plex Mono",monospace; letter-spacing:.08em; padding:4px 8px; border-radius:4px; text-transform:uppercase; flex:none; margin-top:3px}
+.chip.hi{color:var(--high); background:var(--high-bg)}
+.chip.md{color:var(--med); background:var(--med-bg)}
+.chip.lo{color:var(--low); background:var(--low-bg)}
+.chip.gd{color:var(--good); background:var(--good-bg)}
+ol.prio{list-style:none; counter-reset:p; margin:18px 0 0; padding:0; display:flex; flex-direction:column; gap:10px}
+ol.prio li{counter-increment:p; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px 14px 56px; position:relative}
+ol.prio li::before{content:counter(p); position:absolute; left:16px; top:14px;
+  font:700 18px/28px "Bricolage Grotesque",sans-serif; color:var(--accent);
+  background:var(--accent-soft); width:28px; height:28px; border-radius:6px; text-align:center}
+ol.prio b{font-weight:600}
+ol.prio .why{display:block; color:var(--ink-soft); font-size:14px; margin-top:2px}
+.theme{background:var(--panel); border:1px solid var(--panel-line); border-radius:10px; padding:16px 18px; margin:12px 0}
+.theme h3{margin:0 0 6px}
+.theme p{margin:0; color:var(--ink-soft); font-size:15px}
+.finding{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:10px 0; display:flex; gap:12px; align-items:flex-start}
+.finding .body{min-width:0}
+.finding .t{font-weight:600; margin:0}
+.finding .scen{color:var(--ink-soft); font-size:14px; margin:4px 0 0}
+.finding .path{display:block; font-size:12px; margin-top:6px}
+ul.lows{margin:10px 0 0; padding:0; list-style:none}
+ul.lows li{border-left:3px solid var(--line); padding:6px 0 6px 14px; margin:6px 0; font-size:14.5px; color:var(--ink-soft)}
+ul.lows li b{color:var(--ink); font-weight:600}
+ul.good{margin:10px 0 0; padding:0; list-style:none}
+ul.good li{background:var(--good-bg); border-radius:8px; padding:10px 14px; margin:8px 0; font-size:14.5px}
+ul.good li b{color:var(--good)}
+.areahead{display:flex; align-items:baseline; gap:12px; border-bottom:2px solid var(--ink); padding-bottom:8px; margin-top:56px}
+.areahead h2{margin:0}
+.areahead .count{font:500 13px "IBM Plex Mono",monospace; color:var(--ink-faint)}
+footer{margin-top:64px; border-top:1px solid var(--line); padding-top:16px; color:var(--ink-faint); font-size:13px}
+@media (max-width:560px){ .finding{flex-direction:column; gap:6px} }
+</style>
+
+<div class="wrap">
+<header class="masthead">
+  <p class="eyebrow">Static review · three parallel reviewers · 2026-08-26</p>
+  <h1>Amusealot Code Review</h1>
+  <p class="standfirst">Full read-only review of the newsletter (generation &amp; sending), the public site (subscribe flows &amp; bot protection), and the weekly content pipeline (collection, LLM scoring, Baserow writes). 58 findings: 7 high, 21 medium, 30 low — plus what's holding up well.</p>
+  <div class="scoreboard">
+    <div class="score hi"><div class="n">7</div><div class="lbl">High — fix soon</div></div>
+    <div class="score md"><div class="n">21</div><div class="lbl">Medium — plan in</div></div>
+    <div class="score lo"><div class="n">30</div><div class="lbl">Low — hardening</div></div>
+  </div>
+</header>
+
+<h2>Fix these first</h2>
+<p class="sub">Ordered by blast radius × likelihood, across all three areas.</p>
+<ol class="prio">
+  <li><b>A failed send still reports success.</b><span class="why"><code>send_newsletter.py</code> exits 0 even when every send errors (e.g. revoked Resend key) — the ERR trap never fires and the admin gets a <em>success</em> email saying "0 email(s) sent". One <code>sys.exit(1)</code> when <code>sent == 0</code>.</span></li>
+  <li><b>Dry runs aren't dry.</b><span class="why">A no-flag <code>run_newsletter.sh</code> still registers a real edition row, overwrites <code>latest_news.json</code>, and writes an archive file (step 6 ignores <code>--apply</code>); and <code>collect_news.py</code> saves the ETag cache in dry-run, so a Tuesday test run makes Wednesday's real run skip those feeds via 304 and permanently miss articles.</span></li>
+  <li><b>Silent partial pagination disables dedup and sources.</b><span class="why">Both <code>get_existing_hashes()</code> and <code>get_active_sources()</code> swallow mid-pagination errors and return partial sets — a Baserow blip mass-duplicates articles or quietly empties the news section. Abort loudly instead, like the GitHub collector does.</span></li>
+  <li><b>Unstable dedup hash duplicates date-less articles weekly.</b><span class="why">The content hash includes <code>published_date</code>, which falls back to <em>today</em> when a feed omits pubDate — same article, new hash, every Wednesday. Hash on URL (or title+URL) only.</span></li>
+  <li><b>Rate limiting is one shared bucket behind Caddy.</b><span class="why">Limits key on <code>remote_addr</code> = the proxy's IP, so "10 subscribes/hour" is site-wide: one bot locks out every real visitor, and the per-IP defense is void. Add <code>ProxyFix</code> + forwarded client IP in Caddy (and strip client-supplied headers).</span></li>
+  <li><b>Verify <code>FORM_SECRET</code> is set in production.</b><span class="why">The per-process fallback means every restart (or multi-worker gunicorn) silently invalidates rendered forms — visitor sees "Check your email", nothing is stored or sent.</span></li>
+  <li><b>GET <code>/unsubscribe</code> is destructive.</b><span class="why">Corporate link scanners (SafeLinks, Mimecast) follow GETs in delivered mail and silently unsubscribe real readers. Render a confirm page on GET; unsubscribe on POST (RFC 8058 one-click already POSTs).</span></li>
+  <li><b>Reminder email violates the dark-mode rule.</b><span class="why">The CTA splits <code>background-color</code> (on the <code>&lt;td&gt;</code>) from <code>color</code> (on the <code>&lt;a&gt;</code>) — exactly the pattern CLAUDE.md bans, risking an invisible confirm button in Word-engine Outlook dark mode.</span></li>
+</ol>
+
+<h2>Cross-cutting themes</h2>
+<p class="sub">Four patterns recur across all three areas — fixing the pattern beats fixing findings one at a time.</p>
+<div class="theme"><h3>Silent degradation</h3><p>The pipeline's stated design is "abort and alert rather than ship a hollow edition", but many paths still swallow failure: zero-sends exit 0, pagination errors return partial data, LLM responses missing batch items become "unscored" (invisible to the 50% abort check), GitHub secondary-rate-limit 403s return empty lists, Groq 5xx isn't retried. Each one ships a thin or broken edition with only a log line to notice.</p></div>
+<div class="theme"><h3>Re-runs aren't safe — but the recovery playbook is a re-run</h3><p>CLAUDE.md's missed-send recovery says "run it again", yet re-running double-sends to everyone before a mid-send crash, duplicates the edition row in the archive, re-sends reminders when the Baserow marker PATCH failed, and inflates the admin email's sent-count (same-day log grep). Idempotency markers (edition-sent flag, existing-row check) would make the documented recovery actually safe.</p></div>
+<div class="theme"><h3>Untrusted content flows to subscribers</h3><p>RSS titles/summaries, READMEs, and release bodies are interpolated raw into LLM prompts, and the model's output lands in inboxes — a compromised feed or repo can steer tier/copy (prompt injection). Autoescaping handles markup, but URL <em>schemes</em> are never validated (<code>javascript:</code> from a hostile feed survives into both email and landing page), and LLM output (<code>tier</code>, <code>relevance</code>) is written to Baserow unvalidated.</p></div>
+<div class="theme"><h3>The privacy promise has drifted</h3><p>The policy claims no IP collection and names only Resend, but Turnstile loads on every landing-page view and the app POSTs visitor IPs to Cloudflare siteverify; subscriber emails are also printed to indefinitely-kept logs (the "30-day retention" comment prunes nothing). The fixes are easy: name Cloudflare as a processor, drop the optional <code>remoteip</code> field, actually prune logs.</p></div>
+
+<div class="areahead"><h2>Newsletter</h2><span class="count">2 high · 7 medium · 9 low</span></div>
+<p class="sub">generate_newsletter.py, send_newsletter.py, send_reminders.py, notify_admin.py, register_past_edition.py, email templates</p>
+
+<div class="finding"><span class="chip hi">High</span><div class="body">
+  <p class="t">Total send failure exits 0 — pipeline reports success</p>
+  <p class="scen">Errors are counted but never affect the exit code; a revoked Resend key means no newsletter, no failure email, and a success report of "0 email(s) sent". Same pattern in send_reminders.py.</p>
+  <span class="path">send_newsletter.py:226 · send_reminders.py:207</span></div></div>
+<div class="finding"><span class="chip hi">High</span><div class="body">
+  <p class="t">Generation step ignores dry-run — writes edition row, latest_news.json, archive file</p>
+  <p class="scen">Previewing Wednesday's content on a Monday publishes a Monday "edition" to the public archive and sitemap that was never emailed, and changes the landing page's news.</p>
+  <span class="path">run_newsletter.sh:92 · generate_newsletter.py:390</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">No send idempotency — mid-send crash + documented re-run double-sends</p>
+  <p class="scen">Nothing records who received an edition; a reboot at recipient 40/80 followed by the recovery playbook re-sends to the first 40.</p>
+  <span class="path">send_newsletter.py:194</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">Duplicate edition rows on re-run</p>
+  <p class="scen">Neither registration path checks for an existing row for that date; recovery re-runs list the edition twice in the archive.</p>
+  <span class="path">generate_newsletter.py:280 · register_past_edition.py:66</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">Missing unsubscribe placeholder or empty token only warns — sends anyway</p>
+  <p class="scen">A template edit that breaks <code>%%UNSUBSCRIBE_URL%%</code> bulk-sends mail with no working unsubscribe (CAN-SPAM/deliverability risk); empty <code>unsubscribe_token</code> builds a dead link where send_reminders guards the analogous case.</p>
+  <span class="path">send_newsletter.py:163, 204</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">Timezone parsing can silently disable or skew reminders</p>
+  <p class="scen">A <code>Z</code>-suffixed timestamp on Python&nbsp;&lt;3.11 skips every row (no reminders ever send); on 3.11+ a <code>+02:00</code> offset is discarded by <code>.replace()</code> instead of converted, shifting the 24h cutoff.</p>
+  <span class="path">send_reminders.py:85</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">Reminder sent before its Baserow marker — duplicate reminders on a DB blip</p>
+  <p class="scen">Email goes out, then the PATCH fails; next run re-sends the "single" reminder that promised "we won't contact you again".</p>
+  <span class="path">send_reminders.py:187</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">Reminder template splits background/color across elements — invisible CTA risk</p>
+  <p class="scen">CTA has <code>background-color</code> on the <code>&lt;td&gt;</code> but <code>color</code> on the child <code>&lt;a&gt;</code>; Word-engine Outlook dark mode can invert them independently → light-on-light confirm button. Body copy <code>&lt;p&gt;</code>s also sit outside the <code>[data-ogsc]</code> override set.</p>
+  <span class="path">templates/reminder_email.html:34–87</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">Gmail 102KB clipping is warn-only — and the unsubscribe link clips first</p>
+  <p class="scen">A busy week pushes past ~102KB; Gmail shows "[Message clipped]" and the footer (with unsubscribe) is exactly what disappears. Fail the pipeline or auto-tighten section caps.</p>
+  <span class="path">generate_newsletter.py:388</span></div></div>
+<h3>Lows</h3>
+<ul class="lows">
+  <li><b>Same-day log grep inflates the "sent" count</b> in the admin success email after a re-run — run_newsletter.sh:118</li>
+  <li><b>whats_new substitution is brittle and unescaped</b> (<code>| safe</code>): exact-literal link rewrite, verbatim HTML injection point, renders "0 sources" when stats are missing — generate_newsletter.py:334</li>
+  <li><b>Span-based sections split color/background across elements</b> (stats bar, most-active, tool watch, footer) — deviates from the documented same-element rule; footer is riskiest — newsletter.html.j2:218–577</li>
+  <li><b>Rating-box borders vanish in webmail dark mode</b> (no <code>[data-ogsc]</code> border override) and the <code>&lt;a&gt;</code>-wrapped table isn't fully clickable in Word-engine Outlook — newsletter.html.j2:525</li>
+  <li><b>No guard against re-sending an old edition</b> — a manual --apply on a day generation failed re-sends last week's file — send_newsletter.py:44</li>
+  <li><b>Slash-less repo names render blank link text</b> — newsletter.html.j2:90</li>
+  <li><b>Missing timeout on the Baserow POST</b> — register_past_edition.py:68</li>
+  <li><b>URL schemes from feeds unvalidated</b> in email hrefs — newsletter.html.j2:90, 465</li>
+  <li><b>"Keeps last 30 days" log comment prunes nothing</b>; subscriber PII accumulates indefinitely — run_newsletter.sh:27</li>
+</ul>
+<h3>Done well</h3>
+<ul class="good">
+  <li><b>Deliberate autoescape choice</b> — explicit <code>autoescape=True</code> with a comment explaining the <code>.j2</code>-extension trap; RSS-title HTML injection into the body is a non-issue.</li>
+  <li><b>Dry-run-by-default done right</b> — <code>--test</code> without <code>--apply</code> still dry-runs, with comments documenting the lexical-sort trap in latest-file selection.</li>
+  <li><b>Solid cron posture</b> — <code>set -euo pipefail</code>, dated tee logs, ERR trap mailing the log tail, HTML-escaped admin notifications. And: zero <code>mso-color-alt</code> anywhere; main newsletter cells honor the palette pairing rule.</li>
+</ul>
+
+<div class="areahead"><h2>Site</h2><span class="count">2 high · 5 medium · 10 low</span></div>
+<p class="sub">subscriber_app.py, web templates, static assets, purge_pending_subscribers.py</p>
+
+<div class="finding"><span class="chip hi">High</span><div class="body">
+  <p class="t">Rate limiting keys on the proxy's IP — one shared bucket for all visitors</p>
+  <p class="scen">Behind Caddy, <code>remote_addr</code> is the proxy; "10 subscribes/hour" is site-wide, so one bot locks out every real visitor and the per-IP defense does nothing. Fix with ProxyFix + Caddy-set X-Forwarded-For (and ensure Caddy strips the client-supplied header, or the limiter becomes spoofable).</p>
+  <span class="path">subscriber_app.py:82, 444, 449, 487, 829, 914</span></div></div>
+<div class="finding"><span class="chip hi">High</span><div class="body">
+  <p class="t">FORM_SECRET fallback silently swallows signups if the env var is unset</p>
+  <p class="scen">Per-process secret means every restart (or multi-worker setup) invalidates rendered forms; the visitor still sees "Check your email" with nothing stored or sent. Verify it's set in /opt/musemaniac/.env.</p>
+  <span class="path">subscriber_app.py:68, 350</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">Privacy policy contradicts actual data flows</p>
+  <p class="scen">Policy claims no IP collection and names only Resend; the app POSTs visitor IPs to Cloudflare siteverify and loads the Turnstile script on every landing-page view. "No cookies" holds; the processor and no-IP claims don't — GDPR-accuracy issue.</p>
+  <span class="path">privacy.html · subscriber_app.py:130 · landing.html:6</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">GET /unsubscribe is destructive — email scanners unsubscribe real readers</p>
+  <p class="scen">SafeLinks/Mimecast follow GET links in every delivered edition; affected subscribers are silently unsubscribed the moment mail lands. Confirm-page on GET, action on POST.</p>
+  <span class="path">subscriber_app.py:486</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">/feedback has none of the three bot layers yet fires outbound email</p>
+  <p class="scen">Each spam POST writes a Baserow row and sends a Resend notification — the exact quota-burn vector the subscribe form was hardened against, guarded only by the (currently global) 20/day limit.</p>
+  <span class="path">subscriber_app.py:836</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">form_ts timing layer is trivially bypassed by token reuse</p>
+  <p class="scen">The signed timestamp isn't bound to IP, session, or single use — one 3-second wait buys unlimited replays for 2 hours. Effectively two bot layers, not three; only Turnstile stops replay.</p>
+  <span class="path">subscriber_app.py:99</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">Double-submit race creates duplicate subscriber rows</p>
+  <p class="scen">Check-then-create with no unique constraint: a double-click yields two rows with separate token pairs; unsubscribing kills only one, the other keeps mailing them (CAN-SPAM/GDPR exposure).</p>
+  <span class="path">subscriber_app.py:369</span></div></div>
+<h3>Lows</h3>
+<ul class="lows">
+  <li><b>find_row_by_token reads one page and compares with ==</b> — impractical to exploit at 256-bit, but paginate + <code>compare_digest</code> is cheap — subscriber_app.py:179</li>
+  <li><b>Timing oracles</b>: honeypot/timing drops return instantly vs the slow real path; already-confirmed emails answer fast (subscription-status enumeration) — subscriber_app.py:344, 377</li>
+  <li><b>Path traversal if Baserow is compromised</b>: edition file_name into os.path.join unsanitized; one <code>basename()</code> closes it — subscriber_app.py:745</li>
+  <li><b>Sitemap interpolates unvalidated edition dates</b> into XML — subscriber_app.py:307</li>
+  <li><b>javascript: URLs from RSS survive into landing-page hrefs</b> — landing.html:25</li>
+  <li><b>Catch-all route soft-404s every unknown path</b> with the full landing page — subscriber_app.py:262</li>
+  <li><b>Subscriber emails printed to logs</b> on every error path — subscriber_app.py:364+</li>
+  <li><b>purge --days accepts negatives</b>: <code>--days -1</code> marks every pending row incl. minutes-old signups — purge_pending_subscribers.py:70</li>
+  <li><b>Failed Baserow create still renders the success page</b> — honest error would leak nothing bot-useful — subscriber_app.py:427</li>
+  <li><b>Archive/sitemap routes re-fetch the full editions table per request</b>, uncached, unlike the 1h-cached sources routes — subscriber_app.py:739+</li>
+</ul>
+<h3>Done well</h3>
+<ul class="good">
+  <li><b>Token hygiene</b> — 256-bit <code>secrets.token_urlsafe</code>, timing-safe HMAC comparison for form_ts, no secrets in code, debug off, generic error pages.</li>
+  <li><b>Turnstile genuinely fails closed</b> — missing token, non-2xx, timeout, and JSON errors all return False, exactly as CLAUDE.md claims.</li>
+  <li><b>Enumeration-resistant subscribe flow and a safe purge script</b> — identical success pages for confirmed/pending/new, idempotent confirm/unsubscribe, dry-run-default purge that keeps unparseable rows for manual review. Zero <code>|safe</code> in templates, no cookies, accessible nav.</li>
+</ul>
+
+<div class="areahead"><h2>Pipeline</h2><span class="count">3 high · 9 medium · 11 low</span></div>
+<p class="sub">run_newsletter.sh, collect_news.py, score_news.py, the GitHub collect/enrich/filter scripts, score_newsletter_content.py. Note: cron_newsletter.sh lives only on the VPS — unreviewable, can drift from the repo.</p>
+
+<div class="finding"><span class="chip hi">High</span><div class="body">
+  <p class="t">Date-less RSS entries get a fresh dedup hash every run</p>
+  <p class="scen">Missing pubDate → published_date = today → new sha256 every Wednesday: duplicate Baserow rows, repeat Groq spend, articles re-appearing across editions. Date belongs in the cutoff filter, not the identity hash.</p>
+  <span class="path">collect_news.py:147, 257</span></div></div>
+<div class="finding"><span class="chip hi">High</span><div class="body">
+  <p class="t">ETag cache saved in dry-run — poisons the next real run</p>
+  <p class="scen">A Tuesday dry-run records fresh ETags without persisting articles; Wednesday's cron gets 304 for those feeds and permanently misses everything in between. Gate the cache write on --apply.</p>
+  <span class="path">collect_news.py:437</span></div></div>
+<div class="finding"><span class="chip hi">High</span><div class="body">
+  <p class="t">Partial failure while paging existing hashes silently disables dedup</p>
+  <p class="scen">A Baserow timeout on page 3 of 10 returns 30% of known hashes; hundreds of old articles re-insert in --apply mode and re-enter scoring. Abort loudly like the GitHub collector.</p>
+  <span class="path">collect_news.py:163</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">get_active_sources swallows errors — a bad row quietly empties the news section</p>
+  <p class="scen">One malformed Baserow row (null field) raises mid-pagination, drops all sources after it, and the run "succeeds" with a thin edition.</p>
+  <span class="path">collect_news.py:104</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">New-repo and release events scored in one unbounded batch</p>
+  <p class="scen">A busy week overflows max_tokens=4000 (gpt-oss also burns completion tokens on reasoning) → truncated JSON → every release tier-3'd as "scoring_error"; if releases are &lt;50% of events, the abort check never fires.</p>
+  <span class="path">score_newsletter_content.py:396</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">LLM-dropped batch items invisible to the abort safety-net</p>
+  <p class="scen">Model returns 8 of 10 entries: score_newsletter_content marks the missing two "unscored" (excluded from the error count); score_news drops them from the output entirely. A duplicate index double-writes. Silent 20% content loss.</p>
+  <span class="path">score_newsletter_content.py:440, 566 · score_news.py:390</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">GitHub 403 handling assumes primary rate limit only</p>
+  <p class="scen">Secondary rate limits (Retry-After, no useful reset) become a 2s wait, one retry, then silent empty results — the exact silent-empty mode the 401 SystemExit was added to prevent.</p>
+  <span class="path">collect_github_activity.py:63 · enrich_github_activity.py:39</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">Event feeds unpaginated (per_page=30) and new-repos capped at 10</p>
+  <p class="scen">An active org emits &gt;30 events in the 8-day window (bot events count before filtering) — older in-window releases fall off and are never seen.</p>
+  <span class="path">collect_github_activity.py:215, 336, 350</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">No cross-edition dedup for GitHub events with an 8-day lookback</p>
+  <p class="scen">Weekly run + 8-day window = ~1 day overlap; any release from that day appears in both editions, a guaranteed weekly repeat slot. (News has Baserow-hash dedup; GitHub has within-run only.)</p>
+  <span class="path">run_newsletter.sh:67 · collect_github_activity.py:462</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">Prompt injection path from scraped content to subscriber inboxes</p>
+  <p class="scen">RSS text, READMEs, and release bodies go raw into prompts; model output (summaries, writeups) lands in the newsletter. A compromised repo's release body can steer tier and inject attacker-authored copy. Delimit untrusted content, validate tier/relevance types, cap summary length.</p>
+  <span class="path">score_news.py:153 · score_newsletter_content.py:266</span></div></div>
+<div class="finding"><span class="chip md">Med</span><div class="body">
+  <p class="t">LLM output written to Baserow unvalidated + Groq 5xx not retried</p>
+  <p class="scen">A model returning <code>"tier": "1"</code> as a string silently skips translations and leaves rows unscored (re-scored weekly, double spend); a transient Groq 502 fails batches immediately — under 50% failure, the edition ships with those articles tier-3'd.</p>
+  <span class="path">score_news.py:290, 312 · score_news.py:129 · score_newsletter_content.py:84</span></div></div>
+<h3>Lows</h3>
+<ul class="lows">
+  <li><b>Same-day sent-count grep double-counts on re-runs</b> — run_newsletter.sh:118</li>
+  <li><b>ERR-trap tail races the tee process substitution</b>; missing <code>set -E</code> disables the trap inside future functions — run_newsletter.sh:33</li>
+  <li><b>Dead TECH_FIELDS + hardcoded field_7222</b> duplicating FIELDS — collect_github_activity.py:51, 94</li>
+  <li><b>Config duplication</b>: TABLE_ID=745 in three scripts; article field-ID dicts duplicated between collect_news and score_news (drift = silent corruption); news tables use env vars, GitHub tables don't</li>
+  <li><b>No timeouts</b> in enrich_github.py (Wikidata + Baserow), search_github_museums.py, add_github_museums.py — the weekly-pipeline scripts do set them</li>
+  <li><b>Intra-run dedup misses same-run syndicated duplicates</b>; <code>import re</code> inside the per-entry loop — collect_news.py:272, 425</li>
+  <li><b>Recovery fetches the whole articles table client-side each run</b>; permanently-unscored rows re-fetched forever — score_news.py:222</li>
+  <li><b>ai_title never written to Baserow</b> — archive DB diverges from the sent edition for translated articles — score_news.py:409</li>
+  <li><b>Release truncation detected by len == 300 exactly</b> — a slice edit silently disables full-body fetch — enrich_github_activity.py:150</li>
+  <li><b>get_field_ids space-pads short IDs</b> (prints "field_ 745") — get_field_ids.py:49</li>
+  <li><b>KNOWN_GITHUB is a drifting hardcoded snapshot</b> of Baserow contents — search_github_museums.py:27</li>
+</ul>
+<h3>Done well</h3>
+<ul class="good">
+  <li><b>Coherent fail-loud posture</b> — 401→SystemExit in both GitHub scripts, ≥50%-failure aborts in both scorers, and the shell script's pipefail + ERR-trap admin email.</li>
+  <li><b>Self-healing recovery in score_news</b> — failed batches deliberately skip the score-write so rows stay recoverable; recovery dedups by row id and URL with a sensible 14-day window.</li>
+  <li><b>Dry-run-by-default on every Baserow-writing script</b>, a single sanitized --apply forwarded (with a comment explaining why not <code>"$@"</code>), ETag caching with a descriptive User-Agent, and polite rate-limit sleeps throughout.</li>
+</ul>
+
+<footer>Static review, 2026-08-26 · three parallel reviewers (newsletter · site · pipeline) · nothing executed against production. Line numbers reference the working tree at commit c76770d.</footer>
+</div>
