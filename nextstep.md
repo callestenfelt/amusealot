@@ -19,9 +19,10 @@ clears.
       (URL-only content hash with URL-derived migration dedup, GitHub
       seen-events pending/commit cache). Also eyeball the edition for
       repeats vs the 2026-08-26 one — the new dedup should remove them.
-- [ ] **Push master to origin** — Phase 3 is merged locally (`a905dfa`)
-      and deployed, but not pushed (needs explicit request).
-- [ ] Phases 4–7 — see `docs/review-2026-08-26-plan.md`.
+- [ ] Phases 4–7 — see `docs/review-2026-08-26-plan.md`. Phase 4
+      (`fix/site-hardening`) includes a VPS Caddy config change alongside
+      the code deploy. (Phases 0–3 are done, merged, deployed, and pushed
+      to origin as of 2026-08-26.)
 
 ## Done
 
