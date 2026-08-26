@@ -15,10 +15,14 @@ clears.
 
 - [ ] **Watch the next `0 7 * * 3` send (2026-09-02)** — first cron run on
       the Phase 2 code (sent marker, --input-driven send step, marker-based
-      success-email count, reminder send-then-mark) AND the Phase 3 code
+      success-email count, reminder send-then-mark), the Phase 3 code
       (URL-only content hash with URL-derived migration dedup, GitHub
-      seen-events pending/commit cache). Also eyeball the edition for
-      repeats vs the 2026-08-26 one — the new dedup should remove them.
+      seen-events pending/commit cache), and the Phase 4 pipeline guards
+      (http(s)-only article URLs). Eyeball the edition for repeats vs the
+      2026-08-26 one — the new dedup should remove them.
+- [ ] **Verify the new unsubscribe flow from a real mail client** when the
+      occasion arises — the GET confirm-page and RFC 8058 one-click POST
+      are harness-verified; the plan's last tick is a real-client check.
 - [ ] Phases 5–7 — see `docs/review-2026-08-26-plan.md`. Phase 5
       (`fix/email-dark-mode`) needs the full Outlook-on-Windows dark-mode
       test loop from CLAUDE.md. (Phases 0–4 done, merged, deployed, and
@@ -40,7 +44,7 @@ clears.
       validation/coercion, dropped-batch-item accounting, Groq 5xx retry.
       **Merged to master (`ef5c94b`) and deployed to the VPS the same day**
       (originals backed up to `/opt/musemaniac/scripts/.bak-20260826/`);
-      verified compiling on the server. Master not yet pushed to origin.
+      verified compiling on the server. Pushed to origin with Phase 2.
 - [x] Phase 2 (2026-08-26): implementation (`6608d96`) — generate dry-run
       mode, edition-row dedup, send marker + `--force`, unsubscribe hard
       errors, stale-date refusal, reminder timezone fix — plus all 10
@@ -53,6 +57,27 @@ clears.
       (originals in `/opt/musemaniac/scripts/.bak-20260826-phase2/`;
       verified compiling on the server). Master pushed to origin
       2026-08-26 (`ecc1c8c`, covering Phases 1+2).
+- [x] Phase 3 (2026-08-26): dedup identity on `fix/dedup-hash`
+      (`11741c9` + follow-ups `a905dfa` after a 10-finding /code-review) —
+      URL-only content hash with URL-derived hashes from stored Baserow
+      rows as the migration (no Baserow writes, legacy formula deleted);
+      GitHub cross-edition dedup via a seen-URLs cache with a two-phase
+      pending/commit-at-send-success design; shared `json_cache.py` with
+      atomic writes. **Merged, deployed (originals in
+      `.bak-20260826-phase3/`), and pushed to origin the same day.**
+- [x] Phase 4 (2026-08-26): site hardening on `fix/site-hardening`
+      (`d61ed94` + follow-ups `04a0935` after a 10-finding /code-review
+      recovered from a stalled review agent) — ProxyFix + loopback bind so
+      rate limits see real client IPs (no Caddy change needed, v2.10
+      defaults strip client XFF); unsubscribe GET→confirm-page/POST split
+      (RFC 8058 one-click intact); feedback honeypot+timing via shared
+      helper/partial; double-submit dedup with delete-404 tolerance;
+      Cloudflare named in privacy + no remoteip to Turnstile; byte-wise
+      compare_digest; http(s)-only URL guard at collect + render; real 404
+      page; purge `--days>=1`; paginated token lookup. **Merged, deployed
+      (4 scripts + 6 templates, originals in `.bak-20260826-phase4/`,
+      service restarted on 127.0.0.1, live smoke tests green), and pushed
+      to origin the same day.**
 
 ---
 
