@@ -13,11 +13,6 @@ clears.
 
 ## Open
 
-- [ ] **Run the FORM_SECRET fix on the VPS** (Phase 0 leftover, needs a
-      manual run — assistant was permission-blocked). Exact one-liner is in
-      the plan file's Phase 0 section. Until then every
-      `musemaniac-subscriber.service` restart silently invalidates rendered
-      subscribe forms.
 - [ ] **Watch the next `0 7 * * 3` send (2026-09-02)** — first cron run on
       the Phase 2 code (sent marker, --input-driven send step, marker-based
       success-email count, reminder send-then-mark).
@@ -28,9 +23,12 @@ clears.
 ## Done
 
 - [x] Phase 0 (2026-08-26): send verified clean (59/59, 0 errors) and
-      Baserow score write-backs confirmed on all 52 new rows; `FORM_SECRET`
-      confirmed **missing** (fix pending above); subscriber app runs as a
-      single process (no gunicorn), so no multi-worker signup loss.
+      Baserow score write-backs confirmed on all 52 new rows; subscriber
+      app runs as a single process (no gunicorn), so no multi-worker
+      signup loss. `FORM_SECRET` was confirmed missing, then **fixed the
+      same day** (user ran the one-liner; verified: 64-hex value in `.env`,
+      backup at `.env.bak-20260826`, service restarted with the secret in
+      its environment, live form renders with bot-protection fields).
 - [x] Phase 1 (2026-08-26): all 7 items done on `fix/silent-failures`
       (`1317844`) — loud failures for zero-sent/error sends, dry-run no
       longer saves ETags, partial Baserow fetches abort, LLM score

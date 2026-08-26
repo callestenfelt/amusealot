@@ -26,12 +26,14 @@ Do these first; two review findings are "verify config", and today
       **verified 2026-08-26**: 59/59 sent, 0 errors; all 52 collected rows
       have relevance+tier in Baserow (tiers 1/5/46); ai_summary correctly
       absent (the only tier-1 was English). Edition registered as row 44.
-- [ ] **[site H2]** Verify `FORM_SECRET` is set in `/opt/musemaniac/.env` —
-      **verified MISSING 2026-08-26** (`subscriber_app.py:68` falls back to
-      a random per-process secret; systemd unit does load the `.env` via
-      `EnvironmentFile`). Fix still pending (needs a manual run — the
-      assistant's attempt was permission-blocked):
-      `ssh root@77.42.40.207 'cp /opt/musemaniac/.env /opt/musemaniac/.env.bak-20260826 && echo "FORM_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))")" >> /opt/musemaniac/.env && systemctl restart musemaniac-subscriber.service && systemctl is-active musemaniac-subscriber.service'`
+- [x] **[site H2]** Verify `FORM_SECRET` is set in `/opt/musemaniac/.env` —
+      was **missing** (`subscriber_app.py:68` fell back to a random
+      per-process secret); **fixed 2026-08-26** by the user running the
+      backup+append+restart one-liner. Verified: one 64-hex `FORM_SECRET`
+      line in `.env`, backup at `.env.bak-20260826`, service restarted at
+      the same timestamp with the secret present in the running process's
+      environment, and the live landing page renders the form with
+      `form_ts` + honeypot.
 - [x] Check how many gunicorn workers the subscriber service runs —
       **checked 2026-08-26**: none; the unit runs plain
       `python3 subscriber_app.py` (single process), so restart-invalidation
