@@ -27,34 +27,38 @@
        light cell behind forced-white text. */
     [data-ogsc] body, [data-ogsb] body { background-color: #080229 !important; }
     [data-ogsc] table, [data-ogsb] table { background-color: #080229 !important; }
-    [data-ogsc] td, [data-ogsb] td { background-color: #080229 !important; color: #fbfbfb !important; }
-    [data-ogsc] .wn-box, [data-ogsb] .wn-box { background-color: #1C1736 !important; }
-    [data-ogsc] .wn-box td, [data-ogsb] .wn-box td { background-color: #1C1736 !important; }
-    [data-ogsc] .sec-hdr, [data-ogsb] .sec-hdr { border-color: #fbfbfb !important; }
+    [data-ogsc] td, [data-ogsb] td { background-color: #080229 !important; color: #F7F5F1 !important; }
+    [data-ogsc] .wn-box, [data-ogsb] .wn-box { background-color: #241C3E !important; }
+    [data-ogsc] .wn-box td, [data-ogsb] .wn-box td { background-color: #241C3E !important; }
+    [data-ogsc] .sec-hdr, [data-ogsb] .sec-hdr { border-color: #F7F5F1 !important; }
     /* Spans and anchors now carry their own inline background-color for the
        same-element pairing rule, so — like the td rule above — force it dark here
        or webmail dark mode shows light chips behind forced-light text. Elements
        inside the .wn-box panel get its lighter dark tone instead (same pattern
        as the .wn-box td rule above). */
     [data-ogsc] a, [data-ogsb] a { color: #C4BBF6 !important; background-color: #080229 !important; }
-    [data-ogsc] span, [data-ogsb] span { color: #fbfbfb !important; background-color: #080229 !important; }
-    [data-ogsc] .wn-box a, [data-ogsb] .wn-box a { background-color: #1C1736 !important; }
-    [data-ogsc] .wn-box span, [data-ogsb] .wn-box span { background-color: #1C1736 !important; }
-    [data-ogsc] .rate-box, [data-ogsb] .rate-box { border-color: #fbfbfb !important; }
-    [data-ogsc] .rate-box a, [data-ogsb] .rate-box a { color: #fbfbfb !important; background-color: #080229 !important; }
+    [data-ogsc] span, [data-ogsb] span { color: #F7F5F1 !important; background-color: #080229 !important; }
+    [data-ogsc] .wn-box a, [data-ogsb] .wn-box a { background-color: #241C3E !important; }
+    [data-ogsc] .wn-box span, [data-ogsb] .wn-box span { background-color: #241C3E !important; }
+    [data-ogsc] .rate-box, [data-ogsb] .rate-box { border-color: #F7F5F1 !important; }
+    [data-ogsc] .rate-box a, [data-ogsb] .rate-box a { color: #F7F5F1 !important; background-color: #080229 !important; }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#fbfbfb;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#080229;">
+<body style="margin:0;padding:0;background-color:#F7F5F1;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#080229;">
 
 {# ============================================================
    SHARED STYLES
    ============================================================ #}
 {% set dot_border = "" %}
+{# Section counter for the numbered header system (01 SPOTLIGHT, 02 ...).
+   Sections are conditional, so numbers are assigned at render time by the
+   section_header macro — never hardcode them. #}
+{% set sec = namespace(n=0) %}
 
 {# ============================================================
    COLOUR-PAIRING NOTE
    Every text-bearing <td> carries an explicit background-color matching its
-   section (#fbfbfb body, #EDEBF5 lavender panels, #080229 footer). This is
+   section (#F7F5F1 body + footer, #FAF9F6 card panels/news band). This is
    what keeps classic Outlook desktop dark mode from producing white-on-white:
    when background and text live on the same element, Outlook inverts them as a
    pair. Do NOT remove a cell's background-color without removing its sibling
@@ -73,16 +77,17 @@
 </tr>
 {% endmacro %}
 
-{% macro section_header(emoji, text, bg="#fbfbfb") %}
+{# Numbered small-caps section header — the typographic system that replaced
+   the emoji headers (ratified 2026-08-27). All-Arial on purpose: this is the
+   worst-client floor and must render identically everywhere. #}
+{% macro section_header(text, bg="#F7F5F1") %}
+{% set sec.n = sec.n + 1 %}
 <tr>
-  <td style="padding:48px 40px 24px 40px;background-color:{{ bg }};">
+  <td style="padding:44px 40px 24px 40px;background-color:{{ bg }};">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
       <tr>
-        <td class="sec-hdr" style="font-size:20px;font-weight:bold;color:#080229;background-color:{{ bg }};letter-spacing:-1px;padding-bottom:16px;border-bottom:3px solid #080229;">
-          <!--[if !mso]><!-->
-          <span class="ehdr" style="font-size:22px;vertical-align:middle;letter-spacing:0;">{{ emoji }}</span>
-          <!--<![endif]-->
-          <span style="vertical-align:middle;">{{ text }}</span>
+        <td class="sec-hdr" style="font-size:13px;font-weight:bold;color:#080229;background-color:{{ bg }};letter-spacing:3.5px;text-transform:uppercase;padding-bottom:12px;border-bottom:3px solid #080229;">
+          <span style="color:#5c5876;background-color:{{ bg }};letter-spacing:1px;">{{ '%02d'|format(sec.n) }}</span>&nbsp;&nbsp;<span style="color:#080229;background-color:{{ bg }};">{{ text }}</span>
         </td>
       </tr>
     </table>
@@ -92,15 +97,15 @@
 
 {% macro event_t1(event) %}
 <tr>
-  <td style="padding:20px 40px;background-color:#fbfbfb;">
+  <td style="padding:20px 40px;background-color:#F7F5F1;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
       <tr>
-        <td style="background-color:#fbfbfb;">
+        <td style="background-color:#F7F5F1;">
           <a href="{{ event.url }}" class="link" style="font-size:16px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">{{ event.repo.split('/')[-1] }}</a>
         </td>
       </tr>
       <tr>
-        <td style="font-size:13px;color:#080229;background-color:#fbfbfb;padding-top:6px;">
+        <td style="font-size:13px;color:#080229;background-color:#F7F5F1;padding-top:6px;">
           {{ event.org_name }}
           {% if event.repo_meta and event.repo_meta.language %}
             &nbsp;&middot;&nbsp;{{ event.repo_meta.language }}
@@ -112,7 +117,7 @@
       </tr>
       {% if event.score and event.score.summary %}
       <tr>
-        <td style="font-size:14px;color:#080229;background-color:#fbfbfb;padding-top:10px;line-height:1.6;">
+        <td style="font-size:14px;color:#080229;background-color:#F7F5F1;padding-top:10px;line-height:1.6;">
           {{ event.score.summary }}
         </td>
       </tr>
@@ -124,16 +129,16 @@
 
 {% macro event_t2(event) %}
 <tr>
-  <td style="padding:0 40px;background-color:#fbfbfb;">
+  <td style="padding:0 40px;background-color:#F7F5F1;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
       <tr>
-        <td style="padding:10px 0;background-color:#fbfbfb;">
+        <td style="padding:10px 0;background-color:#F7F5F1;">
           <a href="{{ event.url }}" class="link" style="font-size:16px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">{{ event.repo.split('/')[-1] }}</a>
           {% if event.details and event.details.tag is defined %}
-            <span style="font-size:13px;color:#080229;background-color:#fbfbfb;">&nbsp;&middot;&nbsp;{{ event.details.tag }}</span>
+            <span style="font-size:13px;color:#080229;background-color:#F7F5F1;">&nbsp;&middot;&nbsp;{{ event.details.tag }}</span>
           {% endif %}
           <br>
-          <span style="font-size:13px;color:#080229;background-color:#fbfbfb;line-height:2.2;">{{ event.org_name }}</span>
+          <span style="font-size:13px;color:#080229;background-color:#F7F5F1;line-height:2.2;">{{ event.org_name }}</span>
         </td>
       </tr>
     </table>
@@ -145,31 +150,33 @@
    OUTER WRAPPER
    ============================================================ #}
 
-<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#fbfbfb" style="background-color:#fbfbfb;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#F7F5F1" style="background-color:#F7F5F1;">
   <tr>
-    <td align="center" style="padding:0;background-color:#fbfbfb;">
+    <td align="center" style="padding:0;background-color:#F7F5F1;">
 
       {# Inner container — 600px max #}
-      <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#fbfbfb" style="max-width:600px;width:100%;background-color:#fbfbfb;">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#F7F5F1" style="max-width:600px;width:100%;background-color:#F7F5F1;">
 
         {# ========== HEADER ========== #}
+        {# Wordmark is Arial bold, tight-tracked — identical to the site header. #}
         <tr>
-          <td style="padding:48px 40px 40px 40px;background-color:#fbfbfb;">
+          <td style="padding:44px 40px 28px 40px;background-color:#F7F5F1;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
-                <td style="font-size:78px;font-weight:bold;color:#080229;background-color:#fbfbfb;letter-spacing:-5.5px;padding-bottom:0;">
+                <td colspan="2" style="font-size:34px;font-weight:bold;color:#080229;background-color:#F7F5F1;letter-spacing:-2px;padding-bottom:8px;">
                   AmuseAlot
                 </td>
               </tr>
               <tr>
-                <td style="font-size:13px;color:#080229;background-color:#fbfbfb;letter-spacing:4.5px;text-transform:uppercase;">
+                <td style="font-size:11px;font-weight:bold;color:#080229;background-color:#F7F5F1;letter-spacing:3.5px;text-transform:uppercase;padding-bottom:16px;">
                   Museum Tech Newsletter
+                </td>
+                <td align="right" style="font-size:12px;color:#5c5876;background-color:#F7F5F1;padding-bottom:16px;">
+                  {{ generation_date }}
                 </td>
               </tr>
               <tr>
-                <td style="font-size:13px;color:#080229;background-color:#fbfbfb;padding-top:6px;">
-                  {{ generation_date }}
-                </td>
+                <td colspan="2" style="border-top:3px solid #080229;background-color:#F7F5F1;font-size:0;line-height:0;height:1px;">&nbsp;</td>
               </tr>
             </table>
           </td>
@@ -178,27 +185,23 @@
 
         {# ========== INTRO ========== #}
         <tr>
-          <td style="padding:0 40px 32px 40px;background-color:#fbfbfb;">
+          <td style="padding:0 40px 32px 40px;background-color:#F7F5F1;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
-                <td style="font-size:16px;color:#080229;background-color:#fbfbfb;line-height:1.7;">
+                <td style="font-size:16px;color:#080229;background-color:#F7F5F1;line-height:1.7;">
                   An AI-curated digest of what museums, archives, heritage organizations, and
                   individual researchers are building on GitHub &mdash; plus curated news from the cultural heritage sector &mdash; delivered every Wednesday.
-                  {% if source_stats.total_sources > 0 %}
-                  <br><br>
-                  Tracking {{ source_stats.total_sources }} sources{% if source_stats.total_countries > 0 %} in {{ source_stats.total_countries }}{% if source_stats.total_countries > 30 %}+{% endif %} countries{% endif %}.
-                  {% endif %}
                 </td>
               </tr>
               {% if whats_new %}
               <tr>
-                <td style="padding-top:20px;background-color:#fbfbfb;">
-                  <table class="wn-box" width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color:#EDEBF5;border-radius:8px;">
+                <td style="padding-top:20px;background-color:#F7F5F1;">
+                  <table class="wn-box" width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color:#FAF9F6;border:1px solid #ddd8ce;">
                     <tr>
-                      <td style="padding:20px;font-size:14px;font-weight:bold;color:#080229;background-color:#EDEBF5;">What's new</td>
+                      <td style="padding:20px;font-size:14px;font-weight:bold;color:#080229;background-color:#FAF9F6;">What's new</td>
                     </tr>
                     <tr>
-                      <td style="padding:0 20px 20px 20px;font-size:13px;color:#080229;background-color:#EDEBF5;line-height:1.8;">
+                      <td style="padding:0 20px 20px 20px;font-size:13px;color:#080229;background-color:#FAF9F6;line-height:1.8;">
                         {% for item in whats_new %}
                         &bull;&nbsp; {{ item | safe }}{% if not loop.last %}<br>{% endif %}
                         {% endfor %}
@@ -213,43 +216,33 @@
         </tr>
 
 
-        {# ========== STATS BAR ========== #}
+        {# ========== THIS WEEK'S NUMBERS ========== #}
+        {# Weekly-first: only numbers that change each week lead; the static
+           corpus size (sources/countries) is demoted to the footnote. #}
         <tr>
-          <td style="padding:32px 40px 32px 40px;background-color:#fbfbfb;">
+          <td style="padding:8px 40px 24px 40px;background-color:#F7F5F1;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
-                <td colspan="3" class="sec-hdr" style="font-size:20px;font-weight:bold;color:#080229;background-color:#fbfbfb;letter-spacing:-1px;padding-bottom:16px;border-bottom:3px solid #080229;text-align:center;">
-                  This Week in Numbers
+                <td width="33%" valign="top" style="padding:12px 4px 16px 0;background-color:#F7F5F1;">
+                  <span style="display:block;font-size:40px;font-weight:bold;color:#080229;background-color:#F7F5F1;letter-spacing:-1.5px;">{{ stats.new_projects }}</span>
+                  <span style="display:block;font-size:10px;font-weight:bold;color:#5c5876;background-color:#F7F5F1;text-transform:uppercase;letter-spacing:2px;padding-top:4px;">New Repos</span>
+                </td>
+                <td width="34%" valign="top" style="padding:12px 4px 16px 4px;background-color:#F7F5F1;">
+                  <span style="display:block;font-size:40px;font-weight:bold;color:#080229;background-color:#F7F5F1;letter-spacing:-1.5px;">{{ stats.releases }}</span>
+                  <span style="display:block;font-size:10px;font-weight:bold;color:#5c5876;background-color:#F7F5F1;text-transform:uppercase;letter-spacing:2px;padding-top:4px;">Releases</span>
+                </td>
+                <td width="33%" valign="top" style="padding:12px 0 16px 4px;background-color:#F7F5F1;">
+                  <span style="display:block;font-size:40px;font-weight:bold;color:#080229;background-color:#F7F5F1;letter-spacing:-1.5px;">{{ stats.active_orgs }}</span>
+                  <span style="display:block;font-size:10px;font-weight:bold;color:#5c5876;background-color:#F7F5F1;text-transform:uppercase;letter-spacing:2px;padding-top:4px;">Active Orgs</span>
                 </td>
               </tr>
+              {% if source_stats.total_sources > 0 %}
               <tr>
-                <td align="center" width="33%" valign="top" style="padding:24px 4px 16px 4px;background-color:#fbfbfb;">
-                  <span style="display:block;font-size:32px;font-weight:bold;color:#080229;background-color:#fbfbfb;">{{ source_stats.total_sources if source_stats.total_sources else "—" }}</span>
-                  <span style="display:block;font-size:12px;color:#080229;background-color:#fbfbfb;text-transform:uppercase;letter-spacing:0.5px;padding-top:6px;">Sources</span>
-                </td>
-                <td align="center" width="34%" valign="top" style="padding:24px 4px 16px 4px;background-color:#fbfbfb;">
-                  <span style="display:block;font-size:32px;font-weight:bold;color:#080229;background-color:#fbfbfb;">{{ source_stats.total_countries if source_stats.total_countries else "—" }}</span>
-                  <span style="display:block;font-size:12px;color:#080229;background-color:#fbfbfb;text-transform:uppercase;letter-spacing:0.5px;padding-top:6px;">Countries</span>
-                </td>
-                <td align="center" width="33%" valign="top" style="padding:24px 4px 16px 4px;background-color:#fbfbfb;">
-                  <span style="display:block;font-size:32px;font-weight:bold;color:#080229;background-color:#fbfbfb;">{{ stats.active_orgs }}</span>
-                  <span style="display:block;font-size:12px;color:#080229;background-color:#fbfbfb;text-transform:uppercase;letter-spacing:0.5px;padding-top:6px;">Active Orgs</span>
+                <td colspan="3" style="border-top:1px solid #ddd8ce;font-size:12px;color:#5c5876;background-color:#F7F5F1;padding-top:12px;">
+                  This week, from the {{ source_stats.total_sources }} sources we track{% if source_stats.total_countries > 0 %} in {{ source_stats.total_countries }}{% if source_stats.total_countries > 30 %}+{% endif %} countries{% endif %}.
                 </td>
               </tr>
-              <tr>
-                <td align="center" width="33%" valign="top" style="padding:4px 4px;background-color:#fbfbfb;">
-                  <span style="display:block;font-size:32px;font-weight:bold;color:#080229;background-color:#fbfbfb;">{{ stats.new_projects }}</span>
-                  <span style="display:block;font-size:12px;color:#080229;background-color:#fbfbfb;text-transform:uppercase;letter-spacing:0.5px;padding-top:6px;">New Repos</span>
-                </td>
-                <td align="center" width="34%" valign="top" style="padding:4px 4px;background-color:#fbfbfb;">
-                  <span style="display:block;font-size:32px;font-weight:bold;color:#080229;background-color:#fbfbfb;">{{ stats.releases }}</span>
-                  <span style="display:block;font-size:12px;color:#080229;background-color:#fbfbfb;text-transform:uppercase;letter-spacing:0.5px;padding-top:6px;">Releases</span>
-                </td>
-                <td align="center" width="33%" valign="top" style="padding:4px 4px;background-color:#fbfbfb;">
-                  <span style="display:block;font-size:32px;font-weight:bold;color:#080229;background-color:#fbfbfb;">{{ news_articles.total if has_news else 0 }}</span>
-                  <span style="display:block;font-size:12px;color:#080229;background-color:#fbfbfb;text-transform:uppercase;letter-spacing:0.5px;padding-top:6px;">News</span>
-                </td>
-              </tr>
+              {% endif %}
             </table>
           </td>
         </tr>
@@ -257,36 +250,29 @@
 
         {# ========== SPOTLIGHT ========== #}
         {% if spotlight.event.repo and spotlight.writeup %}
+        {{ section_header("Spotlight") }}
         <tr>
-          <td style="padding:36px 40px 32px 40px;background-color:#fbfbfb;">
+          <td style="padding:0 40px 32px 40px;background-color:#F7F5F1;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
-                <td class="sec-hdr" style="font-size:20px;font-weight:bold;color:#080229;background-color:#fbfbfb;letter-spacing:-1px;padding-bottom:16px;border-bottom:3px solid #080229;">
-                  <!--[if !mso]><!-->
-                  <span class="ehdr" style="font-size:22px;vertical-align:middle;letter-spacing:0;">👀</span>
-                  <!--<![endif]-->
-                  <span style="vertical-align:middle;">Spotlight</span>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding-top:24px;background-color:#fbfbfb;">
+                <td style="padding-top:4px;background-color:#F7F5F1;">
                   <a href="https://github.com/{{ spotlight.event.repo }}" class="link" style="font-size:18px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">
                     {{ spotlight.event.repo.split('/')[-1] if spotlight.event.repo else '' }}
                   </a>
                 </td>
               </tr>
               <tr>
-                <td style="padding-top:6px;font-size:13px;color:#080229;background-color:#fbfbfb;">
+                <td style="padding-top:6px;font-size:13px;color:#080229;background-color:#F7F5F1;">
                   {{ spotlight.event.org_name }}
                 </td>
               </tr>
               <tr>
-                <td style="padding-top:16px;font-size:14px;color:#080229;background-color:#fbfbfb;line-height:1.7;">
+                <td style="padding-top:16px;font-size:14px;color:#080229;background-color:#F7F5F1;line-height:1.7;">
                   {{ spotlight.writeup }}
                 </td>
               </tr>
               <tr>
-                <td style="padding-top:16px;background-color:#fbfbfb;">
+                <td style="padding-top:16px;background-color:#F7F5F1;">
                   <a href="https://github.com/{{ spotlight.event.repo }}" class="link" style="font-size:13px;color:#080229;text-decoration:underline;text-underline-offset:2px;">View on GitHub</a>
                 </td>
               </tr>
@@ -298,7 +284,7 @@
 
         {# ========== NEW REPOS ========== #}
         {% if has_new_repos %}
-        {{ section_header("🥚", "New Repositories") }}
+        {{ section_header("New Repositories") }}
         {% for event in sections.new_repos %}
           {% if not section_cap or loop.index <= section_cap %}
             {% if event.score.tier == 1 %}
@@ -310,7 +296,7 @@
         {% endfor %}
         {% if section_cap and total_new_repos > section_cap %}
         <tr>
-          <td style="padding:20px 40px 0 40px;background-color:#fbfbfb;">
+          <td style="padding:20px 40px 0 40px;background-color:#F7F5F1;">
             <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">See all {{ total_new_repos }} new repositories in the full edition</a>
           </td>
         </tr>
@@ -319,7 +305,7 @@
 
         {# ========== RELEASES ========== #}
         {% if has_releases %}
-        {{ section_header("🚀", "Releases") }}
+        {{ section_header("Releases") }}
         {% for event in sections.releases %}
           {% if not section_cap or loop.index <= section_cap %}
             {% if event.score.tier == 1 %}
@@ -331,7 +317,7 @@
         {% endfor %}
         {% if section_cap and total_releases > section_cap %}
         <tr>
-          <td style="padding:20px 40px 0 40px;background-color:#fbfbfb;">
+          <td style="padding:20px 40px 0 40px;background-color:#F7F5F1;">
             <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">See all {{ total_releases }} releases in the full edition</a>
           </td>
         </tr>
@@ -339,25 +325,25 @@
         {% endif %}
 
         {# ========== MOST ACTIVE REPOS ========== #}
-        {{ section_header("🔥", "Most Active Repos") }}
+        {{ section_header("Most Active Repos") }}
         <tr>
-          <td style="padding:0 40px 0 40px;background-color:#fbfbfb;">
+          <td style="padding:0 40px 0 40px;background-color:#F7F5F1;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               {% for repo in most_active %}
               <tr>
-                <td style="padding:16px 0;background-color:#fbfbfb;{% if not loop.last %}{{ dot_border }}{% endif %}">
+                <td style="padding:16px 0;background-color:#F7F5F1;{% if not loop.last %}{{ dot_border }}{% endif %}">
                   <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                     <tr>
-                      <td width="28" valign="top" style="font-size:14px;font-weight:bold;color:#080229;background-color:#fbfbfb;padding-right:8px;">
+                      <td width="28" valign="top" style="font-size:14px;font-weight:bold;color:#080229;background-color:#F7F5F1;padding-right:8px;">
                         {{ loop.index }}.
                       </td>
-                      <td style="background-color:#fbfbfb;">
+                      <td style="background-color:#F7F5F1;">
                         <a href="https://github.com/{{ repo.repo }}" class="link" style="font-size:14px;font-weight:600;color:#080229;text-decoration:underline;text-underline-offset:2px;">{{ repo.repo.split('/')[-1] }}</a>
                         {% if '/' in repo.repo %}
-                        <span style="font-size:13px;color:#080229;background-color:#fbfbfb;">&nbsp;&mdash;&nbsp;{{ repo.repo.split('/')[0] }}</span>
+                        <span style="font-size:13px;color:#080229;background-color:#F7F5F1;">&nbsp;&mdash;&nbsp;{{ repo.repo.split('/')[0] }}</span>
                         {% endif %}
                         <br>
-                        <span style="font-size:12px;color:#080229;background-color:#fbfbfb;padding-top:2px;">
+                        <span style="font-size:12px;color:#080229;background-color:#F7F5F1;padding-top:2px;">
                           {{ repo.total_commits }} commit{{ 's' if repo.total_commits != 1 else '' }},
                           {{ repo.files_changed }} file{{ 's' if repo.files_changed != 1 else '' }} changed
                         </span>
@@ -373,7 +359,7 @@
 
         {# ========== INDIVIDUAL CREATORS ========== #}
         {% if has_individual_events %}
-        {{ section_header("👤", "Individual Creators") }}
+        {{ section_header("Individual Creators") }}
         {% for event in individual_events %}
           {% if event.score.tier == 1 %}
             {{ event_t1(event) }}
@@ -383,7 +369,7 @@
         {% endfor %}
         {% if section_cap and total_individual_events > individual_events|length %}
         <tr>
-          <td style="padding:20px 40px 0 40px;background-color:#fbfbfb;">
+          <td style="padding:20px 40px 0 40px;background-color:#F7F5F1;">
             <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">See all {{ total_individual_events }} individual creators in the full edition</a>
           </td>
         </tr>
@@ -392,7 +378,7 @@
 
         {# ========== NOTABLE PUSHES ========== #}
         {% if has_pushes %}
-        {{ section_header("🤖", "Notable Pushes") }}
+        {{ section_header("Notable Pushes") }}
         {% for event in sections.pushes %}
           {% if not section_cap or loop.index <= section_cap %}
             {% if event.score.tier == 1 %}
@@ -404,7 +390,7 @@
         {% endfor %}
         {% if section_cap and total_pushes > section_cap %}
         <tr>
-          <td style="padding:20px 40px 0 40px;background-color:#fbfbfb;">
+          <td style="padding:20px 40px 0 40px;background-color:#F7F5F1;">
             <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">See all {{ total_pushes }} pushes in the full edition</a>
           </td>
         </tr>
@@ -413,29 +399,29 @@
 
         {# ========== TOOL WATCH ========== #}
         {% if has_tool_watch %}
-        {{ section_header("🔧", "Tool Watch") }}
+        {{ section_header("Tool Watch") }}
         <tr>
-          <td style="padding:0 40px 0 40px;background-color:#fbfbfb;">
+          <td style="padding:0 40px 0 40px;background-color:#F7F5F1;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               {% for parent, events in tool_watch.items() %}
               <tr>
-                <td style="padding:20px 0 12px 0;background-color:#fbfbfb;{% if not loop.first %}{{ dot_border }}{% endif %}">
-                  <span style="font-size:15px;font-weight:bold;color:#080229;background-color:#fbfbfb;">{{ parent }}</span>
+                <td style="padding:20px 0 12px 0;background-color:#F7F5F1;{% if not loop.first %}{{ dot_border }}{% endif %}">
+                  <span style="font-size:15px;font-weight:bold;color:#080229;background-color:#F7F5F1;">{{ parent }}</span>
                 </td>
               </tr>
               {% for event in events %}
               <tr>
-                <td style="padding:0 0 16px 0;background-color:#fbfbfb;">
+                <td style="padding:0 0 16px 0;background-color:#F7F5F1;">
                   <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                     <tr>
-                      <td style="background-color:#fbfbfb;">
+                      <td style="background-color:#F7F5F1;">
                         <a href="{{ event.url }}" class="link" style="font-size:14px;font-weight:600;color:#080229;text-decoration:underline;text-underline-offset:2px;">{{ event.technology_name }}</a>
                         {% if event.details and event.details.tag is defined %}
-                          <span style="font-size:13px;color:#080229;background-color:#fbfbfb;">&nbsp;&middot;&nbsp;{{ event.details.tag }}</span>
+                          <span style="font-size:13px;color:#080229;background-color:#F7F5F1;">&nbsp;&middot;&nbsp;{{ event.details.tag }}</span>
                         {% endif %}
                         <br>
                         {% if event.score and event.score.summary %}
-                        <span style="font-size:13px;color:#080229;background-color:#fbfbfb;line-height:1.6;">{{ event.score.summary }}</span>
+                        <span style="font-size:13px;color:#080229;background-color:#F7F5F1;line-height:1.6;">{{ event.score.summary }}</span>
                         <br>
                         {% endif %}
                         <a href="{{ event.url }}" class="link" style="font-size:12px;color:#080229;text-decoration:underline;text-underline-offset:2px;">View on GitHub</a>
@@ -451,14 +437,14 @@
         </tr>
         {% if section_cap and total_tool_events > shown_tool_events %}
         <tr>
-          <td style="padding:20px 40px 0 40px;background-color:#fbfbfb;">
+          <td style="padding:20px 40px 0 40px;background-color:#F7F5F1;">
             <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">See all {{ total_tool_events }} tool watch updates in the full edition</a>
           </td>
         </tr>
         {% endif %}
         {% endif %}
 
-        <tr><td style="height:48px;background-color:#fbfbfb;"></td></tr>
+        <tr><td style="height:48px;background-color:#F7F5F1;"></td></tr>
 
       </table>
       {# /Inner container #}
@@ -468,32 +454,32 @@
 </table>
 
 {# ========== NEWS + FEEDBACK — full bleed ========== #}
-<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#EDEBF5" style="background-color:#EDEBF5;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#FAF9F6" style="background-color:#FAF9F6;border-top:1px solid #ddd8ce;border-bottom:1px solid #ddd8ce;">
   <tr>
-    <td align="center" style="padding:0;background-color:#EDEBF5;">
+    <td align="center" style="padding:0;background-color:#FAF9F6;">
       <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width:600px;width:100%;">
 
         {# ---- Cultural Heritage News ---- #}
         {% if has_news %}
-        {{ section_header("📢", "Cultural Heritage News", "#EDEBF5") }}
+        {{ section_header("Cultural Heritage News", "#FAF9F6") }}
         <tr>
-          <td style="padding:0 40px 24px 40px;font-size:13px;color:#080229;background-color:#EDEBF5;line-height:1.7;opacity:0.8;">
+          <td style="padding:0 40px 24px 40px;font-size:13px;color:#080229;background-color:#FAF9F6;line-height:1.7;opacity:0.8;">
             Not from GitHub, but still relevant. These articles are picked from cultural heritage and museum sources across Europe, then rated for relevance and translated to English when needed. AI can make mistakes &mdash; always check the original source if something is important.
           </td>
         </tr>
         {% for article in news_articles.newsletter %}
         <tr>
-          <td style="padding:20px 40px;background-color:#EDEBF5;{% if not loop.first %}{{ dot_border }}{% endif %}">
+          <td style="padding:20px 40px;background-color:#FAF9F6;{% if not loop.first %}{{ dot_border }}{% endif %}">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
-                <td style="background-color:#EDEBF5;">
+                <td style="background-color:#FAF9F6;">
                   <a href="{{ article.url }}" class="link" style="font-size:16px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">
                     {{ article.score.ai_title if (article.language != 'en' and article.score.ai_title) else article.title }}
                   </a>
                 </td>
               </tr>
               <tr>
-                <td style="font-size:13px;color:#080229;background-color:#EDEBF5;opacity:0.8;padding-top:6px;">
+                <td style="font-size:13px;color:#080229;background-color:#FAF9F6;opacity:0.8;padding-top:6px;">
                   {{ article.source_name }}
                   {% if article.published_date %} &middot; {{ article.published_date }}{% endif %}
                   {% if article.language and article.language != 'en' %} &middot; <span style="text-transform:uppercase;">{{ article.language }}</span>{% endif %}
@@ -501,13 +487,13 @@
               </tr>
               {% if article.score.ai_summary %}
               <tr>
-                <td style="font-size:14px;padding-top:10px;line-height:1.6;color:#080229;background-color:#EDEBF5;">
+                <td style="font-size:14px;padding-top:10px;line-height:1.6;color:#080229;background-color:#FAF9F6;">
                   {{ article.score.ai_summary }}
                 </td>
               </tr>
               {% elif article.summary %}
               <tr>
-                <td style="font-size:14px;padding-top:10px;line-height:1.6;color:#080229;background-color:#EDEBF5;">
+                <td style="font-size:14px;padding-top:10px;line-height:1.6;color:#080229;background-color:#FAF9F6;">
                   {{ article.summary[:200] }}{% if article.summary|length > 200 %}...{% endif %}
                 </td>
               </tr>
@@ -518,7 +504,7 @@
         {% endfor %}
         {% if section_cap and news_articles.total > section_cap %}
         <tr>
-          <td style="padding:20px 40px 0 40px;background-color:#EDEBF5;">
+          <td style="padding:20px 40px 0 40px;background-color:#FAF9F6;">
             <a href="https://amusealot.com/archive/{{ generation_date_iso }}" class="link" style="font-size:14px;font-weight:bold;color:#080229;text-decoration:underline;text-underline-offset:3px;">See all {{ news_articles.total }} articles in the full edition</a>
           </td>
         </tr>
@@ -528,86 +514,86 @@
 
         {# ---- Feedback ---- #}
         <tr>
-          <td align="center" style="padding:{{ 32 if has_news else 48 }}px 40px 8px 40px;font-size:18px;font-weight:bold;color:#080229;background-color:#EDEBF5;">
+          <td style="padding:{{ 32 if has_news else 48 }}px 40px 12px 40px;font-size:13px;font-weight:bold;color:#080229;background-color:#FAF9F6;letter-spacing:3.5px;text-transform:uppercase;">
             How was this edition?
           </td>
         </tr>
-        <tr>
-          <td align="center" style="padding:4px 40px 24px 40px;font-size:13px;color:#080229;background-color:#EDEBF5;opacity:0.7;">
-            Your feedback helps us improve
-          </td>
-        </tr>
         {% set ratings = [
-          (5, "Excellent", "★★★★★"),
-          (4, "Very Good", "★★★★☆"),
-          (3, "Good", "★★★☆☆"),
-          (2, "Fair", "★★☆☆☆"),
-          (1, "Poor", "★☆☆☆☆"),
+          (5, "Excellent"),
+          (4, "Very good"),
+          (3, "Good"),
+          (2, "Fair"),
+          (1, "Poor"),
         ] %}
-        {# The <a> sits INSIDE the cell (not wrapped around the table): Word-engine
-           Outlook ignores block-level anchors around tables, which left the rating
-           rows unclickable there. display:block makes the whole padded cell the
-           target in modern clients; Word engine still gets a plain clickable link. #}
-        {% for value, label, stars in ratings %}
+        {# Compact one-row rating: five bordered number cells. The <a> sits
+           INSIDE each cell (not wrapped around a table): Word-engine Outlook
+           ignores block-level anchors around tables, which left the old rating
+           rows unclickable there. Padding stays on the td for the same reason —
+           the Word engine ignores padding (and display:block) on anchors.
+           border-left:none on non-first cells keeps adjacent borders single. #}
         <tr>
-          <td align="center" style="padding:0 40px 8px 40px;background-color:#EDEBF5;">
-            <table class="rate-box" width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="border:2px solid #080229;">
+          <td style="padding:0 40px 12px 40px;background-color:#FAF9F6;">
+            <table class="rate-box" width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
-                {# Padding stays on the td — Word-engine Outlook ignores padding
-                   (and display:block) on anchors, so an anchor-padded cell would
-                   collapse in exactly the client this restructure targets. #}
-                <td style="padding:12px 16px;background-color:#EDEBF5;color:#080229;">
-                  <a href="https://amusealot.com/feedback?edition={{ generation_date_iso }}&rating={{ value }}" style="display:block;font-size:15px;color:#080229;background-color:#EDEBF5;text-decoration:none;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">
-                    <span style="margin-right:8px;">{{ stars }}</span>
-                    <span style="font-weight:bold;">{{ label }}</span>
-                  </a>
+                {% for value, label in ratings %}
+                <td align="center" width="20%" style="border:2px solid #080229;{% if not loop.first %}border-left:none;{% endif %}padding:14px 4px;background-color:#FAF9F6;color:#080229;">
+                  <a href="https://amusealot.com/feedback?edition={{ generation_date_iso }}&rating={{ value }}" title="{{ label }}" style="display:block;font-size:16px;font-weight:bold;color:#080229;background-color:#FAF9F6;text-decoration:none;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">{{ value }}</a>
                 </td>
+                {% endfor %}
               </tr>
             </table>
           </td>
         </tr>
-        {% endfor %}
-        <tr><td style="height:48px;background-color:#EDEBF5;"></td></tr>
+        <tr>
+          <td style="padding:0 40px 24px 40px;font-size:12px;color:#5c5876;background-color:#FAF9F6;">
+            Tap a number &mdash; 5 is excellent, 1 is poor. One tap, no forms.
+          </td>
+        </tr>
+        <tr><td style="height:40px;background-color:#FAF9F6;"></td></tr>
 
       </table>
     </td>
   </tr>
 </table>
 
-{# ========== FOOTER — full width ========== #}
-<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#080229" style="background-color:#080229;">
+{# ========== FOOTER — full width, light with a ruled top ==========
+   Non-inverted like everything else (ratified 2026-08-27): ink text on the
+   paper ground, framed by a 3px solid rule — no dark block. #}
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#F7F5F1" style="background-color:#F7F5F1;">
   <tr>
-    <td align="center" style="padding:60px 40px 24px 40px;background-color:#080229;">
-      <span style="font-size:16px;color:#fbfbfb;background-color:#080229;">
-        Powered by <a href="https://github.com/callestenfelt/amusealot" style="color:#fbfbfb;background-color:#080229;text-decoration:underline;text-underline-offset:2px;">amusealot</a>
-        &nbsp;&middot;&nbsp;Generated {{ generation_date }}
-      </span>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" style="padding:12px 40px 12px 40px;background-color:#080229;">
-      <span style="font-size:12px;color:#fbfbfb;background-color:#080229;opacity:0.6;">
-        Content is curated and summarized with the help of AI.
-        <a href="https://amusealot.com/about" style="color:#fbfbfb;background-color:#080229;text-decoration:underline;text-underline-offset:2px;">Learn how it works</a>
-      </span>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" style="padding:0 40px 12px 40px;background-color:#080229;">
-      <span style="font-size:13px;color:#fbfbfb;background-color:#080229;opacity:0.7;">
-        <a href="https://amusealot.com/archive/{{ generation_date_iso }}" style="color:#fbfbfb;background-color:#080229;text-decoration:underline;text-underline-offset:2px;">View in browser</a>
-        &nbsp;&middot;&nbsp;
-        <a href="https://amusealot.com/archive" style="color:#fbfbfb;background-color:#080229;text-decoration:underline;text-underline-offset:2px;">Past issues</a>
-      </span>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" style="padding:0 40px 60px 40px;background-color:#080229;">
-      <span style="font-size:13px;color:#fbfbfb;background-color:#080229;opacity:0.7;">
-        <a href="%%UNSUBSCRIBE_URL%%" style="color:#fbfbfb;background-color:#080229;text-decoration:underline;text-underline-offset:2px;">Unsubscribe</a>
-        &nbsp;&middot;&nbsp;
-        <a href="https://amusealot.com/privacy" style="color:#fbfbfb;background-color:#080229;text-decoration:underline;text-underline-offset:2px;">Privacy Policy</a>
-      </span>
+    <td align="center" style="padding:0;background-color:#F7F5F1;">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width:600px;width:100%;">
+        <tr>
+          <td style="padding:36px 40px 8px 40px;border-top:3px solid #080229;background-color:#F7F5F1;">
+            <span style="font-size:14px;color:#080229;background-color:#F7F5F1;">
+              <span style="font-weight:bold;background-color:#F7F5F1;color:#080229;">AmuseAlot</span>
+              &nbsp;&middot;&nbsp;Generated {{ generation_date }}
+              &nbsp;&middot;&nbsp;Powered by <a href="https://github.com/callestenfelt/amusealot" style="color:#080229;background-color:#F7F5F1;text-decoration:underline;text-underline-offset:2px;">amusealot</a>
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:4px 40px 8px 40px;background-color:#F7F5F1;">
+            <span style="font-size:12px;color:#5c5876;background-color:#F7F5F1;">
+              Content is curated and summarized with the help of AI.
+              <a href="https://amusealot.com/about" style="color:#5c5876;background-color:#F7F5F1;text-decoration:underline;text-underline-offset:2px;">Learn how it works</a>
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 40px 48px 40px;background-color:#F7F5F1;">
+            <span style="font-size:13px;color:#5c5876;background-color:#F7F5F1;">
+              <a href="https://amusealot.com/archive/{{ generation_date_iso }}" style="color:#5c5876;background-color:#F7F5F1;text-decoration:underline;text-underline-offset:2px;">View in browser</a>
+              &nbsp;&middot;&nbsp;
+              <a href="https://amusealot.com/archive" style="color:#5c5876;background-color:#F7F5F1;text-decoration:underline;text-underline-offset:2px;">Past issues</a>
+              &nbsp;&middot;&nbsp;
+              <a href="%%UNSUBSCRIBE_URL%%" style="color:#5c5876;background-color:#F7F5F1;text-decoration:underline;text-underline-offset:2px;">Unsubscribe</a>
+              &nbsp;&middot;&nbsp;
+              <a href="https://amusealot.com/privacy" style="color:#5c5876;background-color:#F7F5F1;text-decoration:underline;text-underline-offset:2px;">Privacy Policy</a>
+            </span>
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>

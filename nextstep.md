@@ -1,21 +1,26 @@
 # Next steps
 
-# Site redesign (feature/site-redesign, 2026-08-27)
+# Redesign 2026-08-27 — site + newsletter
 
-The "Placard / Rammetto One" site redesign (design canvas:
-https://claude.ai/code/artifact/23f1a203-1074-4bfd-a08d-888dad3489bf) is
-implemented on `feature/site-redesign`: new `base.html` design system (real
-dark mode, desktop nav + mobile drawer), all 15 web templates restyled,
-self-hosted fonts. Awaiting merge/deploy/push approvals.
+Both halves of the "Placard / Rammetto One" redesign (design canvas:
+https://claude.ai/code/artifact/23f1a203-1074-4bfd-a08d-888dad3489bf).
 
-**DEPLOY NOTE — new directory:** this branch adds
+**Site** (`feature/site-redesign`): new `base.html` design system (real
+dark mode, desktop nav + mobile drawer, perforation rules, ticket-punch
+link underlines), all 15 web templates restyled, self-hosted fonts.
+
+**Email** (`feature/email-redesign`): numbered small-caps section headers
+replace the emoji, warm palette (body/footer `#F7F5F1`, panels
+`#FAF9F6`), weekly-first numbers with the corpus size as a footnote,
+compact one-row rating, light ruled footer, and the
+confirmation/reminder CTA is now an OUTLINED ink-on-paper button (not a
+dark filled block). CLAUDE.md's palette line is updated to match.
+
+**DEPLOY NOTE — new directory:** the site half adds
 `scripts/static/fonts/` with four `.woff2` files that `base.html`
 preloads. The deploy MUST create `/opt/musemaniac/scripts/static/fonts/`
-on the VPS and scp all four files along with `subscriber_app.py` and
-`scripts/templates/web/*` — otherwise every page 404s its fonts and
-silently falls back to Arial. Then restart `musemaniac-subscriber.service`.
-The email templates (`newsletter.html.j2`, confirmation/reminder emails)
-are deliberately untouched — the email redesign is a separate branch.
+on the VPS and scp all four files — otherwise every page 404s its fonts
+and silently falls back to Arial.
 
 # Code review round 2: fix plan (August 2026)
 
