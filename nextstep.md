@@ -13,28 +13,16 @@ clears.
 
 **The August 2026 review fix plan is COMPLETE** — all seven phases done,
 merged, deployed, and pushed to origin as of 2026-08-27. Only the four
-manual items below remain, each with its full step-by-step guide. Order
-doesn't matter except: **item 1 before Wednesday** gets English titles
-into the next edition rather than the one after.
+manual items below remain, each with its full step-by-step guide.
 
 ## Open — step-by-step guide for the remaining manual work
 
-### 1. Create the `ai_title` column (5 minutes, anytime)
+### 1. Create the `ai_title` column — DONE 2026-08-27
 
-- [ ] In the Baserow UI, open the **news articles table (752)** (the one
-      with `title`, `url`, `tier`, `ai_summary`) and add a field named
-      exactly **`ai_title`** (lowercase, underscore), type **Long text**.
-      No default, no options. (The database token can't alter schema —
-      that's why this is manual.)
-- No deploy needed: `score_news.py` resolves the column by name at
-  startup and type-checks it. To confirm it's picked up (dry run, writes
-  nothing):
-  ```
-  ssh root@77.42.40.207
-  cd /opt/musemaniac && set -a; . .env; set +a
-  python3 scripts/score_news.py --baserow-only
-  ```
-  The "no ai_title column in Baserow yet" note should be gone.
+- [x] Created in the Baserow UI (field 7299, long_text) and verified:
+      `score_news.py --baserow-only` resolves it by name with no
+      "no ai_title column" note. English titles start persisting with the
+      2026-09-02 send.
 - [ ] After the next send, spot-check a non-English tier 1/2 article row:
       it should have an English title in `ai_title` next to `ai_summary`.
 

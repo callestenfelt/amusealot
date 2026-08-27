@@ -419,8 +419,8 @@ ERROR_NO_PERMISSION_TO_TABLE), resolved by name at runtime.
 - [x] **[pipeline L8]** `resolve_ai_title_field()` finds the hand-created
       column by name, type-checks it (long_text/text), and PATCHes
       `ai_title` separately so a title failure can't unpersist tier.
-      **Pending user action: create the `ai_title` long_text column in
-      Baserow table 752** — code activates on its own once it exists.
+      **Column created by the user 2026-08-27** (field 7299, long_text)
+      and verified resolving on the VPS — fully live.
 
 ### Phase 6 review follow-ups (automated /code-review of `6aa2f88`, high, 2026-08-26)
 
@@ -577,5 +577,5 @@ purge + generate dry-runs clean against production through the client.
 | 2026-08-26 | 3 | fix/dedup-hash | 11741c9 + a905dfa (merged to master 2026-08-26) | 2026-08-26 (4 files incl. new `json_cache.py`; originals in `.bak-20260826-phase3/`; compile + `--commit-seen` guard verified on VPS) |
 | 2026-08-26 | 4 | fix/site-hardening | d61ed94 + 04a0935 (merged to master 2026-08-26) | 2026-08-26 (4 scripts + 6 templates; originals in `.bak-20260826-phase4/`; service restarted, now bound to 127.0.0.1; live smoke tests: bot fields, real 404, unsubscribe GET, privacy, sitemap all green) |
 | 2026-08-26 | 5 | fix/email-dark-mode | 979bdce + b804a20 (merged to master 2026-08-26) | 2026-08-26 (generate_newsletter.py + 3 templates; originals in `.bak-20260826-phase5/`; compile + checksums + real-data dry-run verified on VPS; pushed to origin 2026-08-26; Outlook-desktop dark-mode eyeball still pending) |
-| 2026-08-27 | 6 | fix/pipeline-coverage | 6aa2f88 + 10297da + cffaa92 (merged to master 2026-08-27) | 2026-08-27 (3 scripts + new `llm_shared.py`; originals in `.bak-20260827-phase6/`; compile on VPS Python 3.10 + checksums + read-only recovery-filter smoke verified; pushed to origin 2026-08-27; ai_title column creation pending in Baserow UI) |
+| 2026-08-27 | 6 | fix/pipeline-coverage | 6aa2f88 + 10297da + cffaa92 (merged to master 2026-08-27) | 2026-08-27 (3 scripts + new `llm_shared.py`; originals in `.bak-20260827-phase6/`; compile on VPS Python 3.10 + checksums + read-only recovery-filter smoke verified; pushed to origin 2026-08-27; ai_title column created + verified 2026-08-27) |
 | 2026-08-27 | 7 | fix/review-lows | d83480a + 02d22d0 + ea27735 (merged to master 2026-08-27) | 2026-08-27 (15 scripts + 2 new modules + both shell wrappers, all 18 checksum-verified; originals in `.bak-20260827-phase7/`; subscriber service restarted, live routes 200, purge + generate dry-runs clean; pushed to origin 2026-08-27). **All seven phases of this plan are now complete.** |
