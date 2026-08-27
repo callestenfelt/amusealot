@@ -146,13 +146,18 @@ Return JSON object with "articles" array, each with: {{"index": N, "relevance": 
 
 def generate_english_summary(article):
     """Generate English title and summary for a non-English tier 1 article."""
+    # Built outside the prompt f-string: the VPS runs Python 3.10, where an
+    # f-string expression may not contain a backslash (PEP 701 is 3.12+).
+    article_block = wrap_untrusted(
+        "ARTICLE DATA",
+        f"Title: {clamp(article['title'], 300)}\n"
+        f"Summary: {clamp(article.get('summary') or 'No summary available', 1000)}")
+
     prompt = f"""This article is in {article['language']}. Translate the title to English and write a concise English summary (2-3 sentences) focusing on the technical substance — what the article actually reports.
 
 Do not add framing about relevance to museum professionals or "why this matters"; the newsletter audience already works in the sector, so that wording is redundant. Just describe what the article is about.
 
-{wrap_untrusted("ARTICLE DATA",
-                f"Title: {clamp(article['title'], 300)}\n"
-                f"Summary: {clamp(article.get('summary') or 'No summary available', 1000)}")}
+{article_block}
 
 Return JSON with exactly two fields:
 - "title": a concise English translation of the article title
