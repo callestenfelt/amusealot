@@ -36,10 +36,10 @@ clears.
       exactly `ai_title` to the Baserow news-articles table (752) in the
       UI (the database token can't alter schema). Phase 6's L8 code
       resolves it by name and starts persisting English titles on its own.
-- [ ] Phase 7 — the last phase; see `docs/review-2026-08-26-plan.md`.
-      (Phases 0–6 done, merged, deployed, and pushed to origin as of
-      2026-08-27; no Caddy change was needed for Phase 4 — Caddy v2.10
-      defaults already strip client X-Forwarded-For.)
+**The August 2026 review fix plan is COMPLETE** — all seven phases done,
+merged, deployed, and pushed to origin as of 2026-08-27. Only the three
+items above remain (send watch, ai_title column, Outlook eyeball), plus
+the older real-client unsubscribe check.
 
 ## Done
 
@@ -117,6 +117,19 @@ clears.
       (3 scripts + llm_shared.py, originals in `.bak-20260827-phase6/`,
       compile on VPS Python 3.10 + read-only smoke verified), and pushed.
       ai_title column still to be created in the Baserow UI.**
+- [x] Phase 7 (2026-08-27): housekeeping on `fix/review-lows` (`d83480a` +
+      follow-ups `02d22d0` after a 10-finding /code-review, incl. one
+      reproduced set -E/SENT_COUNT bug) — remaining HTTP timeouts;
+      run_newsletter.sh `set -E` + tee-race fix + real 30-day log pruning;
+      new `baserow_config.py` (single-source table/field ids, 7 importers)
+      and `baserow_client.py` (shared row CRUD — subscriber_app, purge,
+      send scripts, collectors all ported; closes Phase 4's deferred
+      dedup); email masking (`ca***@domain` + row id) in pipeline logs;
+      explicit release-truncation flag; cron_newsletter.sh in the repo,
+      restructured to log .env failures instead of dying silently.
+      **Merged, deployed 2026-08-27 (18 files checksum-verified, originals
+      in `.bak-20260827-phase7/`, service restarted, live routes 200,
+      dry-runs clean), and pushed. This completes the review plan.**
 
 ---
 

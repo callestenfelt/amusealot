@@ -469,17 +469,21 @@ read-only smoke of the recovery filter against production passed.
 
 ## Phase 7 — Housekeeping batch (branch: `fix/review-lows`)
 
-Low-risk cleanups; fine to trickle in or do as one sweep. (Originally
-planned as `chore/review-lows`; renamed pre-merge — CLAUDE.md's naming
-scheme only documents `feature/` and `fix/`, and the branch carries code.)
+Done 2026-08-27 (implementation `d83480a`, review follow-ups `02d22d0`,
+exec-bit fix `ea27735`). Originally planned as `chore/review-lows`;
+renamed pre-merge per the review — CLAUDE.md's naming scheme only
+documents `feature/` and `fix/`, and the branch carries code. Decision
+(user, 2026-08-27): **mask emails in pipeline logs** (`ca***@domain` +
+Baserow row id); the purge script's eyes-on listing keeps full addresses
+as a documented exemption.
 
-**DEPLOY MANIFEST — the two NEW modules are imported at module load by the
-Flask app and the cron pipeline; missing them in the scp takes the site
-down and kills the Wednesday send:**
+**DEPLOY MANIFEST (deployed 2026-08-27, all 18 files verified by
+checksum) — the two NEW modules are imported at module load by the Flask
+app and the cron pipeline; missing them in an scp takes the site down and
+kills the Wednesday send:**
 
-- NEW: `baserow_client.py`, `baserow_config.py` (+ `cron_newsletter.sh` if
-  the wrapper changes are wanted on the VPS — it restructures .env
-  failure handling)
+- NEW: `baserow_client.py`, `baserow_config.py`, plus the reworked
+  `cron_newsletter.sh` (repo copy is now the source of truth)
 - Modified: `add_github_museums.py`, `collect_github_activity.py`,
   `collect_news.py`, `enrich_github.py`, `enrich_github_activity.py`,
   `generate_newsletter.py`, `get_field_ids.py`,
@@ -488,24 +492,66 @@ down and kills the Wednesday send:**
   `send_newsletter.py`, `send_reminders.py`, `subscriber_app.py`
 - `subscriber_app.py` changed ⇒ restart `musemaniac-subscriber.service`
 
-- [ ] Timeouts on remaining HTTP calls: `register_past_edition.py:68`,
-      `enrich_github.py` (Wikidata + Baserow), `search_github_museums.py`,
-      `add_github_museums.py`.
-- [ ] `run_newsletter.sh`: add `set -E` so the ERR trap survives future
-      function refactors; make the failure-email tail not race the `tee`.
-- [ ] Config dedup: single source for `TABLE_ID`/field-ID maps shared by
-      `collect_news`/`score_news` and the GitHub scripts; kill dead
-      `TECH_FIELDS` and the hardcoded `field_7222`.
-- [ ] Log retention: actually prune `/opt/musemaniac/logs/` (subscriber
-      emails = PII accumulating indefinitely); align or remove the
-      "30 days" comment. Consider not logging full email addresses.
-- [ ] `enrich_github_activity.py`: replace the `len == 300` truncation
-      heuristic with an explicit truncation flag; rename the misleading
-      `remaining` headers variable.
-- [ ] `get_field_ids.py` padded-ID printout; `search_github_museums.py`
-      `KNOWN_GITHUB` drift note.
-- [ ] Copy `cron_newsletter.sh` from the VPS into the repo so the outermost
-      cron wrapper is version-controlled and reviewable.
+- [x] Timeouts on remaining HTTP calls: `enrich_github.py` (Wikidata
+      SPARQL 120s, Baserow 30s), `search_github_museums.py`,
+      `add_github_museums.py`. (`register_past_edition.py` already had
+      them since Phase 2.)
+- [x] `run_newsletter.sh`: `set -E` (verified errtrace); failure-email
+      tail sleeps 2s so the async `tee` can flush; logs pruned at 30 days
+      (hyphen AND underscore patterns) with an honest comment.
+- [x] Config dedup: new `baserow_config.py` single-sources the sources
+      table id + all field-id maps for 7 importers; dead `TECH_FIELDS`
+      and the hardcoded `field_7222`/`field_7192` killed. New
+      `baserow_client.py` row CRUD shared by subscriber_app (helpers
+      delegate) and the ops/pipeline scripts — closes the Phase 4
+      review's deferred subscriber_app/purge duplication finding.
+- [x] Log retention + PII: 30-day prune + `mask_email()` in both send
+      scripts (decision above).
+- [x] `enrich_github_activity.py`: collector stamps an explicit
+      `details.description_truncated`; enricher trusts only the flag;
+      misleading `remaining` variable removed.
+- [x] `get_field_ids.py` unpadded-id printout; `KNOWN_GITHUB` documented
+      as a drifting snapshot (add_github_museums dedups against live
+      Baserow anyway).
+- [x] `cron_newsletter.sh` in the repo (LF, executable), restructured —
+      see follow-up 3.
+
+### Phase 7 review follow-ups (automated /code-review of `d83480a`, high, 2026-08-27)
+
+10 findings, all resolved in `02d22d0`:
+
+- [x] **(1, reproduced)** New `set -E` + unguarded SENT_COUNT grep turned
+      a SUCCESSFUL send with a bad `.sent` marker into two spurious
+      failure emails and no success email → `|| true` inside the
+      substitution.
+- [x] **(2)** No deploy manifest for the two new module-level-imported
+      files → manifest above, recorded before merge.
+- [x] **(3)** `cron_newsletter.sh` died silently (no log, no email) if
+      `.env` sourcing failed → opens the log first, guards the source,
+      leaves a FATAL line (an admin email is impossible there — the
+      Resend key lives in the failed .env).
+- [x] **(4)** Raw `e.response.text` under the masked ERROR line leaked
+      recipients via Resend 4xx bodies → masked in both send scripts.
+- [x] **(5)** `mask_email` revealed 1–2 char local parts entirely →
+      short locals keep fewer characters.
+- [x] **(6)** Half-migration → ALL remaining hand-rolled Baserow
+      pagination ported to `baserow_client` (subscriber_app ×3,
+      generator stats, collector sources, add/enrich museums scripts,
+      both send fetches). `collect_news`/`score_news` keep bespoke loops
+      deliberately (custom abort/filter semantics from Phases 1/6).
+- [x] **(7)** Dead legacy `len == 300` heuristic deleted — the flag is
+      the only truth source (the JSON is transient per-run output).
+- [x] **(8)** Purge listing's full addresses documented as a deliberate
+      exemption (the listing exists to be reviewed before `--apply`).
+- [x] **(9)** `description_truncated` stripped from LLM prompt payloads.
+- [x] **(10)** Branch renamed `chore/` → `fix/` per CLAUDE.md.
+
+Verify: 30-check harness green (Flask test-client subscribe/unsubscribe/
+sources/archive through the shared client, purge deletes, masked send
+output incl. response bodies, truncation matrix, prompt strip, cron
+log-before-source ordering, SENT_COUNT guard, no-pagination-left sweep);
+py_compile on VPS Python 3.10; service restarted and live routes 200;
+purge + generate dry-runs clean against production through the client.
 
 ---
 
@@ -532,3 +578,4 @@ down and kills the Wednesday send:**
 | 2026-08-26 | 4 | fix/site-hardening | d61ed94 + 04a0935 (merged to master 2026-08-26) | 2026-08-26 (4 scripts + 6 templates; originals in `.bak-20260826-phase4/`; service restarted, now bound to 127.0.0.1; live smoke tests: bot fields, real 404, unsubscribe GET, privacy, sitemap all green) |
 | 2026-08-26 | 5 | fix/email-dark-mode | 979bdce + b804a20 (merged to master 2026-08-26) | 2026-08-26 (generate_newsletter.py + 3 templates; originals in `.bak-20260826-phase5/`; compile + checksums + real-data dry-run verified on VPS; pushed to origin 2026-08-26; Outlook-desktop dark-mode eyeball still pending) |
 | 2026-08-27 | 6 | fix/pipeline-coverage | 6aa2f88 + 10297da + cffaa92 (merged to master 2026-08-27) | 2026-08-27 (3 scripts + new `llm_shared.py`; originals in `.bak-20260827-phase6/`; compile on VPS Python 3.10 + checksums + read-only recovery-filter smoke verified; pushed to origin 2026-08-27; ai_title column creation pending in Baserow UI) |
+| 2026-08-27 | 7 | fix/review-lows | d83480a + 02d22d0 + ea27735 (merged to master 2026-08-27) | 2026-08-27 (15 scripts + 2 new modules + both shell wrappers, all 18 checksum-verified; originals in `.bak-20260827-phase7/`; subscriber service restarted, live routes 200, purge + generate dry-runs clean; pushed to origin 2026-08-27). **All seven phases of this plan are now complete.** |
