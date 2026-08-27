@@ -11,35 +11,91 @@ report is `docs/review-2026-08-26.html`. Work from the plan file, not from
 this section; this entry is just the pointer so the plan survives context
 clears.
 
-## Open
-
-- [ ] **Watch the next `0 7 * * 3` send (2026-09-02)** — first cron run on
-      the Phase 2 code (sent marker, --input-driven send step, marker-based
-      success-email count, reminder send-then-mark), the Phase 3 code
-      (URL-only content hash with URL-derived migration dedup, GitHub
-      seen-events pending/commit cache), the Phase 4 pipeline guards
-      (http(s)-only article URLs), the Phase 5 generator (102KB
-      auto-tighten) and the Phase 6 collection/scoring (paginated feeds,
-      403 taxonomy, batched scoring, hardened prompts, server-side
-      recovery filters). Eyeball the edition for repeats vs the 2026-08-26
-      one — the new dedup should remove them — and expect somewhat more
-      GitHub events from the deeper pagination.
-- [ ] **Verify the new unsubscribe flow from a real mail client** when the
-      occasion arises — the GET confirm-page and RFC 8058 one-click POST
-      are harness-verified; the plan's last tick is a real-client check.
-- [ ] **Phase 5 Outlook eyeball test** — the code is deployed; per
-      CLAUDE.md, generate with `--test`, send with
-      `--input newsletter_email_test.html` to calle@callestenfelt.se, and
-      view in Outlook desktop on Windows with dark mode on. Also check the
-      confirmation/reminder emails on the next real signup if convenient.
-- [ ] **Create the `ai_title` column** — add a long_text field named
-      exactly `ai_title` to the Baserow news-articles table (752) in the
-      UI (the database token can't alter schema). Phase 6's L8 code
-      resolves it by name and starts persisting English titles on its own.
 **The August 2026 review fix plan is COMPLETE** — all seven phases done,
-merged, deployed, and pushed to origin as of 2026-08-27. Only the three
-items above remain (send watch, ai_title column, Outlook eyeball), plus
-the older real-client unsubscribe check.
+merged, deployed, and pushed to origin as of 2026-08-27. Only the four
+manual items below remain, each with its full step-by-step guide. Order
+doesn't matter except: **item 1 before Wednesday** gets English titles
+into the next edition rather than the one after.
+
+## Open — step-by-step guide for the remaining manual work
+
+### 1. Create the `ai_title` column (5 minutes, anytime)
+
+- [ ] In the Baserow UI, open the **news articles table (752)** (the one
+      with `title`, `url`, `tier`, `ai_summary`) and add a field named
+      exactly **`ai_title`** (lowercase, underscore), type **Long text**.
+      No default, no options. (The database token can't alter schema —
+      that's why this is manual.)
+- No deploy needed: `score_news.py` resolves the column by name at
+  startup and type-checks it. To confirm it's picked up (dry run, writes
+  nothing):
+  ```
+  ssh root@77.42.40.207
+  cd /opt/musemaniac && set -a; . .env; set +a
+  python3 scripts/score_news.py --baserow-only
+  ```
+  The "no ai_title column in Baserow yet" note should be gone.
+- [ ] After the next send, spot-check a non-English tier 1/2 article row:
+      it should have an English title in `ai_title` next to `ai_summary`.
+
+### 2. Phase 5 Outlook dark-mode eyeball test (needs the Windows machine)
+
+- [ ] Generate and send the test edition from the VPS:
+  ```
+  ssh root@77.42.40.207
+  cd /opt/musemaniac/scripts && set -a; . ../.env; set +a
+  python3 generate_newsletter.py --test
+  python3 send_newsletter.py --input newsletter_email_test.html --test calle@callestenfelt.se --apply
+  ```
+  `--input` matters — without it, send picks the latest *dated* edition,
+  not the test file.
+- [ ] View in **Outlook desktop on Windows with dark mode on** (webmail /
+      Apple Mail won't exercise the Word-engine path). Checklist:
+      - No white-on-white or dark-on-dark anywhere — especially the stats
+        bar numbers, most-active list, tool watch, and the footer (light
+        text on dark).
+      - Rating boxes: borders visible AND clicking a row opens the
+        feedback page (was broken in Word-engine Outlook before).
+      - "What's new" box links readable on the lavender panel (if shown).
+- [ ] Optional: subscribe on amusealot.com with a test address and view
+      the **confirmation email** in the same Outlook — the "Confirm
+      Subscription" button must be clearly visible (dark button, light
+      text), not invisible. Confirm + unsubscribe afterwards (or delete
+      the pending row in Baserow) to clean up.
+
+### 3. Watch the Wednesday send (2026-09-02, 07:00)
+
+First cron run on the whole Phase 2–7 stack (sent marker, URL-only dedup
++ seen-events cache, http(s) guards, 102KB auto-tighten, paginated
+feeds/403 taxonomy/batched scoring, shared client + masked logs).
+
+- [ ] **Wednesday morning:** expect exactly one admin email — a *success*
+      email ("Newsletter sent … N email(s) sent"). On a *failure* email
+      (or two — that itself would be a bug worth reporting), follow
+      CLAUDE.md "Recovering from a missed send": read the log tail, fix
+      the cause, then
+      `ssh root@77.42.40.207 "cd /opt/musemaniac && ./scripts/cron_newsletter.sh"`.
+- [ ] **Eyeball the edition** (inbox or amusealot.com/archive):
+      - No repeated GitHub events from the 2026-08-26 edition (dedup +
+        seen-events cache should remove them).
+      - Possibly *more* GitHub events than usual — pagination now sees
+        past 30 events per feed.
+      - Non-English news items with English titles, if item 1 was done
+        before Wednesday.
+- [ ] **Log spot-check** (optional):
+      `ssh root@77.42.40.207 "tail -50 /opt/musemaniac/logs/newsletter-2026-09-02.log"`
+      — send lines should show masked addresses (`ca***@domain` + row
+      id), and logs older than 30 days start disappearing from
+      `/opt/musemaniac/logs/` over the coming weeks.
+
+### 4. Real-client unsubscribe check (low priority, when occasion arises)
+
+- [ ] From a real newsletter in a real mail client: click **Unsubscribe**
+      in the footer → expect a confirmation page with a button (not an
+      instant unsubscribe) → the button completes it.
+- [ ] Also confirm the mail client's native unsubscribe affordance
+      (Gmail's one-click, RFC 8058 POST) still works.
+- [ ] Re-subscribe afterwards if the test used your real address.
 
 ## Done
 
