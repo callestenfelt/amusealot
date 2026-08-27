@@ -108,6 +108,11 @@ def main():
         return
 
     print()
+    # Deliberately UNMASKED full addresses (exemption from the mask_email
+    # policy): this listing exists precisely so a human can review exactly
+    # which rows will be deleted before running --apply. The script is
+    # eyes-on ops tooling outside the cron/tee log path — don't pipe its
+    # output into a retained log.
     for row in to_delete:
         print(f"  {'WOULD DELETE' if dry_run else 'DELETING'}: "
               f"row {row.get('id')} | {row.get('email')} | subscribed {row.get('subscribed_at')}")

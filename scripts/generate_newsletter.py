@@ -118,33 +118,22 @@ def get_source_stats():
             return {"total_sources": 0, "total_countries": 0}
 
         from baserow_config import SOURCES_FIELDS
+        from baserow_client import list_rows
 
-        headers = {"Authorization": f"Token {baserow_token}"}
-        total_sources = 0
+        rows = list_rows(
+            sources_table_id,
+            filters={f"filter__{SOURCES_FIELDS['github']}__not_empty": "true"},
+            user_field_names=False,
+        )
         countries = set()
-        page = 1
-        while True:
-            response = requests.get(
-                f"{baserow_url}/api/database/rows/table/{sources_table_id}/",
-                params={"size": 200, "page": page,
-                        f"filter__{SOURCES_FIELDS['github']}__not_empty": "true"},
-                headers=headers,
-                timeout=10
-            )
-            response.raise_for_status()
-            data = response.json()
-            total_sources += len(data["results"])
-            for row in data["results"]:
-                country = row.get(SOURCES_FIELDS["country"]) or ""
-                if isinstance(country, dict):
-                    country = country.get("value", "")
-                if country:
-                    countries.add(country)
-            if not data.get("next"):
-                break
-            page += 1
+        for row in rows:
+            country = row.get(SOURCES_FIELDS["country"]) or ""
+            if isinstance(country, dict):
+                country = country.get("value", "")
+            if country:
+                countries.add(country)
 
-        return {"total_sources": total_sources, "total_countries": len(countries)}
+        return {"total_sources": len(rows), "total_countries": len(countries)}
     except Exception as e:
         print(f"Warning: Could not fetch source stats: {e}")
         return {"total_sources": 0, "total_countries": 0}

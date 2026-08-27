@@ -26,6 +26,7 @@ import argparse
 from datetime import datetime, timedelta, timezone
 import requests
 
+import baserow_client
 from json_cache import load_json_cache, save_json_cache
 from baserow_config import SOURCES_TABLE_ID as TABLE_ID, SOURCES_FIELDS as FIELDS
 
@@ -204,41 +205,28 @@ def github_get(url, params=None):
 def get_sources():
     """Fetch all GitHub-tracked entities from Baserow."""
     print("Fetching GitHub accounts from Baserow...")
+    rows = baserow_client.list_rows(
+        TABLE_ID,
+        filters={f"filter__{FIELDS['github']}__not_empty": "true"},
+        user_field_names=False,
+        timeout=30,
+    )
+
     sources = []
-    page = 1
-
-    while True:
-        response = requests.get(
-            f"{BASEROW_URL}/api/database/rows/table/{TABLE_ID}/",
-            params={
-                "size": 200,
-                "page": page,
-                f"filter__{FIELDS['github']}__not_empty": "true",
-            },
-            headers={"Authorization": f"Token {BASEROW_TOKEN}"},
-            timeout=30,
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        for row in data["results"]:
-            github_login = row.get(FIELDS["github"], "").strip()
-            name = row.get(FIELDS["name"], "")
-            tracked_repos_raw = row.get(FIELDS["tracked_repos"]) or ""
-            tracked_repos = [r.strip() for r in tracked_repos_raw.strip().splitlines() if r.strip()]
-            entity_type = row.get(FIELDS["entity_type"], {})
-            entity_type_value = entity_type.get("value") if isinstance(entity_type, dict) else None
-            if github_login:
-                sources.append({
-                    "login": github_login,
-                    "name": name,
-                    "tracked_repos": tracked_repos,
-                    "entity_type": entity_type_value
-                })
-
-        if not data["next"]:
-            break
-        page += 1
+    for row in rows:
+        github_login = row.get(FIELDS["github"], "").strip()
+        name = row.get(FIELDS["name"], "")
+        tracked_repos_raw = row.get(FIELDS["tracked_repos"]) or ""
+        tracked_repos = [r.strip() for r in tracked_repos_raw.strip().splitlines() if r.strip()]
+        entity_type = row.get(FIELDS["entity_type"], {})
+        entity_type_value = entity_type.get("value") if isinstance(entity_type, dict) else None
+        if github_login:
+            sources.append({
+                "login": github_login,
+                "name": name,
+                "tracked_repos": tracked_repos,
+                "entity_type": entity_type_value
+            })
 
     print(f"Found {len(sources)} sources with GitHub accounts")
     return sources

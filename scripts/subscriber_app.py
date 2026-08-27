@@ -627,35 +627,23 @@ def get_sources():
         return []
 
     try:
+        rows = baserow_client.list_rows(
+            SOURCES_TABLE_ID,
+            filters={f"filter__{SOURCES_FIELDS['github']}__not_empty": "true"},
+            user_field_names=False,
+        )
         sources = []
-        page = 1
-        while True:
-            resp = requests.get(
-                f"{BASEROW_URL}/api/database/rows/table/{SOURCES_TABLE_ID}/",
-                params={
-                    "size": 200,
-                    "page": page,
-                    f"filter__{SOURCES_FIELDS['github']}__not_empty": "true",
-                },
-                headers=BASEROW_HEADERS,
-                timeout=10,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            for row in data.get("results", []):
-                entity_type = row.get(SOURCES_FIELDS["entity_type"])
-                if isinstance(entity_type, dict):
-                    entity_type = entity_type.get("value", "")
-                sources.append({
-                    "name": row.get(SOURCES_FIELDS["name"]) or "",
-                    "github": row.get(SOURCES_FIELDS["github"]) or "",
-                    "github_url": row.get(SOURCES_FIELDS["github_url"]) or "",
-                    "entity_type": entity_type or "",
-                    "country": row.get(SOURCES_FIELDS["country"]) or "",
-                })
-            if not data.get("next"):
-                break
-            page += 1
+        for row in rows:
+            entity_type = row.get(SOURCES_FIELDS["entity_type"])
+            if isinstance(entity_type, dict):
+                entity_type = entity_type.get("value", "")
+            sources.append({
+                "name": row.get(SOURCES_FIELDS["name"]) or "",
+                "github": row.get(SOURCES_FIELDS["github"]) or "",
+                "github_url": row.get(SOURCES_FIELDS["github_url"]) or "",
+                "entity_type": entity_type or "",
+                "country": row.get(SOURCES_FIELDS["country"]) or "",
+            })
 
         sources.sort(key=lambda s: s["name"].lower())
         _sources_cache["data"] = sources
@@ -692,35 +680,18 @@ def get_news_sources():
 
     try:
         sources = []
-        page = 1
-        while True:
-            resp = requests.get(
-                f"{BASEROW_URL}/api/database/rows/table/{NEWS_SOURCES_TABLE_ID}/",
-                params={
-                    "size": 200,
-                    "page": page,
-                    "user_field_names": "true",
-                },
-                headers=BASEROW_HEADERS,
-                timeout=10,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            for row in data["results"]:
-                if not row.get("active"):
-                    continue
-                country = row.get("country") or {}
-                language = row.get("language") or {}
-                sources.append({
-                    "name": row.get("name", ""),
-                    "country": country.get("value", "") if isinstance(country, dict) else str(country),
-                    "language": language.get("value", "") if isinstance(language, dict) else str(language),
-                    "focus_area": row.get("focus_area", "") or "",
-                    "rss_url": row.get("rss_url", "") or "",
-                })
-            if not data.get("next"):
-                break
-            page += 1
+        for row in baserow_client.list_rows(NEWS_SOURCES_TABLE_ID):
+            if not row.get("active"):
+                continue
+            country = row.get("country") or {}
+            language = row.get("language") or {}
+            sources.append({
+                "name": row.get("name", ""),
+                "country": country.get("value", "") if isinstance(country, dict) else str(country),
+                "language": language.get("value", "") if isinstance(language, dict) else str(language),
+                "focus_area": row.get("focus_area", "") or "",
+                "rss_url": row.get("rss_url", "") or "",
+            })
         sources.sort(key=lambda s: s["name"].lower())
         _news_sources_cache["data"] = sources
         _news_sources_cache["time"] = now
@@ -752,27 +723,8 @@ def get_editions():
     """Fetch all editions from Baserow, sorted by date descending."""
     if not EDITION_TABLE_ID:
         return []
-    editions = []
-    page = 1
-    while True:
-        resp = requests.get(
-            f"{BASEROW_URL}/api/database/rows/table/{EDITION_TABLE_ID}/",
-            params={
-                "size": 200,
-                "page": page,
-                "user_field_names": "true",
-                "order_by": "-edition_date",
-            },
-            headers=BASEROW_HEADERS,
-            timeout=10,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        editions.extend(data.get("results", []))
-        if not data.get("next"):
-            break
-        page += 1
-    return editions
+    return baserow_client.list_rows(EDITION_TABLE_ID,
+                                    filters={"order_by": "-edition_date"})
 
 
 def find_edition_by_date(edition_date):

@@ -159,7 +159,10 @@ if [[ -n "$APPLY_FLAG" ]]; then
     # Read the sent count from this edition's .sent marker (its final
     # "send finished ... sent=N" line) — the day's log accumulates across
     # re-runs and the tee is async, so parsing the log is unreliable.
-    SENT_COUNT=$(grep -o 'sent=[0-9]*' "$EMAIL_FILE.sent" 2>/dev/null | tail -1 | cut -d= -f2)
+    # `|| true` is load-bearing: with pipefail + -E, a missing/short marker
+    # would otherwise fail the substitution and fire the ERR trap (twice) on
+    # a run that actually SENT successfully.
+    SENT_COUNT=$(grep -o 'sent=[0-9]*' "$EMAIL_FILE.sent" 2>/dev/null | tail -1 | cut -d= -f2 || true)
     SENT_COUNT="${SENT_COUNT:-0}"
     python3 "$SCRIPT_DIR/notify_admin.py" \
         --status success \

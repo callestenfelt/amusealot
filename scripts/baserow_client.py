@@ -67,9 +67,13 @@ def delete_row(table_id, row_id, timeout=10):
 
 def mask_email(email):
     """ca***@example.com — enough to eyeball a log line (pair it with the
-    Baserow row id for exact tracing) without persisting full addresses."""
+    Baserow row id for exact tracing) without persisting full addresses.
+
+    Short local parts keep fewer characters: a fixed 2-char prefix would
+    reveal a 1-2 character local part entirely."""
     email = str(email or "")
     if "@" not in email:
         return (email[:2] + "***") if email else "***"
     local, _, domain = email.partition("@")
-    return f"{local[:2]}***@{domain}"
+    keep = local[:2] if len(local) >= 4 else local[:1] if len(local) >= 2 else ""
+    return f"{keep}***@{domain}"

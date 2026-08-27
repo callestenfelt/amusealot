@@ -146,13 +146,11 @@ def enrich_new_repo(event):
 
 def enrich_release(event):
     """Fetch full release body if it was truncated."""
-    details = event.get("details", {})
-    if "description_truncated" in details:
-        # Collector says explicitly whether its 300-char slice cut anything.
-        if not details["description_truncated"]:
-            return None
-    elif len(event.get("description", "")) != 300:
-        # Legacy heuristic for JSON produced before the flag existed.
+    # The collector's explicit flag is the only truth source. No legacy
+    # length heuristic: github_activity.json is transient per-run output
+    # (collected and enriched inside the same run_newsletter.sh invocation),
+    # so pre-flag JSON never reaches this code.
+    if not event.get("details", {}).get("description_truncated"):
         return None
 
     repo = event["repo"]

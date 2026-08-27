@@ -210,7 +210,11 @@ def build_event_summary(event):
 
     details = event.get("details")
     if details:
-        summary["details"] = details
+        # description_truncated is collector→enricher plumbing, not content —
+        # keep it out of the prompt so the model can't echo it into a writeup.
+        details = {k: v for k, v in details.items() if k != "description_truncated"}
+        if details:
+            summary["details"] = details
 
     return summary
 

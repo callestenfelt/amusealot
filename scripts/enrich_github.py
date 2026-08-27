@@ -16,9 +16,10 @@ from collections import defaultdict
 # Fix Windows console encoding
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
+import baserow_client
 from baserow_config import SOURCES_TABLE_ID as TABLE_ID, SOURCES_FIELDS as FIELDS
 
-# Configuration
+# Fail fast on missing credentials (baserow_client reads them per call)
 BASEROW_URL = os.environ["BASEROW_URL"]
 BASEROW_TOKEN = os.environ["BASEROW_TOKEN"]
 
@@ -73,30 +74,8 @@ def get_all_baserow_qids():
     """Get all QIDs currently in Baserow (all countries)."""
     print("Fetching all museum QIDs from Baserow...")
 
-    qid_to_row = {}
-    page = 1
-
-    while True:
-        response = requests.get(
-            f"{BASEROW_URL}/api/database/rows/table/{TABLE_ID}/",
-            params={"size": 200, "page": page},
-            headers={"Authorization": f"Token {BASEROW_TOKEN}"},
-            timeout=30,
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        for row in data["results"]:
-            qid = row[FIELDS["qid"]]
-            if qid:
-                qid_to_row[qid] = row
-
-        if not data["next"]:
-            break
-        page += 1
-        if page % 20 == 0:
-            print(f"  Fetched page {page}, QIDs so far: {len(qid_to_row)}")
-
+    rows = baserow_client.list_rows(TABLE_ID, user_field_names=False, timeout=30)
+    qid_to_row = {row[FIELDS["qid"]]: row for row in rows if row.get(FIELDS["qid"])}
     print(f"Found {len(qid_to_row)} museums with QIDs in Baserow")
     return qid_to_row
 
@@ -153,16 +132,8 @@ def apply_updates(to_update, dry_run=True):
 
     for i, e in enumerate(to_update):
         try:
-            response = requests.patch(
-                f"{BASEROW_URL}/api/database/rows/table/{TABLE_ID}/{e['row_id']}/",
-                json=e['updates'],
-                headers={
-                    "Authorization": f"Token {BASEROW_TOKEN}",
-                    "Content-Type": "application/json"
-                },
-                timeout=30,
-            )
-            response.raise_for_status()
+            baserow_client.update_row(TABLE_ID, e['row_id'], e['updates'],
+                                      user_field_names=False, timeout=30)
             success += 1
             print(f"  [{i+1}/{len(to_update)}] Updated: {e['name']}")
         except Exception as ex:
@@ -202,16 +173,8 @@ def apply_additions(to_add, dry_run=True):
         }
 
         try:
-            response = requests.post(
-                f"{BASEROW_URL}/api/database/rows/table/{TABLE_ID}/",
-                json=row_data,
-                headers={
-                    "Authorization": f"Token {BASEROW_TOKEN}",
-                    "Content-Type": "application/json"
-                },
-                timeout=30,
-            )
-            response.raise_for_status()
+            baserow_client.create_row(TABLE_ID, row_data,
+                                      user_field_names=False, timeout=30)
             success += 1
             print(f"  [{i+1}/{len(to_add)}] Added: {m['name']} [{m['country']}]")
             time.sleep(0.1)  # Be gentle to the API

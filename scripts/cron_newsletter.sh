@@ -10,8 +10,20 @@
 # run_newsletter.sh additionally tees the hyphen log (newsletter-YYYY-MM-DD.log)
 # and prunes both to 30 days. Keep line endings LF — a CRLF here has broken the
 # cron before (see CLAUDE.md "Recovering from a missed send", step 4).
-set -euo pipefail
-set -a
-source /opt/musemaniac/.env
-set +a
-exec /opt/musemaniac/scripts/run_newsletter.sh --apply >> /opt/musemaniac/logs/newsletter_$(date +%Y-%m-%d).log 2>&1
+set -uo pipefail
+
+# Open the log BEFORE touching .env: if sourcing fails (renamed file after a
+# botched key rotation, or a `FOO=$UNDEFINED` line under -u), the death is at
+# least recorded here instead of vanishing into root's cron mail. No admin
+# email is possible at that point — the Resend key lives in the very .env
+# that failed.
+mkdir -p /opt/musemaniac/logs
+exec >> "/opt/musemaniac/logs/newsletter_$(date +%Y-%m-%d).log" 2>&1
+
+if ! { set -a; source /opt/musemaniac/.env; set +a; }; then
+    echo "FATAL: $(date '+%Y-%m-%d %H:%M:%S') could not source /opt/musemaniac/.env — pipeline not started"
+    exit 1
+fi
+
+set -e
+exec /opt/musemaniac/scripts/run_newsletter.sh --apply

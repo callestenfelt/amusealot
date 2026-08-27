@@ -22,6 +22,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='repla
 
 import requests
 
+import baserow_client
 from baserow_client import mask_email
 
 # --- Config from environment ---
@@ -43,27 +44,7 @@ REMINDER_WAIT_HOURS = 24
 
 def get_pending_needing_reminder():
     """Fetch all subscribers, return pending ones eligible for a reminder."""
-    subscribers = []
-    page = 1
-
-    while True:
-        resp = requests.get(
-            f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/",
-            params={
-                "size": 200,
-                "page": page,
-                "user_field_names": "true",
-            },
-            headers=BASEROW_HEADERS,
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        subscribers.extend(data.get("results", []))
-
-        if not data.get("next"):
-            break
-        page += 1
+    subscribers = baserow_client.list_rows(SUBSCRIBER_TABLE_ID, timeout=30)
 
     cutoff = datetime.now(timezone.utc) - timedelta(hours=REMINDER_WAIT_HOURS)
     eligible = []
@@ -215,7 +196,10 @@ def main():
             errors += 1
             print(f"  ERROR sending to {mask_email(email)} (row {row_id}): {e}")
             if hasattr(e, 'response') and e.response is not None:
-                print(f"    Response: {e.response.text[:200]}")
+                # Resend 4xx bodies echo the recipient — mask it there too,
+                # or this line undoes the masked ERROR line above it.
+                body = e.response.text[:300].replace(email, mask_email(email))
+                print(f"    Response: {body[:200]}")
         except Exception as e:
             errors += 1
             print(f"  ERROR sending to {mask_email(email)} (row {row_id}): {e}")

@@ -467,9 +467,26 @@ null-title survival, split PATCH, wrong-type refusal, 400-abort,
 single-source greps); all four files compile on VPS Python 3.10; live
 read-only smoke of the recovery filter against production passed.
 
-## Phase 7 — Housekeeping batch (branch: `chore/review-lows`)
+## Phase 7 — Housekeeping batch (branch: `fix/review-lows`)
 
-Low-risk cleanups; fine to trickle in or do as one sweep.
+Low-risk cleanups; fine to trickle in or do as one sweep. (Originally
+planned as `chore/review-lows`; renamed pre-merge — CLAUDE.md's naming
+scheme only documents `feature/` and `fix/`, and the branch carries code.)
+
+**DEPLOY MANIFEST — the two NEW modules are imported at module load by the
+Flask app and the cron pipeline; missing them in the scp takes the site
+down and kills the Wednesday send:**
+
+- NEW: `baserow_client.py`, `baserow_config.py` (+ `cron_newsletter.sh` if
+  the wrapper changes are wanted on the VPS — it restructures .env
+  failure handling)
+- Modified: `add_github_museums.py`, `collect_github_activity.py`,
+  `collect_news.py`, `enrich_github.py`, `enrich_github_activity.py`,
+  `generate_newsletter.py`, `get_field_ids.py`,
+  `purge_pending_subscribers.py`, `run_newsletter.sh`, `score_news.py`,
+  `score_newsletter_content.py`, `search_github_museums.py`,
+  `send_newsletter.py`, `send_reminders.py`, `subscriber_app.py`
+- `subscriber_app.py` changed ⇒ restart `musemaniac-subscriber.service`
 
 - [ ] Timeouts on remaining HTTP calls: `register_past_edition.py:68`,
       `enrich_github.py` (Wikidata + Baserow), `search_github_museums.py`,

@@ -10,12 +10,13 @@ import io
 import json
 import time
 import os
-import requests
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 
+import baserow_client
 from baserow_config import SOURCES_TABLE_ID as TABLE_ID, SOURCES_FIELDS as FIELDS
 
+# Fail fast on missing credentials (baserow_client reads them per call)
 BASEROW_URL = os.environ["BASEROW_URL"]
 BASEROW_TOKEN = os.environ["BASEROW_TOKEN"]
 
@@ -84,30 +85,9 @@ def guess_country(location):
 def get_existing_github_logins():
     """Get all GitHub logins already in Baserow."""
     print("Fetching existing GitHub logins from Baserow...")
-    logins = set()
-    page = 1
-
-    while True:
-        response = requests.get(
-            f"{BASEROW_URL}/api/database/rows/table/{TABLE_ID}/",
-            params={"size": 200, "page": page},
-            headers={"Authorization": f"Token {BASEROW_TOKEN}"},
-            timeout=30,
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        for row in data["results"]:
-            github = row.get(FIELDS["github"])
-            if github:
-                logins.add(github.lower())
-
-        if not data["next"]:
-            break
-        page += 1
-        if page % 20 == 0:
-            print(f"  Page {page}...")
-
+    rows = baserow_client.list_rows(TABLE_ID, user_field_names=False, timeout=30)
+    logins = {row[FIELDS["github"]].lower()
+              for row in rows if row.get(FIELDS["github"])}
     print(f"Found {len(logins)} existing GitHub logins in Baserow")
     return logins
 
@@ -171,16 +151,8 @@ def main():
         }
 
         try:
-            response = requests.post(
-                f"{BASEROW_URL}/api/database/rows/table/{TABLE_ID}/",
-                json=row_data,
-                headers={
-                    "Authorization": f"Token {BASEROW_TOKEN}",
-                    "Content-Type": "application/json"
-                },
-                timeout=30,
-            )
-            response.raise_for_status()
+            baserow_client.create_row(TABLE_ID, row_data,
+                                      user_field_names=False, timeout=30)
             success += 1
             print(f"  [{i+1}/{len(to_add)}] Added: {name} [{country}]")
             time.sleep(0.1)
