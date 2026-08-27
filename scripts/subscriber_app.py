@@ -293,6 +293,10 @@ STATIC_FILES = {
     "apple-touch-icon.png", "web-app-manifest-192x192.png",
     "web-app-manifest-512x512.png", "site.webmanifest", "share.png",
     "logo_footer.svg", "bluesky.svg", "bathing_in_code.webp",
+    # Self-hosted fonts (OFL): served locally so the site keeps its
+    # "no tracking" promise — no visitor request ever reaches Google.
+    "fonts/rammetto-one-latin.woff2", "fonts/rammetto-one-latin-ext.woff2",
+    "fonts/archivo-var-latin.woff2", "fonts/archivo-var-latin-ext.woff2",
 }
 
 

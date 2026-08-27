@@ -3,53 +3,100 @@
 {% block meta_description %}<meta name="description" content="Subscribe to AmuseAlot — a free AI-curated weekly digest of museum technology projects, releases, and developments on GitHub.">{% endblock %}
 {% block og_description %}<meta property="og:description" content="Subscribe to AmuseAlot — a free AI-curated weekly digest of museum technology projects, releases, and developments on GitHub.">{% endblock %}
 {% block twitter_description %}<meta name="twitter:description" content="Subscribe to AmuseAlot — a free AI-curated weekly digest of museum technology projects, releases, and developments on GitHub.">{% endblock %}
-{% block head_extra %}{% if turnstile_sitekey %}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{% endif %}{% endblock %}
+{% block head_extra %}
+{% if turnstile_sitekey %}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{% endif %}
+<style>
+  .hero { padding-top: clamp(56px, 8vw, 112px); padding-bottom: clamp(56px, 7vw, 96px); display: flex; flex-direction: column; gap: clamp(24px, 3vw, 40px); }
+  .hero h1 { font-size: clamp(48px, 9vw, 130px); margin: 0; max-width: 12ch; }
+  .hero p { font-size: clamp(17px, 1.5vw, 21px); margin: 0; }
+  .sub-form { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
+  .sub-form .btn { display: flex; align-items: center; justify-content: center; gap: 12px; }
+  /* Reserve the widget's height up front so the form doesn't jump when
+     Turnstile pops in after load (audit finding 07). */
+  .turnstile-slot { min-height: 65px; }
+  @media (min-width: 880px) {
+    .sub-row { display: flex; }
+    .sub-row input[type="email"] { flex: 1; }
+    .sub-row .btn { width: auto; margin-left: -3px; }
+  }
+  .fineprint { font-size: 14px; color: var(--muted); margin: 0; }
+  .fineprint a { color: var(--muted); }
+  .stat-band { border-top: 4px solid var(--ink); border-bottom: 4px solid var(--ink); }
+  .stat-band .wrap { display: flex; flex-wrap: wrap; gap: clamp(32px, 6vw, 112px); align-items: center; padding-top: clamp(44px, 5vw, 72px); padding-bottom: clamp(44px, 5vw, 72px); }
+  .stat-num { font-family: var(--display); font-size: clamp(56px, 7vw, 110px); line-height: 1; letter-spacing: -0.025em; }
+  .stat-label { font-size: 13px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+  .stat-blurb { max-width: 34ch; font-size: 16px; line-height: 1.6; color: var(--muted); margin: 0 0 0 auto; }
+  .news-section { padding-top: clamp(56px, 6vw, 88px); padding-bottom: clamp(56px, 6vw, 88px); }
+  .news-section h2 { font-size: clamp(26px, 3vw, 36px); margin-bottom: clamp(24px, 4vw, 48px); }
+  .news-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+  @media (max-width: 879px) { .news-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; } }
+  a.card.news-card { padding: clamp(32px, 4vw, 64px) clamp(24px, 3vw, 36px); display: flex; flex-direction: column; gap: 12px; }
+  .news-card .news-title { font-size: clamp(20px, 2vw, 26px); font-weight: 700; line-height: 1.3; letter-spacing: -0.3px; }
+  .news-card .eyebrow { font-size: 12px; letter-spacing: 2px; }
+</style>
+{% endblock %}
 {% block body %}
-<div class="container">
-  <h1>AmuseAlot <span class="beta-chip">BETA</span></h1>
-  <div class="subtitle">Museum Tech Newsletter</div>
 
-  <h2>Stay in the loop</h2>
+<section class="hero wrap">
+  <div class="eyebrow">Museum Tech Newsletter — Every Wednesday</div>
+  <h1>What museums are building.</h1>
   <p>
-    An AI-curated digest of what's happening in museum technology on GitHub,
-    delivered every Wednesday &mdash; new projects, releases, and notable
-    developments from museums worldwide.
+    An AI-curated digest of what's happening in museum technology on GitHub
+    &mdash; new projects, releases, and notable developments from museums,
+    archives, and heritage organizations worldwide.
   </p>
-
-  {% if latest_news and latest_news.articles %}
-  <div style="background-color:#EDEBF5;border-radius:8px;padding:16px 20px;margin-bottom:16px;">
-    <h3 style="font-size:16px;font-weight:bold;margin-bottom:12px;">This week in museum tech news</h3>
-    <ul style="font-size:14px;line-height:1.7;padding-left:20px;margin:0;">
-      {% for article in latest_news.articles %}
-      <li style="margin-bottom:4px;">
-        <a href="{{ article.url }}" target="_blank" rel="noopener">{{ article.title }}</a>
-        <span style="color:#555;font-size:12px;">&mdash; {{ article.source_name }}</span>
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
-
-  <div class="dotline"></div>
-
-  <form method="post" action="/subscribe">
-    <input type="email" name="email" placeholder="your@email.com" required autocomplete="email">
+  <form method="post" action="/subscribe" class="sub-form">
+    <div class="sub-row">
+      <input type="email" name="email" placeholder="your@email.com" required autocomplete="email" aria-label="Email address">
+      <button type="submit" class="btn">Subscribe</button>
+    </div>
     {% include "_bot_fields.html" %}
     {% if turnstile_sitekey %}
-    <div class="cf-turnstile" data-sitekey="{{ turnstile_sitekey }}" style="margin-bottom:16px;"></div>
+    <div class="cf-turnstile turnstile-slot" data-sitekey="{{ turnstile_sitekey }}"></div>
     {% endif %}
-    <button type="submit" class="btn">Subscribe</button>
   </form>
-
-  <div class="dotline"></div>
-
-  <p style="font-size:13px;color:#080229;">
-    We use double opt-in. You'll receive a confirmation email before any newsletters are sent.
-    No tracking, no cookies, no spam. Read our <a href="/privacy">privacy policy</a>.
+  <p class="fineprint">
+    We use double opt-in &mdash; you'll receive a confirmation email before any
+    newsletters are sent. No tracking, no cookies, no spam.
+    Read our <a href="/privacy">privacy policy</a>.
   </p>
-  <p style="font-size:13px;color:#080229;">
-    Content is gathered and summarized with AI and may contain mistakes.
-    <a href="/about">Read more about how it works</a>.
-  </p>
-</div>
+</section>
+
+<section class="stat-band">
+  <div class="wrap">
+    {% if total_sources and total_sources > 0 %}
+    <div>
+      <div class="stat-num">{{ total_sources }}</div>
+      <div class="stat-label">Sources tracked</div>
+    </div>
+    {% endif %}
+    {% if total_countries and total_countries > 0 %}
+    <div>
+      <div class="stat-num">{{ total_countries }}</div>
+      <div class="stat-label">Countries</div>
+    </div>
+    {% endif %}
+    <p class="stat-blurb">
+      Every Wednesday at 07:00, the pipeline reads the public work of the
+      museum sector and files the week's findings into one digest.
+      Content is curated with the help of AI and may contain mistakes &mdash;
+      <a href="/about">read how it works</a>.
+    </p>
+  </div>
+</section>
+
+{% if latest_news and latest_news.articles %}
+<section class="news-section wrap">
+  <h2>This week in museum tech</h2>
+  <div class="news-grid">
+    {% for article in latest_news.articles %}
+    <a class="card news-card" href="{{ article.url }}" target="_blank" rel="noopener">
+      <span class="eyebrow">{{ article.source_name }}</span>
+      <span class="news-title">{{ article.title }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {% endblock %}

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="light only">
+  <meta name="color-scheme" content="light dark">
   {% block meta_description %}<meta name="description" content="AmuseAlot is an AI-curated weekly newsletter tracking what museums, archives, and heritage organizations are building on GitHub.">{% endblock %}
   {% block meta_robots %}{% endblock %}
   <meta property="og:site_name" content="AmuseAlot">
@@ -15,7 +15,6 @@
   <meta name="twitter:card" content="summary_large_image">
   {% block twitter_title %}<meta name="twitter:title" content="AmuseAlot — Museum Tech Newsletter">{% endblock %}
   {% block twitter_description %}<meta name="twitter:description" content="An AI-curated weekly newsletter tracking what museums, archives, and heritage organizations are building on GitHub.">{% endblock %}
-  <meta name="twitter:image" content="https://amusealot.com/share.png">
   {% block canonical %}{% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}{% endblock %}
   <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -23,380 +22,290 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-title" content="AmuseAlot">
   <link rel="manifest" href="/site.webmanifest">
+  <link rel="preload" href="/fonts/rammetto-one-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/archivo-var-latin.woff2" as="font" type="font/woff2" crossorigin>
   <title>{% block title %}AmuseAlot{% endblock %}</title>
   <style>
-    :root { color-scheme: light only; }
+    /* Self-hosted fonts (OFL) — no third-party requests, keeping the
+       site's "no tracking" promise. Archivo is a variable font. */
+    @font-face {
+      font-family: 'Rammetto One';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url(/fonts/rammetto-one-latin.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Rammetto One';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url(/fonts/rammetto-one-latin-ext.woff2) format('woff2');
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1EFF, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+    @font-face {
+      font-family: 'Archivo';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url(/fonts/archivo-var-latin.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Archivo';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url(/fonts/archivo-var-latin-ext.woff2) format('woff2');
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1EFF, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* ============ Design tokens ============
+       Two rules govern every pairing (ratified 2026-08-27):
+       – light theme never sets light text on a dark ground;
+       – dark theme never sets dark text on a light ground.
+       Perforation (dotted ink) frames the page; solid rules structure content. */
+    :root {
+      color-scheme: light dark;
+      --paper:    #F7F5F1;
+      --ink:      #080229;
+      --card:     #FAF9F6;
+      --hairline: #ddd8ce;
+      --muted:    #5c5876;
+      --dots:     #9a94b8;
+      --hover:    #35279b;
+      --error:    #8B0000;
+      --display:  'Rammetto One', 'Arial Black', Arial, sans-serif;
+      --body:     Archivo, Arial, 'Helvetica Neue', Helvetica, sans-serif;
+      --gutter:   clamp(24px, 5vw, 72px);
+      --pop:      box-shadow 140ms ease-out, transform 140ms ease-out;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper:    #080229;
+        --ink:      #F7F5F1;
+        --card:     #241C3E;
+        --hairline: #3a3260;
+        --muted:    #a89fc4;
+        --dots:     #55507a;
+        --hover:    #b3ade0;
+        --error:    #f0937f;
+      }
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { overflow-x: clip; }
     body {
-      font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
-      background-color: #fbfbfb;
-      color: #080229;
+      font-family: var(--body);
+      background-color: var(--paper);
+      color: var(--ink);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      font-size: 16px;
+      line-height: 1.6;
     }
-    .container {
-      max-width: 520px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 60px 24px;
-      flex: 1;
+    main { flex: 1; display: flex; flex-direction: column; }
+    .wrap { width: 100%; max-width: 1320px; margin: 0 auto; padding-left: var(--gutter); padding-right: var(--gutter); }
+    .container { width: 100%; max-width: 760px; margin: 0 auto; padding: clamp(48px, 7vw, 96px) var(--gutter); }
+
+    h1, .display {
+      font-family: var(--display);
+      font-weight: 400;
+      letter-spacing: -0.035em;
+      line-height: 1.08;
+      text-wrap: balance;
     }
-    h1 {
-      font-size: clamp(48px, 13vw, 64px);
-      font-weight: bold;
-      letter-spacing: -4px;
-      margin-bottom: 8px;
-      white-space: nowrap;
-      overflow: hidden;
-    }
-    .subtitle {
-      font-size: 14px;
-      color: #080229;
-      letter-spacing: 4.5px;
-      text-transform: uppercase;
-      margin-bottom: 48px;
-    }
+    h1 { font-size: clamp(40px, 6vw, 84px); margin-bottom: 20px; }
     h2 {
-      font-size: 22px;
-      font-weight: bold;
-      letter-spacing: -0.5px;
-      margin-bottom: 16px;
-      padding-bottom: 16px;
-      border-bottom: 3px solid #080229;
+      font-family: var(--display);
+      font-weight: 400;
+      font-size: clamp(24px, 3vw, 32px);
+      letter-spacing: -1px;
+      margin-bottom: 20px;
     }
-    p {
-      font-size: 15px;
-      line-height: 1.7;
-      margin-bottom: 16px;
+    h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+    p { font-size: 16px; line-height: 1.7; margin-bottom: 16px; max-width: 68ch; }
+    .lede { font-size: 18px; color: var(--muted); }
+    .eyebrow {
+      font-size: 13px; font-weight: 700; letter-spacing: 3px;
+      text-transform: uppercase; color: var(--muted);
     }
-    a {
-      color: #080229;
-      text-decoration: underline;
-      text-underline-offset: 3px;
+    a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; transition: color 140ms ease-out; }
+    a:hover { color: var(--hover); }
+
+    /* ============ Rules & dividers ============ */
+    .perf { border: none; border-top: 4px dotted var(--ink); }
+    .dotline { height: 0; border-top: 1px solid var(--hairline); margin: 32px 0; }
+    .rule-solid { border-bottom: 4px solid var(--ink); }
+
+    /* ============ Ticket-punch link underline ============ */
+    .punch { position: relative; padding-bottom: 7px; text-decoration: none; }
+    .punch::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px;
+      background-image: radial-gradient(circle closest-side at center, var(--ink) 92%, transparent);
+      background-size: 9px 5px; background-repeat: repeat-x; background-position: 0 50%;
+      clip-path: inset(0 100% 0 0);
+      transition: clip-path 200ms cubic-bezier(0.22, 1, 0.36, 1);
     }
-    a:hover {
-      color: #12084E;
-    }
-    .dotline {
-      height: 1px;
-      background-image: repeating-linear-gradient(to right, #080229 0, #080229 2px, transparent 2px, transparent 6px);
-      margin: 32px 0;
-    }
-    .footer {
-      background-color: #080229;
-      padding: 48px 24px 40px;
-      text-align: center;
-    }
-    .footer a {
-      color: #fbfbfb;
-      text-decoration: none;
-    }
-    .footer a:hover {
-      color: #C4BBF6;
-    }
-    .footer-nav {
-      display: grid;
-      grid-template-columns: repeat(3, auto);
-      justify-content: center;
-      gap: 4px 0;
-      margin-bottom: 28px;
-    }
-    .footer-nav a {
-      font-size: 18px;
-      font-weight: bold;
-      letter-spacing: -0.4px;
-      padding: 10px 20px;
-    }
-    .footer-social {
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-    .footer-social a {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .footer-social img {
-      height: 16px;
-      width: auto;
-    }
+    .punch:hover { color: var(--ink); }
+    .punch:hover::after, .punch:focus-visible::after { clip-path: inset(0 0 0 0); }
+    .punch[aria-current="page"] { border-bottom: 3px solid var(--ink); padding-bottom: 4px; }
+    .punch[aria-current="page"]::after { display: none; }
+
+    /* ============ Buttons & controls ============
+       Primary actions are outlined ink-on-paper — never a filled block. */
     .btn {
-      display: block;
-      width: 100%;
-      background-color: #080229;
-      color: #fbfbfb;
-      font-size: 16px;
-      font-weight: bold;
-      padding: 14px 32px;
-      border: none;
-      cursor: pointer;
-      text-decoration: none;
-      letter-spacing: 0.5px;
-    }
-    .btn:hover {
-      background-color: #12084E;
-      color: #fbfbfb;
-    }
-    input[type="email"] {
-      width: 100%;
-      font-size: 16px;
-      padding: 14px 16px;
-      border: 2px solid #080229;
+      display: block; width: 100%;
       background: transparent;
-      color: #080229;
-      font-family: inherit;
-      margin-bottom: 16px;
+      border: 3px solid var(--ink);
+      color: var(--ink);
+      font-family: var(--body);
+      font-size: 15px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      padding: 15px 30px;
+      cursor: pointer; text-decoration: none; text-align: center;
+      transition: var(--pop);
     }
-    input[type="email"]::placeholder {
-      color: #080229;
-      opacity: 0.6;
+    .btn:hover, .btn:focus-visible { box-shadow: 5px 5px 0 var(--ink); transform: translate(-2px, -2px); color: var(--ink); }
+    .btn:active { box-shadow: 2px 2px 0 var(--ink); transform: translate(0, 0); }
+    .btn:focus-visible { outline: 3px solid var(--dots); outline-offset: 3px; }
+    input[type="email"], input[type="text"], textarea {
+      width: 100%; font-size: 16px; padding: 15px 16px;
+      border: 3px solid var(--ink); background: transparent;
+      color: var(--ink); font-family: inherit;
     }
-    input[type="email"]:focus {
-      outline: none;
-      border-color: #080229;
+    input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+    input:focus-visible, textarea:focus-visible { outline: 3px solid var(--dots); outline-offset: 2px; }
+    label { font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 8px; }
+    .error { color: var(--error); font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+    .fineprint-sm { font-size: 14px; color: var(--muted); }
+    .fineprint-sm a { color: var(--muted); }
+
+    /* ============ Cards ============ */
+    .card {
+      background-color: var(--card); color: var(--ink);
+      border: 1px solid var(--hairline);
+      transition: border-color 140ms ease-out, box-shadow 140ms ease-out, transform 140ms ease-out;
     }
-    .error {
-      color: #8B0000;
-      font-size: 14px;
-      margin-bottom: 16px;
+    a.card { text-decoration: none; display: block; }
+    .card-hover:hover, a.card:hover {
+      border-color: var(--ink); color: var(--ink);
+      box-shadow: 0 0 0 2px var(--ink), 5px 5px 0 var(--ink);
+      transform: translate(-2px, -2px);
     }
-    .beta-chip {
-      display: inline-block;
-      background-color: #080229;
-      color: #fbfbfb;
-      font-size: clamp(9px, 2vw, 11px);
-      font-weight: bold;
-      letter-spacing: -0.2px;
-      padding: 5px 10px;
-      border-radius: 7px;
-      vertical-align: middle;
-      position: relative;
-      top: -0.2em;
-      margin-left: 4px;
-    }
-    .source-item { padding: 16px 0; }
-    .source-name { font-weight: bold; font-size: 15px; display: block; margin-bottom: 6px; }
-    .source-meta { display: flex; flex-wrap: wrap; gap: 6px; }
     .chip {
-      display: inline-block;
-      font-size: 13px;
-      font-weight: normal;
-      letter-spacing: 0;
-      padding: 3px 10px;
-      border-radius: 4px;
+      display: inline-block; font-size: 11px; font-weight: 600;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      padding: 4px 10px; color: var(--muted);
+      border: 1.5px solid var(--dots);
     }
-    .chip-type,
-    .chip-individual,
-    .chip-other_org,
-    .chip-umbrella_org,
-    .chip-country { background-color: transparent; color: #080229; border: 1.5px solid rgba(8, 2, 41, 0.4); }
+    .chip-type { border-color: var(--ink); color: var(--ink); background-color: var(--card); }
 
-    /* =============================================
-       HAMBURGER MENU
-       ============================================= */
+    /* ============ Site header ============ */
+    .site-header { border-bottom: 4px dotted var(--ink); }
+    .site-header .wrap {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 26px; padding-bottom: 26px;
+    }
+    .wordmark {
+      font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+      font-weight: bold; font-size: clamp(26px, 3vw, 34px);
+      letter-spacing: -2px; line-height: 1;
+      text-decoration: none; color: var(--ink);
+    }
+    .wordmark:hover { color: var(--ink); }
+    .site-nav { display: flex; align-items: center; gap: clamp(24px, 3vw, 44px); }
+    .site-nav a {
+      font-size: 13px; font-weight: 600; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--ink);
+    }
+    .nav-cta {
+      display: inline-block; border: 3px solid var(--ink);
+      padding: 10px 22px; text-decoration: none;
+      transition: var(--pop);
+    }
+    .nav-cta:hover, .nav-cta:focus-visible { box-shadow: 5px 5px 0 var(--ink); transform: translate(-2px, -2px); color: var(--ink); }
+    .nav-cta:active { box-shadow: 2px 2px 0 var(--ink); transform: translate(0, 0); }
 
-    /* Toggle button */
+    /* ============ Hamburger (mobile only) ============ */
     .menu-btn {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 1000;
-      background: #080229;
-      border: none;
-      cursor: pointer;
-      width: clamp(44px, 6vw, 56px);
-      height: clamp(44px, 6vw, 56px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 5px;
-      transition: background-color 0.2s ease,
-                  transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                  opacity 0.35s ease;
+      display: none;
+      width: 48px; height: 48px;
+      background: transparent; border: 3px solid var(--ink);
+      cursor: pointer; align-items: center; justify-content: center;
+      transition: var(--pop);
     }
-    .menu-btn.is-scrolled-out {
-      transform: translateY(calc(-100% - 28px));
-      opacity: 0;
-      pointer-events: none;
-    }
-    .menu-btn:hover {
-      background: #12084E;
-    }
-    .menu-btn:focus-visible {
-      outline: 3px solid #C4BBF6;
-      outline-offset: 2px;
-    }
+    .menu-btn svg { display: block; stroke: var(--ink); }
+    .menu-btn:focus-visible { outline: 3px solid var(--dots); outline-offset: 3px; }
+    .menu-btn[aria-expanded="true"] { box-shadow: 4px 4px 0 var(--ink); }
+    .menu-btn .icon-close { display: none; }
+    .menu-btn[aria-expanded="true"] .icon-open { display: none; }
+    .menu-btn[aria-expanded="true"] .icon-close { display: block; }
 
-    /* Three-line icon → X */
-    .menu-icon {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      pointer-events: none;
-    }
-    .menu-icon span {
-      display: block;
-      width: 22px;
-      height: 2px;
-      background: #fbfbfb;
-      transform-origin: center;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                  opacity  0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .menu-btn[aria-expanded="true"] .menu-icon span:nth-child(1) {
-      transform: translateY(7px) rotate(45deg);
-    }
-    .menu-btn[aria-expanded="true"] .menu-icon span:nth-child(2) {
-      opacity: 0;
-      transform: scaleX(0);
-    }
-    .menu-btn[aria-expanded="true"] .menu-icon span:nth-child(3) {
-      transform: translateY(-7px) rotate(-45deg);
-    }
-
-    /* Backdrop */
-    .menu-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(8, 2, 41, 0.55);
-      z-index: 998;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.35s ease;
-    }
-    .menu-backdrop.is-open {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    /* Drawer panel */
+    /* ============ Mobile drawer ============ */
     .nav-menu {
-      position: fixed;
-      top: 0;
-      right: 0;
-      width: min(420px, 100vw);
-      height: 100dvh;
-      background: #080229;
-      z-index: 999;
-      display: flex;
-      flex-direction: column;
-      padding: 28px 36px 40px;
+      position: fixed; inset: 0; top: 105px;
+      background: var(--paper); z-index: 999;
+      display: flex; flex-direction: column;
       overflow-y: auto;
-      /* hidden state: slide out + remove from tab order */
-      transform: translateX(100%);
-      visibility: hidden;
-      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                  visibility 0s linear 0.35s;
+      transform: translateY(-12px); opacity: 0; visibility: hidden;
+      transition: transform 240ms ease-out, opacity 240ms ease-out, visibility 0s linear 240ms;
     }
     .nav-menu.is-open {
-      transform: translateX(0);
-      visibility: visible;
-      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                  visibility 0s linear 0s;
+      transform: translateY(0); opacity: 1; visibility: visible;
+      transition: transform 240ms ease-out, opacity 240ms ease-out, visibility 0s linear 0s;
     }
-
-    /* Nav links */
-    .nav-links {
-      list-style: none;
-      margin: auto 0;
-      padding: 80px 0 32px;
-    }
-    .nav-links li + li {
-      border-top: 1px solid rgba(251, 251, 251, 0.1);
-    }
+    .nav-links { list-style: none; }
+    .nav-links li { border-bottom: 1px solid var(--hairline); }
     .nav-links a {
-      display: block;
-      font-size: clamp(28px, 7vw, 40px);
-      font-weight: bold;
-      letter-spacing: -1.5px;
-      color: #fbfbfb;
-      text-decoration: none;
-      padding: 14px 0;
-      transition: color 0.2s ease, padding-left 0.2s ease;
+      display: flex; align-items: baseline; justify-content: space-between;
+      font-family: var(--display); font-size: 32px; letter-spacing: -1px;
+      color: var(--ink); text-decoration: none;
+      padding: 26px var(--gutter);
     }
-    .nav-links a:hover {
-      color: #C4BBF6;
-      padding-left: 10px;
+    .nav-links a .nav-num { font-size: 14px; color: var(--muted); }
+    .nav-links a[aria-current="page"] { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 8px; }
+    .nav-links a:focus-visible { outline: 3px solid var(--dots); outline-offset: -3px; }
+    .nav-menu .drawer-cta { padding: 24px var(--gutter); }
+    .nav-menu .drawer-foot {
+      margin-top: auto; border-top: 4px dotted var(--ink);
+      display: flex; justify-content: center; gap: 28px;
+      padding: 24px var(--gutter);
+      font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
     }
-    .nav-links a[aria-current="page"] {
-      color: #C4BBF6;
+    .nav-menu .drawer-foot a { color: var(--muted); }
+    body.menu-open { overflow: hidden; }
+
+    /* ============ Footer ============ */
+    .footer { border-top: 4px dotted var(--ink); }
+    .footer .wrap {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+      padding-top: 30px; padding-bottom: 30px;
+      font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--muted);
     }
-    .nav-links a:focus-visible {
-      outline: 3px solid #C4BBF6;
-      outline-offset: 2px;
+    .footer a { color: var(--muted); }
+    .footer-links { display: flex; align-items: center; gap: 28px; }
+
+    /* ============ Responsive ============ */
+    @media (max-width: 879px) {
+      .site-nav { display: none; }
+      .menu-btn { display: flex; }
+      .site-header .wrap { padding-top: 18px; padding-bottom: 18px; }
+      .footer .wrap { flex-direction: column; justify-content: center; text-align: center; }
+    }
+    @media (min-width: 880px) {
+      .nav-menu { display: none; }
     }
 
-    /* Social link at bottom of drawer */
-    .nav-social {
-      border-top: 1px solid rgba(251, 251, 251, 0.1);
-      padding-top: 20px;
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-    .nav-social a {
-      font-size: 14px;
-      color: rgba(251, 251, 251, 0.6);
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: color 0.2s ease;
-    }
-    .nav-social a:hover {
-      color: #C4BBF6;
-    }
-    .nav-social a:focus-visible {
-      outline: 3px solid #C4BBF6;
-      outline-offset: 2px;
-    }
-    .nav-social img {
-      height: 14px;
-      width: auto;
-      opacity: 0.6;
-      transition: opacity 0.2s ease;
-    }
-    .nav-social a:hover img {
-      opacity: 1;
-    }
-
-    /* Reduced motion */
+    /* ============ Reduced motion ============ */
     @media (prefers-reduced-motion: reduce) {
-      .menu-btn, .menu-icon span,
-      .menu-backdrop, .nav-menu,
-      .menu-close, .nav-links a, .nav-social a {
-        transition: none;
-      }
-      .nav-menu { transition: visibility 0s linear 0.35s; }
-      .nav-menu.is-open { transition: visibility 0s linear 0s; }
-      .menu-btn.is-scrolled-out { transform: none; opacity: 0; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      body { background-color: #fbfbfb !important; color: #080229 !important; }
-      .footer { background-color: #080229 !important; }
-      .footer a { color: #fbfbfb !important; }
-      .footer a:hover { color: #C4BBF6 !important; }
-      a:hover { color: #12084E !important; }
-      /* Nav drawer is always dark — keep lavender hover regardless of OS theme */
-      .nav-links a { color: #fbfbfb !important; }
-      .nav-links a:hover { color: #C4BBF6 !important; }
-      .nav-links a[aria-current="page"] { color: #C4BBF6 !important; }
-      .nav-social a { color: rgba(251,251,251,0.6) !important; }
-      .nav-social a:hover { color: #C4BBF6 !important; }
-      .btn:hover { background-color: #12084E !important; }
-      .btn { background-color: #080229 !important; color: #fbfbfb !important; }
-      h2 { border-bottom-color: #080229 !important; }
-      input[type="email"] { border-color: #080229 !important; color: #080229 !important; background: transparent !important; }
-      .dotline { background-image: repeating-linear-gradient(to right, #080229 0, #080229 2px, transparent 2px, transparent 6px) !important; }
-      .chip-type,
-      .chip-individual,
-      .chip-other_org,
-      .chip-umbrella_org,
-      .chip-country { background-color: transparent !important; color: #080229 !important; border-color: rgba(8, 2, 41, 0.4) !important; }
+      a, .btn, .nav-cta, .menu-btn, .card, .punch::after, .nav-menu { transition: none; }
+      .btn:hover, .nav-cta:hover, .card-hover:hover, a.card:hover { transform: none; }
+      .nav-menu { transform: none; }
     }
   </style>
   <script type="application/ld+json">
@@ -412,87 +321,78 @@
 </head>
 <body>
 
-  <!-- Hamburger toggle -->
-  <button class="menu-btn" id="menuBtn"
-          aria-label="Open menu"
-          aria-expanded="false"
-          aria-controls="navMenu">
-    <span class="menu-icon" aria-hidden="true">
-      <span></span>
-      <span></span>
-      <span></span>
-    </span>
-  </button>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="wordmark" href="/">AmuseAlot</a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a class="punch" href="/archive">Archive</a>
+        <a class="punch" href="/about">About</a>
+        <a class="punch" href="/sources">Sources</a>
+        <a class="punch" href="/feedback">Feedback</a>
+        <a class="nav-cta" href="/">Subscribe</a>
+      </nav>
+      <button class="menu-btn" id="menuBtn"
+              aria-label="Open menu"
+              aria-expanded="false"
+              aria-controls="navMenu">
+        <svg class="icon-open" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M3 6h18"></path><path d="M3 12h18"></path><path d="M3 18h18"></path></svg>
+        <svg class="icon-close" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M5 5l14 14"></path><path d="M19 5L5 19"></path></svg>
+      </button>
+    </div>
+  </header>
 
-  <!-- Backdrop (click to close) -->
-  <div class="menu-backdrop" id="menuBackdrop" aria-hidden="true"></div>
-
-  <!-- Nav drawer -->
-  <nav class="nav-menu" id="navMenu"
-       aria-label="Main navigation"
-       aria-hidden="true">
-
+  <nav class="nav-menu" id="navMenu" aria-label="Main navigation" aria-hidden="true">
     <ul class="nav-links">
-      <li><a href="/">Subscribe</a></li>
-      <li><a href="/archive">Archive</a></li>
-      <li><a href="/about">About</a></li>
-      <li><a href="/sources">Sources</a></li>
-      <li><a href="/feedback">Feedback</a></li>
-      <li><a href="/privacy">Privacy</a></li>
+      <li><a href="/archive">Archive <span class="nav-num">01</span></a></li>
+      <li><a href="/about">About <span class="nav-num">02</span></a></li>
+      <li><a href="/sources">Sources <span class="nav-num">03</span></a></li>
+      <li><a href="/feedback">Feedback <span class="nav-num">04</span></a></li>
     </ul>
-
-    <div class="nav-social">
-      <a href="https://bsky.app/profile/amusealot.com" target="_blank" rel="noopener noreferrer">
-        <img src="/bluesky.svg" alt=""> Bluesky
-      </a>
+    <div class="drawer-cta">
+      <a class="btn" href="/">Subscribe</a>
+    </div>
+    <div class="drawer-foot">
+      <a href="/privacy">Privacy</a>
+      <a href="https://bsky.app/profile/amusealot.com" target="_blank" rel="noopener noreferrer">Bluesky</a>
     </div>
   </nav>
 
+  <main>
   {% block body %}{% endblock %}
+  </main>
 
-  <div class="footer">
-    <a href="/" style="display:inline-block;margin-bottom:36px;text-decoration:none;">
-      <img src="/logo_footer.svg" alt="AmuseAlot" style="height:158px;width:auto;">
-    </a>
-    <div class="footer-nav">
-      <a href="/">Subscribe</a>
-      <a href="/archive">Archive</a>
-      <a href="/about">About</a>
-      <a href="/sources">Sources</a>
-      <a href="/feedback">Feedback</a>
-      <a href="/privacy">Privacy</a>
+  <footer class="footer">
+    <div class="wrap">
+      <div>AmuseAlot — Museum Tech Newsletter</div>
+      <div class="footer-links">
+        <a class="punch" href="/privacy">Privacy</a>
+        <a class="punch" href="https://bsky.app/profile/amusealot.com" target="_blank" rel="noopener noreferrer">Bluesky</a>
+      </div>
     </div>
-    <div class="footer-social">
-      <a href="https://bsky.app/profile/amusealot.com" target="_blank" rel="noopener"><img src="/bluesky.svg" alt=""> Bluesky</a>
-    </div>
-  </div>
+  </footer>
 
   <script>
     (function () {
-      var btn      = document.getElementById('menuBtn');
-      var menu     = document.getElementById('navMenu');
-      var backdrop = document.getElementById('menuBackdrop');
+      var btn  = document.getElementById('menuBtn');
+      var menu = document.getElementById('navMenu');
       var FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
       function openMenu() {
         menu.classList.add('is-open');
-        backdrop.classList.add('is-open');
         btn.setAttribute('aria-expanded', 'true');
         btn.setAttribute('aria-label', 'Close menu');
         menu.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
-        // Move focus to first item in drawer
+        document.body.classList.add('menu-open');
         var first = menu.querySelector(FOCUSABLE);
         if (first) { setTimeout(function(){ first.focus(); }, 50); }
       }
 
       function closeMenu() {
         menu.classList.remove('is-open');
-        backdrop.classList.remove('is-open');
         btn.setAttribute('aria-expanded', 'false');
         btn.setAttribute('aria-label', 'Open menu');
         menu.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
+        document.body.classList.remove('menu-open');
         btn.focus();
       }
 
@@ -500,19 +400,16 @@
         btn.getAttribute('aria-expanded') === 'true' ? closeMenu() : openMenu();
       });
 
-      backdrop.addEventListener('click', closeMenu);
-
-      // Escape key
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && btn.getAttribute('aria-expanded') === 'true') {
           closeMenu();
         }
       });
 
-      // Focus trap
-      menu.addEventListener('keydown', function (e) {
-        if (e.key !== 'Tab') return;
-        var focusable = Array.prototype.slice.call(menu.querySelectorAll(FOCUSABLE));
+      // Focus trap: keep Tab inside burger + drawer while open
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Tab' || btn.getAttribute('aria-expanded') !== 'true') return;
+        var focusable = [btn].concat(Array.prototype.slice.call(menu.querySelectorAll(FOCUSABLE)));
         var first = focusable[0];
         var last  = focusable[focusable.length - 1];
         if (e.shiftKey) {
@@ -522,40 +419,22 @@
         }
       });
 
-      // Close when a nav link is clicked
       var links = menu.querySelectorAll('a');
       for (var i = 0; i < links.length; i++) {
         links[i].addEventListener('click', closeMenu);
       }
 
-      // Mark current page
+      // Mark current page in both navs
       var path = window.location.pathname.replace(/\/$/, '') || '/';
-      var navLinks = menu.querySelectorAll('.nav-links a');
+      var navLinks = document.querySelectorAll('.site-nav a, .nav-links a');
       for (var j = 0; j < navLinks.length; j++) {
         var linkPath = navLinks[j].getAttribute('href').replace(/\/$/, '') || '/';
         var isHome   = linkPath === '/' || linkPath === '';
         var match    = isHome ? (path === '/' || path === '') : (path === linkPath || path.indexOf(linkPath + '/') === 0);
-        if (match) {
+        if (match && !isHome) {
           navLinks[j].setAttribute('aria-current', 'page');
         }
       }
-
-      // Scroll direction: hide on down, reveal on up
-      var lastScrollY = window.scrollY;
-      var SCROLL_THRESHOLD = 10;
-      window.addEventListener('scroll', function () {
-        // Never hide while menu is open
-        if (btn.getAttribute('aria-expanded') === 'true') return;
-        var currentY = window.scrollY;
-        if (currentY <= 0) {
-          btn.classList.remove('is-scrolled-out');
-        } else if (currentY > lastScrollY + SCROLL_THRESHOLD) {
-          btn.classList.add('is-scrolled-out');
-        } else if (currentY < lastScrollY - SCROLL_THRESHOLD) {
-          btn.classList.remove('is-scrolled-out');
-        }
-        lastScrollY = currentY;
-      }, { passive: true });
     })();
   </script>
 </body>

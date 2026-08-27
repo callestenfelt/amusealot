@@ -5,49 +5,79 @@
 {% block og_description %}<meta property="og:description" content="Read past editions of the AmuseAlot newsletter — weekly digests of museum technology activity on GitHub.">{% endblock %}
 {% block twitter_title %}<meta name="twitter:title" content="Archive — AmuseAlot">{% endblock %}
 {% block twitter_description %}<meta name="twitter:description" content="Read past editions of the AmuseAlot newsletter — weekly digests of museum technology activity on GitHub.">{% endblock %}
+{% block head_extra %}
+<style>
+  .page-head { padding-top: clamp(48px, 6vw, 96px); padding-bottom: clamp(24px, 3vw, 56px); }
+  .page-head h1 { margin-bottom: 12px; }
+  .page-head p { color: var(--muted); font-size: 18px; margin: 0; }
+  .month-head { display: flex; align-items: baseline; gap: 16px; border-bottom: 4px solid var(--ink); padding-bottom: 10px; margin-top: clamp(28px, 4vw, 44px); }
+  .month-head .month { font-family: var(--display); font-size: clamp(20px, 2vw, 26px); letter-spacing: -1px; }
+  .ed-row {
+    display: grid; grid-template-columns: 90px 110px minmax(0, 1fr) minmax(200px, 320px) 32px;
+    gap: 24px; align-items: center;
+    padding: 22px 0; border-bottom: 1px solid var(--hairline);
+    text-decoration: none; color: var(--ink);
+  }
+  .ed-row:hover { color: var(--ink); }
+  .ed-num { font-family: var(--display); font-size: 18px; color: var(--muted); }
+  .ed-date { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ed-spot { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .ed-org { font-size: 14px; color: var(--muted); margin-top: 2px; }
+  .ed-stats { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ed-row svg { stroke: var(--ink); transition: transform 140ms ease-out; }
+  .ed-row:hover svg { transform: translateX(6px); }
+  .ed-row:hover .ed-spot { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+  .ed-date-m { display: none; }
+  @media (max-width: 879px) {
+    .ed-row { grid-template-columns: minmax(0, 1fr) 24px; gap: 16px; }
+    .ed-num, .ed-stats, .ed-row > .ed-date { display: none; }
+    .ed-date-m { display: block; font-size: 14px; color: var(--muted); margin-top: 2px; }
+  }
+  .archive-list { padding-bottom: clamp(56px, 6vw, 96px); }
+</style>
+{% endblock %}
 
 {% block body %}
-<div class="container">
-  <h1>AmuseAlot <span class="beta-chip">BETA</span></h1>
-  <div class="subtitle">Museum Tech Newsletter</div>
+<section class="page-head wrap">
+  <h1>The archive</h1>
+  <p>Every edition &mdash; all public, all readable in the browser.</p>
+</section>
 
-  <h2>Archive</h2>
-
+<section class="archive-list wrap">
   {% if error %}
     <p>{{ error }}</p>
   {% elif not editions %}
     <p>No editions yet. The first issue is coming soon!</p>
   {% else %}
+    {% set ns = namespace(current_month='') %}
     {% for ed in editions %}
-      <a href="/archive/{{ ed.edition_date }}" style="text-decoration:none;display:block;">
-        <div style="padding:20px 0;">
-          <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:6px;">
-            {% if ed.edition_number %}
-              <span style="font-size:13px;font-weight:bold;letter-spacing:-0.3px;">#{{ ed.edition_number }}</span>
-            {% endif %}
-            <span style="font-size:16px;font-weight:bold;">{{ ed.display_date }}</span>
-          </div>
-          {% if ed.spotlight_repo %}
-            <div style="font-size:14px;margin-bottom:4px;">
-              Spotlight: {{ ed.spotlight_repo.split('/')[1] if '/' in (ed.spotlight_repo or '') else ed.spotlight_repo }}
-              {% if ed.spotlight_org %}
-                <span style="opacity:0.6;">&mdash; {{ ed.spotlight_org }}</span>
-              {% endif %}
-            </div>
-          {% endif %}
-          <div style="font-size:13px;opacity:0.6;">
-            {% set parts = [] %}
-            {% if ed.stats_active_orgs %}{% set _ = parts.append(ed.stats_active_orgs|string ~ " orgs") %}{% endif %}
-            {% if ed.stats_unique_repos %}{% set _ = parts.append(ed.stats_unique_repos|string ~ " repos") %}{% endif %}
-            {% if ed.stats_releases %}{% set _ = parts.append(ed.stats_releases|string ~ " releases") %}{% endif %}
-            {{ parts|join(" · ") }}
-          </div>
-        </div>
-      </a>
-      {% if not loop.last %}
-        <div class="dotline" style="margin:0;"></div>
+      {% set month = (ed.display_date.split(' ')[0] ~ ' ' ~ ed.display_date.rsplit(' ', 1)[-1]) if ed.display_date else '' %}
+      {% if month and month != ns.current_month %}
+        {% set ns.current_month = month %}
+        <div class="month-head"><span class="month">{{ month }}</span></div>
       {% endif %}
+      <a class="ed-row" href="/archive/{{ ed.edition_date }}">
+        <span class="ed-num">{% if ed.edition_number %}{{ '%03d'|format(ed.edition_number|int) }}{% endif %}</span>
+        <span class="ed-date">{{ ed.display_date.rsplit(',', 1)[0] if ed.display_date else '' }}</span>
+        <span>
+          {% if ed.spotlight_repo %}
+            <span class="ed-spot">{{ ed.spotlight_repo.split('/')[1] if '/' in (ed.spotlight_repo or '') else ed.spotlight_repo }}</span>
+            {% if ed.spotlight_org %}<span class="ed-org" style="display:block;">Spotlight &mdash; {{ ed.spotlight_org }}</span>{% endif %}
+          {% else %}
+            <span class="ed-spot">{{ ed.display_date }}</span>
+          {% endif %}
+          <span class="ed-date-m">{{ ed.display_date }}</span>
+        </span>
+        <span class="ed-stats">
+          {% set parts = [] %}
+          {% if ed.stats_active_orgs and ed.stats_active_orgs|string != '0' %}{% set _ = parts.append(ed.stats_active_orgs|string ~ " orgs") %}{% endif %}
+          {% if ed.stats_unique_repos and ed.stats_unique_repos|string != '0' %}{% set _ = parts.append(ed.stats_unique_repos|string ~ " repos") %}{% endif %}
+          {% if ed.stats_releases and ed.stats_releases|string != '0' %}{% set _ = parts.append(ed.stats_releases|string ~ " releases") %}{% endif %}
+          {{ parts|join(" · ") }}
+        </span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15"></path><path d="M13 6l6 6-6 6"></path></svg>
+      </a>
     {% endfor %}
   {% endif %}
-</div>
+</section>
 {% endblock %}

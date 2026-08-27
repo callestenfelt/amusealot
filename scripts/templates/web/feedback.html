@@ -6,22 +6,58 @@
 {% block og_description %}<meta property="og:description" content="Share feedback about AmuseAlot or suggest new organizations and repositories to track.">{% endblock %}
 {% block twitter_title %}<meta name="twitter:title" content="Feedback — AmuseAlot">{% endblock %}
 {% block twitter_description %}<meta name="twitter:description" content="Share feedback about AmuseAlot or suggest new organizations and repositories to track.">{% endblock %}
+{% block head_extra %}
+<style>
+  .page-head { padding-top: clamp(48px, 6vw, 96px); padding-bottom: clamp(24px, 3vw, 48px); }
+  .page-head p { color: var(--muted); font-size: 18px; margin: 0; }
+  .fb-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(32px, 5vw, 72px); padding-bottom: clamp(56px, 6vw, 96px); }
+  @media (max-width: 879px) { .fb-grid { grid-template-columns: minmax(0, 1fr); } }
+  .fb-form { display: flex; flex-direction: column; gap: 24px; }
+  .fb-form .field { display: flex; flex-direction: column; gap: 8px; }
+  .fb-form textarea { resize: vertical; }
+  .label-hint { font-size: 13px; color: var(--muted); font-weight: 400; letter-spacing: 0; text-transform: none; }
+  .fb-form .btn { align-self: flex-start; width: auto; display: inline-flex; align-items: center; gap: 12px; }
+  @media (max-width: 879px) { .fb-form .btn { width: 100%; justify-content: center; } }
+  .rating-list { display: flex; flex-direction: column; gap: 8px; }
+  .rating-option {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; border: 2px solid var(--dots); color: var(--muted);
+    cursor: pointer; font-size: 16px;
+    transition: var(--pop), border-color 140ms ease-out, color 140ms ease-out;
+  }
+  .rating-option .stars { font-size: 18px; letter-spacing: 2px; }
+  .rating-option:hover { border-color: var(--ink); color: var(--ink); }
+  .rating-option.selected {
+    border: 3px solid var(--ink); color: var(--ink); padding: 13px 15px;
+    box-shadow: 4px 4px 0 var(--ink); transform: translate(-2px, -2px);
+    font-weight: 700;
+  }
+  .side-note { padding: clamp(24px, 3vw, 36px); }
+  .side-note .eyebrow { margin-bottom: 10px; }
+  .side-note p { margin: 0; font-size: 15px; }
+  .side-stack { display: flex; flex-direction: column; gap: 24px; }
+  .side-plain { border: 3px solid var(--ink); background: transparent; }
+  @media (prefers-reduced-motion: reduce) {
+    .rating-option, .rating-option.selected { transition: none; transform: none; }
+  }
+</style>
+{% endblock %}
 
 {% block body %}
-<div class="container">
-  <h1>AmuseAlot <span class="beta-chip">BETA</span></h1>
-  <div class="subtitle">Museum Tech Newsletter</div>
+<section class="page-head wrap">
+  <h1>Tell us things</h1>
+  <p>Ideas, corrections, suggestions &mdash; every message is read by a human.</p>
+</section>
 
-  <h2>Feedback</h2>
-
-  {% if error %}
-  <p class="error">{{ error }}</p>
-  {% endif %}
-
-  <form method="POST" action="/feedback">
+<section class="fb-grid wrap">
+  <form method="POST" action="/feedback" class="fb-form">
     <input type="hidden" name="edition" value="{{ edition }}">
     <input type="hidden" name="rating" id="rating-value" value="{{ rating or '' }}">
     {% include "_bot_fields.html" %}
+
+    {% if error %}
+    <p class="error">{{ error }}</p>
+    {% endif %}
 
     {% set options = [
       (5, "Excellent"),
@@ -32,80 +68,69 @@
     ] %}
 
     {% if edition %}
-    <div style="margin-bottom:32px;">
-      {% for value, label in options %}
-      <div class="rating-option{% if rating == value %} selected{% endif %}" data-value="{{ value }}" onclick="selectRating({{ value }})" style="display:flex;align-items:center;padding:14px 16px;border:2px solid #080229;margin-bottom:8px;cursor:pointer;font-size:16px;{% if rating == value %}background-color:#080229;color:#fbfbfb;{% endif %}">
-        <span style="margin-right:12px;font-size:18px;">{{ "★" * value }}{{ "☆" * (5 - value) }}</span>
-        <span style="font-weight:bold;">{{ label }}</span>
+    <div class="field">
+      <label>How was this edition?</label>
+      <div class="rating-list">
+        {% for value, label in options %}
+        <div class="rating-option{% if rating == value %} selected{% endif %}" data-value="{{ value }}" onclick="selectRating({{ value }})" role="button" tabindex="0">
+          <span class="stars" aria-hidden="true">{{ "★" * value }}{{ "☆" * (5 - value) }}</span>
+          <span>{{ label }}</span>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
     </div>
-
-    <div class="dotline"></div>
     {% endif %}
 
-    <label for="feedback_text" style="font-size:15px;font-weight:bold;display:block;margin-bottom:8px;">{% if edition %}Additional feedback{% else %}Your feedback{% endif %}</label>
-    <textarea name="feedback_text" id="feedback_text" rows="4" placeholder="{% if edition %}What did you think? Any topics you'd like to see covered?{% else %}Ideas, suggestions, or anything you'd like to tell us{% endif %}" style="width:100%;font-size:15px;padding:14px 16px;border:2px solid #080229;background:transparent;color:#080229;font-family:inherit;resize:vertical;margin-bottom:24px;"></textarea>
+    <div class="field">
+      <label for="feedback_text">{% if edition %}Additional feedback{% else %}Your feedback{% endif %}</label>
+      <textarea name="feedback_text" id="feedback_text" rows="5" placeholder="{% if edition %}What did you think? Any topics you'd like to see covered?{% else %}Ideas, suggestions, or anything you'd like to tell us{% endif %}"></textarea>
+    </div>
 
-    <label for="suggest_org" style="font-size:15px;font-weight:bold;display:block;margin-bottom:8px;">Know a museum or org we should track?</label>
-    <textarea name="suggest_org" id="suggest_org" rows="3" placeholder="Organization name, GitHub URL, or website" style="width:100%;font-size:15px;padding:14px 16px;border:2px solid #080229;background:transparent;color:#080229;font-family:inherit;resize:vertical;margin-bottom:24px;"></textarea>
+    <div class="field">
+      <label for="suggest_org">Know a museum or org we should track?</label>
+      <textarea name="suggest_org" id="suggest_org" rows="3" placeholder="Organization name, GitHub URL, or website"></textarea>
+    </div>
 
-    <label for="email" style="font-size:15px;font-weight:bold;display:block;margin-bottom:4px;">Your email</label>
-    <span style="font-size:13px;color:#080229;opacity:0.6;display:block;margin-bottom:8px;">Only needed if you'd like us to get back to you</span>
-    <input type="email" name="email" id="email" placeholder="you@example.com" style="margin-bottom:24px;">
+    <div class="field">
+      <label for="email">Your email <span class="label-hint">&mdash; only needed if you'd like us to get back to you</span></label>
+      <input type="email" name="email" id="email" placeholder="you@example.com" style="max-width: 420px;">
+    </div>
 
-    <button type="submit" class="btn">Submit Feedback</button>
+    <button type="submit" class="btn">Send feedback</button>
   </form>
-</div>
 
-<style>
-  .rating-option:hover {
-    background-color: #080229 !important;
-    color: #fbfbfb !important;
-  }
-  .rating-option.selected {
-    background-color: #080229;
-    color: #fbfbfb;
-  }
-  textarea:focus {
-    outline: none;
-    border-color: #080229;
-  }
-  textarea::placeholder {
-    color: #080229;
-    opacity: 0.6;
-  }
-  @media (prefers-color-scheme: dark) {
-    .rating-option:hover {
-      background-color: #080229 !important;
-      color: #fbfbfb !important;
-    }
-    .rating-option.selected {
-      background-color: #080229 !important;
-      color: #fbfbfb !important;
-    }
-    textarea {
-      border-color: #080229 !important;
-      color: #080229 !important;
-      background: transparent !important;
-    }
-  }
-</style>
+  <div class="side-stack">
+    <div class="card side-note">
+      <div class="eyebrow">Rating an edition?</div>
+      <p>
+        The quickest way is the rating row at the bottom of every email &mdash;
+        it lands here with the edition pre-filled, so one tap is all it takes.
+      </p>
+    </div>
+    <div class="side-note side-plain">
+      <div class="eyebrow">What happens next</div>
+      <p>
+        Suggested sources are checked and, when they fit, added to the tracked
+        list. No account, no follow-up emails unless you asked for one.
+      </p>
+    </div>
+  </div>
+</section>
 
 <script>
 function selectRating(value) {
   document.getElementById('rating-value').value = value;
   document.querySelectorAll('.rating-option').forEach(function(el) {
-    if (parseInt(el.dataset.value) === value) {
-      el.classList.add('selected');
-      el.style.backgroundColor = '#080229';
-      el.style.color = '#fbfbfb';
-    } else {
-      el.classList.remove('selected');
-      el.style.backgroundColor = '';
-      el.style.color = '';
-    }
+    el.classList.toggle('selected', parseInt(el.dataset.value) === value);
   });
 }
+document.querySelectorAll('.rating-option').forEach(function(el) {
+  el.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      selectRating(parseInt(el.dataset.value));
+    }
+  });
+});
 </script>
 {% endblock %}

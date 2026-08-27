@@ -5,13 +5,32 @@
 {% block og_description %}<meta property="og:description" content="Learn how AmuseAlot works — AI-powered curation of museum technology activity on GitHub, delivered as a weekly newsletter.">{% endblock %}
 {% block twitter_title %}<meta name="twitter:title" content="About — AmuseAlot">{% endblock %}
 {% block twitter_description %}<meta name="twitter:description" content="Learn how AmuseAlot works — AI-powered curation of museum technology activity on GitHub, delivered as a weekly newsletter.">{% endblock %}
+{% block head_extra %}
+<style>
+  .page-head { padding-top: clamp(48px, 6vw, 96px); padding-bottom: clamp(24px, 3vw, 48px); }
+  .page-head p { font-size: clamp(17px, 1.4vw, 20px); margin: 0; }
+  .about-section {
+    display: grid; grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+    gap: clamp(24px, 4vw, 48px);
+    border-top: 4px solid var(--ink);
+    padding: clamp(28px, 4vw, 44px) 0;
+  }
+  .about-section .sec-head { display: flex; align-items: baseline; gap: 16px; }
+  .about-section .sec-num { font-family: var(--display); font-size: clamp(20px, 2vw, 28px); color: var(--muted); }
+  .about-section h2 { font-size: clamp(20px, 2.2vw, 28px); margin: 0; }
+  .about-section p:last-child { margin-bottom: 0; }
+  @media (max-width: 879px) { .about-section { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
+  .honesty { padding: clamp(24px, 3vw, 36px) clamp(24px, 3vw, 40px); margin-top: 8px; }
+  .honesty .eyebrow { margin-bottom: 10px; }
+  .honesty p { margin: 0; }
+  .about-body { padding-bottom: clamp(40px, 5vw, 64px); }
+  .about-mascot { text-align: center; padding: 0 var(--gutter) clamp(48px, 6vw, 80px); }
+</style>
+{% endblock %}
 
 {% block body %}
-<div class="container">
-  <h1>AmuseAlot <span class="beta-chip">BETA</span></h1>
-  <div class="subtitle">Museum Tech Newsletter</div>
-
-  <h2>How it works</h2>
+<section class="page-head wrap">
+  <h1>How it works</h1>
   <p>
     AmuseAlot is an automated newsletter that tracks what museums, archives,
     heritage organizations, and individual researchers are building on GitHub.
@@ -23,51 +42,87 @@
     of new projects, releases, and notable development activity.
     {% endif %}
   </p>
+</section>
 
-  <div class="dotline"></div>
+<section class="about-body wrap">
+  <div class="about-section">
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <h2>Data collection</h2>
+    </div>
+    <div>
+      <p>
+        Every Wednesday, the pipeline scans public GitHub activity from museums,
+        national libraries, archives, heritage boards, and individual developers.
+        It also tracks key museum-tech tools and frameworks (IIIF, Omeka, Blacklight, etc.)
+        to surface important updates in a dedicated "Tool Watch" section.
+        See the full list of <a href="/sources">tracked sources</a>.
+        The pipeline collects push events, new repositories, and releases, then enriches
+        each event with repository metadata like language, stars, and descriptions.
+      </p>
+      <p>
+        In addition to GitHub activity, the newsletter curates relevant news articles
+        from cultural heritage organizations, museum technology blogs, and digital preservation
+        sources worldwide. Articles are automatically scored for relevance and the most
+        valuable content is featured in each issue.
+      </p>
+    </div>
+  </div>
 
-  <h3 style="font-size:16px;font-weight:bold;margin-bottom:8px;">Data collection</h3>
-  <p>
-    Every Wednesday, the pipeline scans public GitHub activity from museums,
-    national libraries, archives, heritage boards, and individual developers.
-    It also tracks key museum-tech tools and frameworks (IIIF, Omeka, Blacklight, etc.)
-    to surface important updates in a dedicated "Tool Watch" section.
-    See the full list of <a href="/sources">tracked sources</a>.
-    The pipeline collects push events, new repositories, and releases, then enriches
-    each event with repository metadata like language, stars, and descriptions.
-  </p>
-  <p>
-    In addition to GitHub activity, the newsletter curates relevant news articles
-    from cultural heritage organizations, museum technology blogs, and digital preservation
-    sources worldwide. Articles are automatically scored for relevance and the most
-    valuable content is featured in each issue.
-  </p>
+  <div class="about-section">
+    <div class="sec-head">
+      <span class="sec-num">02</span>
+      <h2>AI-assisted curation</h2>
+    </div>
+    <div>
+      <p>
+        An AI model (GPT-OSS 120B via Groq) reads each event and scores it for
+        relevance to the museum tech community. It assigns a tier (newsworthy,
+        worth a mention, or routine), writes a short summary, and selects a
+        spotlight project for each issue. The summaries you read in the newsletter
+        are AI-generated based on commit messages, release notes, and README files.
+      </p>
+      <div class="card honesty">
+        <div class="eyebrow">Honesty note</div>
+        <p>
+          Content is gathered and summarized with the help of AI and may contain
+          mistakes. Every item links to its original source &mdash; always check it
+          if something is important to your work.
+        </p>
+      </div>
+    </div>
+  </div>
 
-  <h3 style="font-size:16px;font-weight:bold;margin-bottom:8px;">AI-assisted curation</h3>
-  <p>
-    An AI model (GPT-OSS 120B via Groq) reads each event and scores it for
-    relevance to the museum tech community. It assigns a tier (newsworthy,
-    worth a mention, or routine), writes a short summary, and selects a
-    spotlight project for each issue. The summaries you read in the newsletter
-    are AI-generated based on commit messages, release notes, and README files.
-  </p>
+  <div class="about-section">
+    <div class="sec-head">
+      <span class="sec-num">03</span>
+      <h2>Open source</h2>
+    </div>
+    <div>
+      <p>
+        The entire pipeline is open source. You can see how it works, suggest
+        improvements, or run your own version:
+        <a href="https://github.com/callestenfelt/amusealot">github.com/callestenfelt/amusealot</a>
+      </p>
+    </div>
+  </div>
 
-  <h3 style="font-size:16px;font-weight:bold;margin-bottom:8px;">Open source</h3>
-  <p>
-    The entire pipeline is open source. You can see how it works, suggest
-    improvements, or run your own version:
-    <a href="https://github.com/callestenfelt/amusealot">github.com/callestenfelt/amusealot</a>
-  </p>
+  <div class="about-section">
+    <div class="sec-head">
+      <span class="sec-num">04</span>
+      <h2>Inspiration</h2>
+    </div>
+    <div>
+      <p>
+        This project is inspired by
+        <a href="https://github.com/heripo-lab/heripo-research-radar">heripo-research-radar</a>,
+        an AI-powered newsletter for Korean cultural heritage research.
+      </p>
+    </div>
+  </div>
+</section>
 
-  <h3 style="font-size:16px;font-weight:bold;margin-bottom:8px;">Inspiration</h3>
-  <p>
-    This project is inspired by
-    <a href="https://github.com/heripo-lab/heripo-research-radar">heripo-research-radar</a>,
-    an AI-powered newsletter for Korean cultural heritage research.
-  </p>
-</div>
-
-<div style="text-align:center;padding:0 0 48px;">
+<div class="about-mascot">
   <img src="/bathing_in_code.webp"
        alt="A cheerful creature bathing in code files labelled JS, MUSC, IIIF, PY and curly braces"
        style="width:min(520px,90vw);height:auto;">

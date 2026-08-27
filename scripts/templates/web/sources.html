@@ -5,50 +5,102 @@
 {% block og_description %}<meta property="og:description" content="Browse the full list of museums, archives, and heritage organizations tracked by AmuseAlot — over 670 sources across 48 countries.">{% endblock %}
 {% block twitter_title %}<meta name="twitter:title" content="Sources — AmuseAlot">{% endblock %}
 {% block twitter_description %}<meta name="twitter:description" content="Browse the full list of museums, archives, and heritage organizations tracked by AmuseAlot — over 670 sources across 48 countries.">{% endblock %}
+{% block head_extra %}
+<style>
+  .page-head { padding-top: clamp(48px, 6vw, 96px); padding-bottom: clamp(24px, 3vw, 40px); display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
+  .page-head h1 { margin-bottom: 12px; }
+  .page-head p { color: var(--muted); font-size: 18px; margin: 0; max-width: 52ch; }
+  .src-stats { display: flex; gap: clamp(28px, 4vw, 48px); padding-bottom: 8px; }
+  .src-stat-num { font-family: var(--display); font-size: clamp(36px, 4vw, 52px); line-height: 1; letter-spacing: -0.025em; }
+  .src-stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-top: 6px; }
+
+  .src-body { padding-bottom: clamp(56px, 6vw, 96px); }
+
+  /* Tabs */
+  .tab-row { display: flex; gap: 8px; margin-bottom: 24px; }
+  .tab-btn {
+    font-family: inherit; font-size: 12px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    padding: 10px 18px; background: transparent; cursor: pointer;
+    border: 2px solid var(--dots); color: var(--muted);
+    transition: border-color 140ms ease-out, color 140ms ease-out;
+  }
+  .tab-btn:hover { border-color: var(--ink); color: var(--ink); }
+  .tab-btn.active { border: 3px solid var(--ink); color: var(--ink); padding: 9px 17px; }
+  .tab-btn:focus-visible { outline: 3px solid var(--dots); outline-offset: 2px; }
+
+  /* Filters */
+  .src-filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+  .src-filter-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .src-fchip {
+    font-family: inherit; font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 2px;
+    padding: 10px 16px; border: 2px solid var(--dots);
+    background: transparent; color: var(--muted); cursor: pointer;
+    transition: border-color 140ms ease-out, color 140ms ease-out;
+  }
+  .src-fchip:hover { border-color: var(--ink); color: var(--ink); }
+  .src-fchip.active { border: 3px solid var(--ink); color: var(--ink); padding: 9px 15px; }
+  .src-fchip:focus-visible { outline: 3px solid var(--dots); outline-offset: 2px; }
+  .src-search { flex: 1; min-width: 240px; font-size: 15px; padding: 12px 16px; }
+
+  .src-count { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 4px; }
+
+  /* Directory */
+  #srcList, #newsSrcList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 56px; }
+  @media (max-width: 879px) { #srcList, #newsSrcList { grid-template-columns: minmax(0, 1fr); } }
+  .src-letter {
+    grid-column: 1 / -1;
+    font-family: var(--display); font-size: clamp(22px, 2vw, 28px); letter-spacing: -1px;
+    border-bottom: 4px solid var(--ink);
+    padding: clamp(24px, 3vw, 40px) 0 8px;
+  }
+  .src-entry {
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    padding: 16px 0; border-bottom: 1px solid var(--hairline);
+  }
+  .src-entry-main { min-width: 0; flex: 1; }
+  .src-entry-name { font-weight: 700; font-size: 16px; display: block; text-decoration: none; }
+  a.src-entry-name:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+  .src-entry-handle { font-size: 13px; color: var(--muted); display: block; margin-top: 4px; }
+  .src-entry-chips { display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; justify-content: flex-end; }
+  #panelWrapper { transition: opacity 0.18s ease; }
+  .src-empty { padding: 48px 0; text-align: center; font-size: 15px; color: var(--muted); }
+  .src-cta { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: clamp(20px, 3vw, 28px) clamp(20px, 3vw, 32px); margin: clamp(28px, 4vw, 44px) 0 0; font-size: 16px; }
+  .src-cta a { font-weight: 700; }
+  @media (prefers-reduced-motion: reduce) { #panelWrapper { transition: none; } }
+</style>
+{% endblock %}
 
 {% block body %}
-<div class="container">
-  <h1>AmuseAlot <span class="beta-chip">BETA</span></h1>
-  <div class="subtitle">Museum Tech Newsletter</div>
-
-  {# ── h2 + M3-style tab row ── #}
-  <div class="tab-row">
-    <span class="tab-heading">Sources</span>
-    <div class="tab-btns" role="tablist" aria-label="Source type">
-      <button class="tab-btn active" id="tabGithub" role="tab" aria-selected="true" aria-controls="panelGithub">GitHub</button>
-      <button class="tab-btn" id="tabNews" role="tab" aria-selected="false" aria-controls="panelNews">News feeds</button>
-      <span class="tab-indicator" id="tabIndicator" aria-hidden="true"></span>
+<section class="page-head wrap">
+  <div>
+    <h1>The sources</h1>
+    <p>Every organization and individual whose public work we scan each Wednesday.</p>
+  </div>
+  {% if sources %}
+  <div class="src-stats">
+    <div>
+      <div class="src-stat-num">{{ total }}</div>
+      <div class="src-stat-label">Sources</div>
+    </div>
+    <div>
+      <div class="src-stat-num">{{ country_count }}</div>
+      <div class="src-stat-label">Countries</div>
     </div>
   </div>
+  {% endif %}
+</section>
 
-  {# ══════════════════════════════════
-     GITHUB SOURCES PANEL
-     ══════════════════════════════════ #}
+<section class="src-body wrap">
+  <div class="tab-row" role="tablist" aria-label="Source type">
+    <button class="tab-btn active" id="tabGithub" role="tab" aria-selected="true" aria-controls="panelGithub">GitHub</button>
+    <button class="tab-btn" id="tabNews" role="tab" aria-selected="false" aria-controls="panelNews">News feeds</button>
+  </div>
+
   <div id="panelWrapper">
   <div id="panelGithub">
     {% if sources %}
-
-    <div class="src-stats">
-      <div class="src-stat">
-        <div class="src-stat-num">{{ total }}</div>
-        <div class="src-stat-label">Sources</div>
-      </div>
-      <div class="src-stat">
-        <div class="src-stat-num">{{ country_count }}</div>
-        <div class="src-stat-label">Countries</div>
-      </div>
-    </div>
-
-    <p>
-      Every Wednesday, the pipeline scans public GitHub activity from these
-      organizations and individuals to find new projects, releases, and
-      noteworthy commits.
-    </p>
-
-    <div class="src-cta">
-      Missing an organization or repo?
-      <a href="/feedback">Suggest an addition</a>
-    </div>
 
     <div class="src-filters">
       <div class="src-filter-chips">
@@ -57,7 +109,7 @@
         <button class="src-fchip" data-type="individual">Individual</button>
         <button class="src-fchip" data-type="other_org">Other</button>
       </div>
-      <input type="text" class="src-search" placeholder="Filter by name or country..." id="srcSearch">
+      <input type="text" class="src-search" placeholder="Filter by name or country..." id="srcSearch" aria-label="Filter sources">
     </div>
 
     <div class="src-count" id="srcCount">Showing {{ total }} sources</div>
@@ -79,14 +131,14 @@
             {% if source.entity_type == "museum" %}
               <span class="chip chip-type">Museum</span>
             {% elif source.entity_type == "individual" %}
-              <span class="chip chip-individual">Individual</span>
+              <span class="chip">Individual</span>
             {% elif source.entity_type == "other_org" %}
-              <span class="chip chip-other_org">Other Org</span>
+              <span class="chip">Other Org</span>
             {% elif source.entity_type == "umbrella_org" %}
-              <span class="chip chip-umbrella_org">Umbrella Org</span>
+              <span class="chip">Umbrella Org</span>
             {% endif %}
             {% if source.country %}
-              <span class="chip chip-country">{{ source.country }}</span>
+              <span class="chip">{{ source.country }}</span>
             {% endif %}
           </div>
         </div>
@@ -97,31 +149,26 @@
       No sources match your filter.
     </div>
 
+    <div class="card src-cta">
+      <span>Missing an organization or repo we should track?</span>
+      <a href="/feedback">Suggest an addition</a>
+    </div>
+
     {% else %}
     <p>Source list temporarily unavailable. Please try again later.</p>
     {% endif %}
   </div>{# /panelGithub #}
 
-  {# ══════════════════════════════════
-     NEWS SOURCES PANEL
-     ══════════════════════════════════ #}
   <div id="panelNews" style="display:none;">
     {% if news_sources %}
 
-    <div class="src-stats">
-      <div class="src-stat">
-        <div class="src-stat-num">{{ news_total }}</div>
-        <div class="src-stat-label">Feeds</div>
-      </div>
-    </div>
-
-    <p>
-      Each issue includes curated news articles from these RSS feeds —
+    <p style="margin-bottom: 24px;">
+      Each issue includes curated news articles from these {{ news_total }} RSS feeds &mdash;
       scored by AI for relevance to museum and heritage technology professionals.
     </p>
 
-    <div class="src-filters" style="margin-top:24px;">
-      <input type="text" class="src-search" placeholder="Filter by name or country..." id="newsSrcSearch">
+    <div class="src-filters">
+      <input type="text" class="src-search" placeholder="Filter by name or country..." id="newsSrcSearch" aria-label="Filter news feeds">
     </div>
 
     <div class="src-count" id="newsSrcCount">Showing {{ news_total }} feeds</div>
@@ -143,10 +190,10 @@
           </div>
           <div class="src-entry-chips">
             {% if source.language and source.language != 'en' %}
-              <span class="chip chip-country">{{ source.language }}</span>
+              <span class="chip">{{ source.language }}</span>
             {% endif %}
             {% if source.country %}
-              <span class="chip chip-country">{{ source.country }}</span>
+              <span class="chip">{{ source.country }}</span>
             {% endif %}
           </div>
         </div>
@@ -162,261 +209,16 @@
     {% endif %}
   </div>{# /panelNews #}
   </div>{# /panelWrapper #}
-
-</div>{# /container #}
-
-<style>
-  /* Merged heading + M3-style tab row */
-  .tab-row {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 32px;
-    border-bottom: 1px solid rgba(8, 2, 41, 0.15);
-  }
-  .tab-heading {
-    font-size: 22px;
-    font-weight: bold;
-    letter-spacing: -0.5px;
-    white-space: nowrap;
-    padding-bottom: 14px;
-  }
-  .tab-btns {
-    display: flex;
-    position: relative;
-    gap: 0;
-  }
-  .tab-btn {
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: bold;
-    letter-spacing: 0.3px;
-    padding: 10px 18px 19px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #080229;
-    transition: color 0.2s;
-  }
-  .tab-btn:hover {
-    color: #080229;
-  }
-  .tab-btn.active {
-    color: #080229;
-  }
-  .tab-btn:focus-visible {
-    outline: 2px solid #C4BBF6;
-    outline-offset: -2px;
-    border-radius: 2px;
-  }
-  .tab-indicator {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    height: 3px;
-    background: #080229;
-    border-radius: 3px 3px 0 0;
-    transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: none;
-  }
-
-  /* Shared source list styles */
-  .src-stats {
-    display: flex;
-    gap: 48px;
-    margin-bottom: 24px;
-  }
-  .src-stat-num {
-    font-size: 52px;
-    font-weight: bold;
-    letter-spacing: -3px;
-    line-height: 1.1;
-  }
-  .src-stat-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 3px;
-    opacity: 0.8;
-  }
-  .src-cta {
-    font-size: 14px;
-    line-height: 1.6;
-    padding: 14px 18px;
-    border-left: 4px solid #C4BBF6;
-    background: rgba(196, 187, 246, 0.07);
-    margin-bottom: 32px;
-  }
-  .src-cta a {
-    font-weight: bold;
-  }
-  .src-filters {
-    margin-bottom: 12px;
-  }
-  .src-filter-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-  .src-fchip {
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 6px 14px;
-    border-radius: 12px;
-    border: 1.5px solid rgba(8, 2, 41, 0.4);
-    background: transparent;
-    color: #080229;
-    cursor: pointer;
-    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
-  }
-  .src-fchip:hover,
-  .src-fchip.active {
-    background: #080229;
-    color: #fbfbfb;
-    border-color: #080229;
-  }
-  .src-search {
-    width: 100%;
-    font-size: 14px;
-    padding: 10px 14px;
-    border: 2px solid #080229;
-    background: transparent;
-    color: #080229;
-    font-family: inherit;
-  }
-  .src-search::placeholder {
-    color: #080229;
-    opacity: 0.4;
-  }
-  .src-search:focus {
-    outline: none;
-  }
-  .src-count {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    opacity: 0.8;
-    margin-bottom: 4px;
-  }
-  .src-letter {
-    font-size: 28px;
-    font-weight: bold;
-    letter-spacing: -1px;
-    padding: 24px 0 6px;
-  }
-  .src-entry {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(8, 2, 41, 0.06);
-    transition: background-color 0.15s;
-  }
-  .src-entry:hover {
-    background-color: rgba(196, 187, 246, 0.06);
-  }
-  .src-entry:hover .src-entry-handle {
-    color: rgba(8, 2, 41, 0.95);
-  }
-  .src-entry-main {
-    min-width: 0;
-    flex: 1;
-  }
-  .src-entry-name {
-    font-weight: bold;
-    font-size: 15px;
-    display: block;
-    text-decoration: none;
-  }
-  a.src-entry-name:hover {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-  .src-entry-handle {
-    font-size: 13px;
-    color: rgba(8, 2, 41, 0.8);
-    display: block;
-    margin-top: 6px;
-    transition: color 0.15s;
-  }
-  .src-entry-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    flex-shrink: 0;
-    padding-top: 2px;
-  }
-  #panelWrapper {
-    transition: opacity 0.18s ease;
-  }
-  .src-empty {
-    padding: 48px 0;
-    text-align: center;
-    font-size: 14px;
-    opacity: 0.45;
-  }
-  @media (max-width: 480px) {
-    .src-entry {
-      flex-direction: column;
-      gap: 6px;
-    }
-    .src-stats {
-      gap: 32px;
-    }
-    .src-stat-num {
-      font-size: 44px;
-    }
-  }
-  @media (prefers-color-scheme: dark) {
-    .tab-heading { color: #080229 !important; }
-    .tab-row { border-bottom-color: rgba(8, 2, 41, 0.15) !important; }
-    .tab-btn { color: #080229 !important; }
-    .tab-btn.active { color: #080229 !important; }
-    .tab-indicator { background: #080229 !important; }
-    .src-fchip { border-color: rgba(8, 2, 41, 0.4) !important; color: #080229 !important; background: transparent !important; }
-    .src-fchip:hover, .src-fchip.active { background: #080229 !important; color: #fbfbfb !important; border-color: #080229 !important; }
-    .src-search { border-color: #080229 !important; color: #080229 !important; background: transparent !important; }
-    .src-cta { border-left-color: #C4BBF6 !important; background: rgba(196, 187, 246, 0.07) !important; }
-    .src-entry { border-bottom-color: rgba(8, 2, 41, 0.06) !important; }
-    .src-entry:hover { background-color: rgba(196, 187, 246, 0.06) !important; }
-  }
-</style>
+</section>
 
 <script>
 (function() {
-  // ── Tab switching with M3 sliding indicator ──
+  // ── Tab switching ──
   var tabGithub   = document.getElementById('tabGithub');
   var tabNews     = document.getElementById('tabNews');
   var panelGithub = document.getElementById('panelGithub');
   var panelNews   = document.getElementById('panelNews');
-  var indicator   = document.getElementById('tabIndicator');
-
-  function updateIndicator() {
-    var active = document.querySelector('.tab-btn.active');
-    if (active && indicator) {
-      indicator.style.left  = active.offsetLeft + 'px';
-      indicator.style.width = active.offsetWidth + 'px';
-    }
-  }
-
-  // Disable transition on first paint so indicator snaps into position
-  if (indicator) {
-    indicator.style.transition = 'none';
-    updateIndicator();
-    // Re-enable after first frame
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        indicator.style.transition = '';
-      });
-    });
-  }
-
-  var wrapper = document.getElementById('panelWrapper');
+  var wrapper     = document.getElementById('panelWrapper');
 
   function switchToPanel(showBtn, hideBtn, showPanel, hidePanel) {
     wrapper.style.opacity = '0';
@@ -427,7 +229,6 @@
       hideBtn.setAttribute('aria-selected', 'false');
       showPanel.style.display = '';
       hidePanel.style.display = 'none';
-      updateIndicator();
       wrapper.style.opacity = '1';
     }, 180);
   }
