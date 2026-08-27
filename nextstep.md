@@ -17,9 +17,13 @@ clears.
       the Phase 2 code (sent marker, --input-driven send step, marker-based
       success-email count, reminder send-then-mark), the Phase 3 code
       (URL-only content hash with URL-derived migration dedup, GitHub
-      seen-events pending/commit cache), and the Phase 4 pipeline guards
-      (http(s)-only article URLs). Eyeball the edition for repeats vs the
-      2026-08-26 one — the new dedup should remove them.
+      seen-events pending/commit cache), the Phase 4 pipeline guards
+      (http(s)-only article URLs), the Phase 5 generator (102KB
+      auto-tighten) and the Phase 6 collection/scoring (paginated feeds,
+      403 taxonomy, batched scoring, hardened prompts, server-side
+      recovery filters). Eyeball the edition for repeats vs the 2026-08-26
+      one — the new dedup should remove them — and expect somewhat more
+      GitHub events from the deeper pagination.
 - [ ] **Verify the new unsubscribe flow from a real mail client** when the
       occasion arises — the GET confirm-page and RFC 8058 one-click POST
       are harness-verified; the plan's last tick is a real-client check.
@@ -28,10 +32,14 @@ clears.
       `--input newsletter_email_test.html` to calle@callestenfelt.se, and
       view in Outlook desktop on Windows with dark mode on. Also check the
       confirmation/reminder emails on the next real signup if convenient.
-- [ ] Phases 6–7 — see `docs/review-2026-08-26-plan.md`. (Phases 0–5 done,
-      merged, deployed, and pushed to origin as of 2026-08-26; no Caddy
-      change was needed for Phase 4 — Caddy v2.10 defaults already strip
-      client X-Forwarded-For.)
+- [ ] **Create the `ai_title` column** — add a long_text field named
+      exactly `ai_title` to the Baserow news-articles table (752) in the
+      UI (the database token can't alter schema). Phase 6's L8 code
+      resolves it by name and starts persisting English titles on its own.
+- [ ] Phase 7 — the last phase; see `docs/review-2026-08-26-plan.md`.
+      (Phases 0–6 done, merged, deployed, and pushed to origin as of
+      2026-08-27; no Caddy change was needed for Phase 4 — Caddy v2.10
+      defaults already strip client X-Forwarded-For.)
 
 ## Done
 
@@ -96,6 +104,19 @@ clears.
       `.bak-20260826-phase5/`, compile + checksums + real-data dry-run
       verified on VPS) and pushed to origin the same day. Outlook dark-mode
       eyeball still pending.**
+- [x] Phase 6 (2026-08-26/27): pipeline coverage on `fix/pipeline-coverage`
+      (`6aa2f88` + follow-ups `10297da` after a 10-finding /code-review +
+      3.10 hotfix `cffaa92`) — GitHub 403/429 taxonomy with Retry-After,
+      15-min wait cap, and a distinct-owner systemic-abort threshold;
+      date-stopped pagination for event feeds and new repos; all scoring in
+      batches of 5; prompt-injection markers + sanitizer + output caps via
+      new shared `llm_shared.py` (also absorbs the duplicated
+      groq_request); server-side recovery filters (tier empty AND
+      date-window-or-empty) with loud 400 abort; ai_title resolved by name
+      and written in its own PATCH. **Merged, deployed 2026-08-27
+      (3 scripts + llm_shared.py, originals in `.bak-20260827-phase6/`,
+      compile on VPS Python 3.10 + read-only smoke verified), and pushed.
+      ai_title column still to be created in the Baserow UI.**
 
 ---
 

@@ -385,22 +385,87 @@ CLAUDE.md** — the one client no harness can simulate.
 
 ## Phase 6 — Pipeline coverage & robustness (branch: `fix/pipeline-coverage`)
 
-- [ ] **[pipeline M4]** GitHub 403 handling: honor `Retry-After`
-      (secondary rate limits); treat a no-header 403 as fatal-ish (log +
-      abort or clearly surface) instead of silent empty results.
-- [ ] **[pipeline M5]** Paginate org event feeds (or raise `per_page`) and
-      `collect_new_repos` beyond 10; filter bot events before windowing
-      decisions.
-- [ ] **[pipeline M2]** `score_newsletter_content.py`: batch new-repo and
-      release scoring like pushes (`PUSH_BATCH_SIZE`-style) so a busy week
-      can't overflow `max_tokens` and tier-3 a whole category.
-- [ ] **[pipeline M7]** Prompt-injection hardening: delimit untrusted
-      content (RSS text, READMEs, release bodies) in prompts; cap summary
-      length from the model. (Type validation already landed in Phase 1.)
-- [ ] **[pipeline L7]** `score_news.py` recovery: server-side Baserow
-      filters instead of fetching the whole table; stop re-fetching
-      permanently-unscored rows older than the window.
-- [ ] **[pipeline L8]** Write `ai_title` to Baserow alongside `ai_summary`.
+Done 2026-08-26/27 (implementation `6aa2f88`, review follow-ups `10297da`,
+Python 3.10 hotfix `cffaa92`). Decisions: **surface + systemic abort** for
+non-rate-limit 403s (warn per URL; abort only when distinct forbidden
+owners ≥ max(5, 10% of sources)) — recommended option, question went
+unanswered so recorded here; **ai_title column created by hand** in the
+Baserow UI (the database token cannot alter schema — POST returned
+ERROR_NO_PERMISSION_TO_TABLE), resolved by name at runtime.
+
+- [x] **[pipeline M4]** `github_get` taxonomy: `Retry-After` honored
+      (HTTP-date/junk falls back to 60s), exhausted primary quota waits to
+      reset, headerless 429 backs off 60s — all retried ≤3× with a 15-min
+      per-wait cap (abort promptly instead of stalling the 7AM cron for
+      hours). Non-rate-limit 403s recorded per URL, listed in the summary,
+      systemic abort by distinct-owner threshold. Abort messages say the
+      truth: cron will NOT retry; re-run `cron_newsletter.sh` manually.
+- [x] **[pipeline M5]** Event feeds paginate per_page=100 up to 3 pages
+      with a date-based stop (bot bursts can't hide real activity);
+      `collect_new_repos` paginates past fork padding, stops at cutoff.
+      API calls counted centrally in `github_get`.
+- [x] **[pipeline M2]** All event types score in `SCORE_BATCH_SIZE=5`
+      batches — no more whole-category tier-3 from an overflowing batch.
+- [x] **[pipeline M7]** Untrusted content delimited with BEGIN/END
+      UNTRUSTED markers + a never-follow-instructions system-prompt clause;
+      marker-lookalike lines in feed text neutralized before interpolation
+      (escape-proofing); model output length-capped (summary 400,
+      writeup 900, ai_title 200, ai_summary 600).
+- [x] **[pipeline L7]** Recovery uses a server-side filters-JSON tree:
+      tier empty AND (collected_date after window OR empty) — verified
+      against production (200; the 93 old unscored rows are exactly the
+      backlog this stops re-fetching). A 400 on the filter aborts loudly
+      instead of silently disabling recovery.
+- [x] **[pipeline L8]** `resolve_ai_title_field()` finds the hand-created
+      column by name, type-checks it (long_text/text), and PATCHes
+      `ai_title` separately so a title failure can't unpersist tier.
+      **Pending user action: create the `ai_title` long_text column in
+      Baserow table 752** — code activates on its own once it exists.
+
+### Phase 6 review follow-ups (automated /code-review of `6aa2f88`, high, 2026-08-26)
+
+The review agent stalled once mid-run (as in Phase 4); a resume nudge
+recovered all 14 verdicts (8 confirmed, 5 plausible, 1 refuted). All 10
+reported findings resolved in `10297da`:
+
+- [x] **(1)** Headerless 429 was misfiled as "forbidden" → 429 always
+      throttling, 60s backoff + retry; only literal 403s can be forbidden.
+- [x] **(2)** Abort threshold counted URLs (one source with 6 tracked
+      repos, or 3 private-gone orgs, could kill the weekly send) → counts
+      distinct owners parsed from URLs, scaled max(5, 10% of sources).
+- [x] **(3)** Up-to-hours silent rate-limit sleeps + false "pipeline
+      retries" message → 15-min per-wait cap; messages name the manual
+      re-run playbook.
+- [x] **(4)** A 400 on the new filters would silently kill recovery
+      forever → loud SystemExit; both filter forms verified on production.
+- [x] **(5)** date_after filter stranded empty-collected_date rows →
+      OR-empty filter group keeps them recoverable (old client behavior).
+- [x] **(6)** ai_title name-only match + combined PATCH could unpersist
+      tier → type check at resolution; ai_title in its own PATCH.
+- [x] **(7)** Unguarded `title[:50]`/`[:60]` slices vs Baserow explicit
+      nulls → titles normalized once for input-file and recovered rows.
+- [x] **(8)** `int(Retry-After)` crashed on RFC-9110 HTTP-date → defensive
+      parse, 60s fallback.
+- [x] **(9)** Feed text could fake the END marker and escape the
+      delimited region → marker-lookalike lines neutralized in the shared
+      sanitizer.
+- [x] **(10)** Guard prose/markers/clamps/groq_request hand-duplicated
+      across both scorers → new `scripts/llm_shared.py` single-sources all
+      of it (UNTRUSTED_GUARD, wrap_untrusted, clamp, groq_request); both
+      scorers import it. Two weakest cleanup findings were cut by the
+      review's 10-finding cap (pagination-loop duplication; the rest of the
+      ai_title-machinery cluster) — noted, not actioned.
+
+Hotfix `cffaa92` (found at deploy): backslash inside an f-string
+expression needs Python 3.12+; the VPS runs 3.10.12. The untrusted article
+block is now built outside the prompt f-string.
+
+Verify: 32-check monkeypatched harness green (throttle taxonomy incl.
+HTTP-date/headerless-429, wait cap, owner counting + both e2e threshold
+outcomes, filters shape, empty-date recovery, marker-escape neutralization,
+null-title survival, split PATCH, wrong-type refusal, 400-abort,
+single-source greps); all four files compile on VPS Python 3.10; live
+read-only smoke of the recovery filter against production passed.
 
 ## Phase 7 — Housekeeping batch (branch: `chore/review-lows`)
 
@@ -449,3 +514,4 @@ Low-risk cleanups; fine to trickle in or do as one sweep.
 | 2026-08-26 | 3 | fix/dedup-hash | 11741c9 + a905dfa (merged to master 2026-08-26) | 2026-08-26 (4 files incl. new `json_cache.py`; originals in `.bak-20260826-phase3/`; compile + `--commit-seen` guard verified on VPS) |
 | 2026-08-26 | 4 | fix/site-hardening | d61ed94 + 04a0935 (merged to master 2026-08-26) | 2026-08-26 (4 scripts + 6 templates; originals in `.bak-20260826-phase4/`; service restarted, now bound to 127.0.0.1; live smoke tests: bot fields, real 404, unsubscribe GET, privacy, sitemap all green) |
 | 2026-08-26 | 5 | fix/email-dark-mode | 979bdce + b804a20 (merged to master 2026-08-26) | 2026-08-26 (generate_newsletter.py + 3 templates; originals in `.bak-20260826-phase5/`; compile + checksums + real-data dry-run verified on VPS; pushed to origin 2026-08-26; Outlook-desktop dark-mode eyeball still pending) |
+| 2026-08-27 | 6 | fix/pipeline-coverage | 6aa2f88 + 10297da + cffaa92 (merged to master 2026-08-27) | 2026-08-27 (3 scripts + new `llm_shared.py`; originals in `.bak-20260827-phase6/`; compile on VPS Python 3.10 + checksums + read-only recovery-filter smoke verified; pushed to origin 2026-08-27; ai_title column creation pending in Baserow UI) |
