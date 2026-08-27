@@ -69,9 +69,14 @@ manual items below remain, each with its full step-by-step guide.
       - "What's new" box links readable on the lavender panel (if shown).
 - [ ] Optional: subscribe on amusealot.com with a test address and view
       the **confirmation email** in the same Outlook — the "Confirm
-      Subscription" button must be clearly visible (dark button, light
-      text), not invisible. Confirm + unsubscribe afterwards (or delete
-      the pending row in Baserow) to clean up.
+      Subscription" button must be clearly visible and clickable.
+      Expectation depends on what is deployed: BEFORE the email redesign
+      deploys it is a dark button with light text; AFTER, it is an
+      OUTLINED ink-on-paper button whose text is underlined (the
+      underline is deliberate insurance — Word-engine dark mode may
+      swallow the border, and the underlined bold uppercase text must
+      still read as the action). Confirm + unsubscribe afterwards (or
+      delete the pending row in Baserow) to clean up.
 
 ### 3. Watch the Wednesday send (2026-09-02, 07:00)
 

@@ -401,7 +401,7 @@ def main():
     # stats tiles contradict the whats_new text substituted here).
     source_stats = get_source_stats()
     if source_stats["total_sources"] == 0:
-        print("  Warning: source stats unavailable (BASEROW credentials missing?) — showing '—' in newsletter")
+        print("  Warning: source stats unavailable (BASEROW credentials missing?) — the corpus footnote line will be omitted from the newsletter")
 
     # Build context — full/archive version (no cap)
     context = build_context(data, news_data=news_articles, source_stats=source_stats)
@@ -409,10 +409,10 @@ def main():
     # Substitute source stats into whats_new lines (supports {{ total_sources }}
     # and {{ total_countries }}). A line is dropped when a stat it needs is
     # unavailable — better no line than "0 sources". Any anchor without an
-    # inline style then gets the email link style (paired with the lavender
+    # inline style then gets the email link style (paired with the card
     # What's-new box background per the CLAUDE.md rule), since email clients
     # that need inlining ignore the <style> block.
-    link_style = "color:#080229;background-color:#EDEBF5;text-decoration:underline;text-underline-offset:2px;"
+    link_style = "color:#080229;background-color:#FAF9F6;text-decoration:underline;text-underline-offset:2px;"
     token_values = {
         "{{ total_sources }}": source_stats.get("total_sources", 0),
         "{{ total_countries }}": source_stats.get("total_countries", 0),

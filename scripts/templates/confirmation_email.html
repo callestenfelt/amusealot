@@ -27,8 +27,9 @@
     [data-ogsc] p, [data-ogsb] p { background-color: #F7F5F1 !important; color: #080229 !important; }
     [data-ogsc] span, [data-ogsb] span { background-color: #F7F5F1 !important; color: #080229 !important; }
     [data-ogsc] a, [data-ogsb] a { background-color: #F7F5F1 !important; color: #080229 !important; }
-    [data-ogsc] .cta td, [data-ogsb] .cta td { background-color: #F7F5F1 !important; color: #080229 !important; border-color: #080229 !important; }
-    [data-ogsc] .cta a, [data-ogsb] .cta a { background-color: #F7F5F1 !important; color: #080229 !important; }
+    /* Generic td/a rules above already pin the CTA light; only its border
+       colour needs its own pin so the outline survives. */
+    [data-ogsc] .cta td, [data-ogsb] .cta td { border-color: #080229 !important; }
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:#F7F5F1;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#080229;">
@@ -70,7 +71,7 @@
             <table class="cta" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
                 <td style="border:3px solid #080229;background-color:#F7F5F1;color:#080229;padding:14px 32px;">
-                  <a href="%%CONFIRM_URL%%" style="font-size:16px;font-weight:bold;color:#080229;background-color:#F7F5F1;text-decoration:none;letter-spacing:1px;text-transform:uppercase;">
+                  <a href="%%CONFIRM_URL%%" style="font-size:16px;font-weight:bold;color:#080229;background-color:#F7F5F1;text-decoration:underline;text-underline-offset:3px;letter-spacing:1px;text-transform:uppercase;">
                     Confirm Subscription
                   </a>
                 </td>

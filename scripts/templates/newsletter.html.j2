@@ -15,7 +15,6 @@
   <style type="text/css">
     :root { color-scheme: light; }
     a.link:hover { color: #080229 !important; }
-    .ehdr img { padding-bottom: 5px !important; }
     .wn-box a { color: #080229 !important; text-decoration: underline; }
     /* Dark mode for Outlook.com / new Outlook / Outlook mobile — the only clients that
        inject data-ogsc/data-ogsb. Classic Word-engine Outlook for Windows desktop (and
@@ -28,7 +27,7 @@
     [data-ogsc] body, [data-ogsb] body { background-color: #080229 !important; }
     [data-ogsc] table, [data-ogsb] table { background-color: #080229 !important; }
     [data-ogsc] td, [data-ogsb] td { background-color: #080229 !important; color: #F7F5F1 !important; }
-    [data-ogsc] .wn-box, [data-ogsb] .wn-box { background-color: #241C3E !important; }
+    [data-ogsc] .wn-box, [data-ogsb] .wn-box { background-color: #241C3E !important; border-color: #3a3260 !important; }
     [data-ogsc] .wn-box td, [data-ogsb] .wn-box td { background-color: #241C3E !important; }
     [data-ogsc] .sec-hdr, [data-ogsb] .sec-hdr { border-color: #F7F5F1 !important; }
     /* Spans and anchors now carry their own inline background-color for the
@@ -40,7 +39,12 @@
     [data-ogsc] span, [data-ogsb] span { color: #F7F5F1 !important; background-color: #080229 !important; }
     [data-ogsc] .wn-box a, [data-ogsb] .wn-box a { background-color: #241C3E !important; }
     [data-ogsc] .wn-box span, [data-ogsb] .wn-box span { background-color: #241C3E !important; }
-    [data-ogsc] .rate-box, [data-ogsb] .rate-box { border-color: #F7F5F1 !important; }
+    /* The 2px rating borders live on the five .rate-box TDs (not the table). */
+    [data-ogsc] .rate-box td, [data-ogsb] .rate-box td { border-color: #F7F5F1 !important; }
+    /* Structural 3px ink rules (masthead divider, footer top) re-pin light. */
+    [data-ogsc] .rule-td, [data-ogsb] .rule-td { border-color: #F7F5F1 !important; }
+    /* #ddd8ce hairlines invert to the dark panel hairline tone instead of glare. */
+    [data-ogsc] .hairline, [data-ogsb] .hairline { border-color: #3a3260 !important; }
     [data-ogsc] .rate-box a, [data-ogsb] .rate-box a { color: #F7F5F1 !important; background-color: #080229 !important; }
   </style>
 </head>
@@ -49,7 +53,6 @@
 {# ============================================================
    SHARED STYLES
    ============================================================ #}
-{% set dot_border = "" %}
 {# Section counter for the numbered header system (01 SPOTLIGHT, 02 ...).
    Sections are conditional, so numbers are assigned at render time by the
    section_header macro — never hardcode them. #}
@@ -68,14 +71,6 @@
 {# ============================================================
    MACROS
    ============================================================ #}
-
-{% macro dotline() %}
-<tr>
-  <td style="padding:0 40px;font-size:0;line-height:0;height:1px;">
-    <div style="height:1px;background-image:repeating-linear-gradient(to right,#080229 0,#080229 2px,transparent 2px,transparent 6px);"></div>
-  </td>
-</tr>
-{% endmacro %}
 
 {# Numbered small-caps section header — the typographic system that replaced
    the emoji headers (ratified 2026-08-27). All-Arial on purpose: this is the
@@ -162,21 +157,25 @@
         <tr>
           <td style="padding:44px 40px 28px 40px;background-color:#F7F5F1;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+              {# Stacked rows: a tagline+date pair on one row overflows at phone
+                 widths (no @media rules exist in email), so each gets its own row. #}
               <tr>
-                <td colspan="2" style="font-size:34px;font-weight:bold;color:#080229;background-color:#F7F5F1;letter-spacing:-2px;padding-bottom:8px;">
+                <td style="font-size:34px;font-weight:bold;color:#080229;background-color:#F7F5F1;letter-spacing:-2px;padding-bottom:8px;">
                   AmuseAlot
                 </td>
               </tr>
               <tr>
-                <td style="font-size:11px;font-weight:bold;color:#080229;background-color:#F7F5F1;letter-spacing:3.5px;text-transform:uppercase;padding-bottom:16px;">
+                <td style="font-size:11px;font-weight:bold;color:#080229;background-color:#F7F5F1;letter-spacing:3.5px;text-transform:uppercase;padding-bottom:4px;">
                   Museum Tech Newsletter
                 </td>
-                <td align="right" style="font-size:12px;color:#5c5876;background-color:#F7F5F1;padding-bottom:16px;">
+              </tr>
+              <tr>
+                <td style="font-size:12px;color:#5c5876;background-color:#F7F5F1;padding-bottom:16px;">
                   {{ generation_date }}
                 </td>
               </tr>
               <tr>
-                <td colspan="2" style="border-top:3px solid #080229;background-color:#F7F5F1;font-size:0;line-height:0;height:1px;">&nbsp;</td>
+                <td class="rule-td" style="border-top:3px solid #080229;background-color:#F7F5F1;font-size:0;line-height:0;height:1px;">&nbsp;</td>
               </tr>
             </table>
           </td>
@@ -238,7 +237,7 @@
               </tr>
               {% if source_stats.total_sources > 0 %}
               <tr>
-                <td colspan="3" style="border-top:1px solid #ddd8ce;font-size:12px;color:#5c5876;background-color:#F7F5F1;padding-top:12px;">
+                <td colspan="3" class="hairline" style="border-top:1px solid #ddd8ce;font-size:12px;color:#5c5876;background-color:#F7F5F1;padding-top:12px;">
                   This week, from the {{ source_stats.total_sources }} sources we track{% if source_stats.total_countries > 0 %} in {{ source_stats.total_countries }}{% if source_stats.total_countries > 30 %}+{% endif %} countries{% endif %}.
                 </td>
               </tr>
@@ -325,13 +324,17 @@
         {% endif %}
 
         {# ========== MOST ACTIVE REPOS ========== #}
+        {# Guarded: compute_most_active counts only push events, so a week
+           without pushes yields an empty list — an unguarded header would
+           render over nothing AND consume a section number. #}
+        {% if most_active %}
         {{ section_header("Most Active Repos") }}
         <tr>
           <td style="padding:0 40px 0 40px;background-color:#F7F5F1;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               {% for repo in most_active %}
               <tr>
-                <td style="padding:16px 0;background-color:#F7F5F1;{% if not loop.last %}{{ dot_border }}{% endif %}">
+                <td style="padding:16px 0;background-color:#F7F5F1;">
                   <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                     <tr>
                       <td width="28" valign="top" style="font-size:14px;font-weight:bold;color:#080229;background-color:#F7F5F1;padding-right:8px;">
@@ -356,6 +359,7 @@
             </table>
           </td>
         </tr>
+        {% endif %}
 
         {# ========== INDIVIDUAL CREATORS ========== #}
         {% if has_individual_events %}
@@ -405,7 +409,7 @@
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               {% for parent, events in tool_watch.items() %}
               <tr>
-                <td style="padding:20px 0 12px 0;background-color:#F7F5F1;{% if not loop.first %}{{ dot_border }}{% endif %}">
+                <td style="padding:20px 0 12px 0;background-color:#F7F5F1;">
                   <span style="font-size:15px;font-weight:bold;color:#080229;background-color:#F7F5F1;">{{ parent }}</span>
                 </td>
               </tr>
@@ -454,7 +458,7 @@
 </table>
 
 {# ========== NEWS + FEEDBACK — full bleed ========== #}
-<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#FAF9F6" style="background-color:#FAF9F6;border-top:1px solid #ddd8ce;border-bottom:1px solid #ddd8ce;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#FAF9F6" class="hairline" style="background-color:#FAF9F6;border-top:1px solid #ddd8ce;border-bottom:1px solid #ddd8ce;">
   <tr>
     <td align="center" style="padding:0;background-color:#FAF9F6;">
       <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width:600px;width:100%;">
@@ -469,7 +473,7 @@
         </tr>
         {% for article in news_articles.newsletter %}
         <tr>
-          <td style="padding:20px 40px;background-color:#FAF9F6;{% if not loop.first %}{{ dot_border }}{% endif %}">
+          <td style="padding:20px 40px;background-color:#FAF9F6;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
                 <td style="background-color:#FAF9F6;">
@@ -529,15 +533,18 @@
            INSIDE each cell (not wrapped around a table): Word-engine Outlook
            ignores block-level anchors around tables, which left the old rating
            rows unclickable there. Padding stays on the td for the same reason —
-           the Word engine ignores padding (and display:block) on anchors.
+           the Word engine ignores padding (and display:block) on anchors; the
+           number AND label both live inside the anchor so the Word-engine
+           hotspot is the full text run and screen readers announce
+           "5 Excellent", not a bare digit.
            border-left:none on non-first cells keeps adjacent borders single. #}
         <tr>
           <td style="padding:0 40px 12px 40px;background-color:#FAF9F6;">
             <table class="rate-box" width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
               <tr>
                 {% for value, label in ratings %}
-                <td align="center" width="20%" style="border:2px solid #080229;{% if not loop.first %}border-left:none;{% endif %}padding:14px 4px;background-color:#FAF9F6;color:#080229;">
-                  <a href="https://amusealot.com/feedback?edition={{ generation_date_iso }}&rating={{ value }}" title="{{ label }}" style="display:block;font-size:16px;font-weight:bold;color:#080229;background-color:#FAF9F6;text-decoration:none;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">{{ value }}</a>
+                <td align="center" width="20%" style="border:2px solid #080229;{% if not loop.first %}border-left:none;{% endif %}padding:12px 4px;background-color:#FAF9F6;color:#080229;">
+                  <a href="https://amusealot.com/feedback?edition={{ generation_date_iso }}&rating={{ value }}" style="display:block;color:#080229;background-color:#FAF9F6;text-decoration:none;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;"><span style="display:block;font-size:16px;font-weight:bold;color:#080229;background-color:#FAF9F6;">{{ value }}</span><span style="display:block;font-size:10px;color:#5c5876;background-color:#FAF9F6;padding-top:2px;">{{ label }}</span></a>
                 </td>
                 {% endfor %}
               </tr>
@@ -564,7 +571,7 @@
     <td align="center" style="padding:0;background-color:#F7F5F1;">
       <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width:600px;width:100%;">
         <tr>
-          <td style="padding:36px 40px 8px 40px;border-top:3px solid #080229;background-color:#F7F5F1;">
+          <td class="rule-td" style="padding:36px 40px 8px 40px;border-top:3px solid #080229;background-color:#F7F5F1;">
             <span style="font-size:14px;color:#080229;background-color:#F7F5F1;">
               <span style="font-weight:bold;background-color:#F7F5F1;color:#080229;">AmuseAlot</span>
               &nbsp;&middot;&nbsp;Generated {{ generation_date }}

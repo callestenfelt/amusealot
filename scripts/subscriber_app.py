@@ -796,7 +796,11 @@ def archive_edition(edition_date):
     # Replace unsubscribe placeholder with generic landing page link
     html = html.replace("%%UNSUBSCRIBE_URL%%", f"{BASE_URL}/unsubscribe")
 
-    # Inject responsive CSS for web viewing (email clients never see this)
+    # Inject responsive CSS for web viewing (email clients never see this).
+    # The font-size:78px / letter-spacing:4.5px selectors match only PRE-redesign
+    # editions (old masthead) and are kept deliberately so archived editions stay
+    # responsive; post-redesign mastheads (34px) need no shrinking. The padding
+    # selectors match both generations.
     responsive_css = (
         '<style type="text/css">'
         '@media screen and (max-width:620px){'
@@ -814,8 +818,8 @@ def archive_edition(edition_date):
 
     # Inject back-to-archive nav bar at the top of <body>
     nav_bar = (
-        '<div style="background-color:#080229;padding:12px 24px;text-align:center;">'
-        '<a href="/archive" style="color:#fbfbfb;font-size:14px;text-decoration:underline;text-underline-offset:3px;font-family:Arial,sans-serif;">'
+        '<div style="background-color:#F7F5F1;border-bottom:1px solid #ddd8ce;padding:12px 24px;text-align:center;">'
+        '<a href="/archive" style="color:#080229;font-size:14px;text-decoration:underline;text-underline-offset:3px;font-family:Arial,sans-serif;">'
         'Back to Archive</a></div>'
     )
     # Insert after the first > that closes the <body> tag
