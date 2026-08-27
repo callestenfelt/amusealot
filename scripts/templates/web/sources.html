@@ -7,9 +7,7 @@
 {% block twitter_description %}<meta name="twitter:description" content="Browse the full list of museums, archives, and heritage organizations tracked by AmuseAlot — over 670 sources across 48 countries.">{% endblock %}
 {% block head_extra %}
 <style>
-  .page-head { padding-top: clamp(48px, 6vw, 96px); padding-bottom: clamp(24px, 3vw, 40px); display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
-  .page-head h1 { margin-bottom: 12px; }
-  .page-head p { color: var(--muted); font-size: 18px; margin: 0; max-width: 52ch; }
+  .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
   .src-stats { display: flex; gap: clamp(28px, 4vw, 48px); padding-bottom: 8px; }
   .src-stat-num { font-family: var(--display); font-size: clamp(36px, 4vw, 52px); line-height: 1; letter-spacing: -0.025em; }
   .src-stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-top: 6px; }
@@ -219,6 +217,7 @@
   var panelGithub = document.getElementById('panelGithub');
   var panelNews   = document.getElementById('panelNews');
   var wrapper     = document.getElementById('panelWrapper');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function switchToPanel(showBtn, hideBtn, showPanel, hidePanel) {
     wrapper.style.opacity = '0';
@@ -230,7 +229,7 @@
       showPanel.style.display = '';
       hidePanel.style.display = 'none';
       wrapper.style.opacity = '1';
-    }, 180);
+    }, reduceMotion ? 0 : 180);
   }
 
   tabGithub.addEventListener('click', function() {

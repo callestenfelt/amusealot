@@ -8,8 +8,6 @@
 {% block twitter_description %}<meta name="twitter:description" content="Share feedback about AmuseAlot or suggest new organizations and repositories to track.">{% endblock %}
 {% block head_extra %}
 <style>
-  .page-head { padding-top: clamp(48px, 6vw, 96px); padding-bottom: clamp(24px, 3vw, 48px); }
-  .page-head p { color: var(--muted); font-size: 18px; margin: 0; }
   .fb-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(32px, 5vw, 72px); padding-bottom: clamp(56px, 6vw, 96px); }
   @media (max-width: 879px) { .fb-grid { grid-template-columns: minmax(0, 1fr); } }
   .fb-form { display: flex; flex-direction: column; gap: 24px; }
@@ -27,6 +25,7 @@
   }
   .rating-option .stars { font-size: 18px; letter-spacing: 2px; }
   .rating-option:hover { border-color: var(--ink); color: var(--ink); }
+  .rating-option:focus-visible { outline: 3px solid var(--dots); outline-offset: 2px; }
   .rating-option.selected {
     border: 3px solid var(--ink); color: var(--ink); padding: 13px 15px;
     box-shadow: 4px 4px 0 var(--ink); transform: translate(-2px, -2px);
@@ -69,10 +68,10 @@
 
     {% if edition %}
     <div class="field">
-      <label>How was this edition?</label>
-      <div class="rating-list">
+      <span class="field-label" id="rating-label">How was this edition?</span>
+      <div class="rating-list" role="radiogroup" aria-labelledby="rating-label">
         {% for value, label in options %}
-        <div class="rating-option{% if rating == value %} selected{% endif %}" data-value="{{ value }}" onclick="selectRating({{ value }})" role="button" tabindex="0">
+        <div class="rating-option{% if rating == value %} selected{% endif %}" data-value="{{ value }}" onclick="selectRating({{ value }})" role="radio" aria-checked="{{ 'true' if rating == value else 'false' }}" tabindex="0">
           <span class="stars" aria-hidden="true">{{ "★" * value }}{{ "☆" * (5 - value) }}</span>
           <span>{{ label }}</span>
         </div>
@@ -121,7 +120,9 @@
 function selectRating(value) {
   document.getElementById('rating-value').value = value;
   document.querySelectorAll('.rating-option').forEach(function(el) {
-    el.classList.toggle('selected', parseInt(el.dataset.value) === value);
+    var isSelected = parseInt(el.dataset.value) === value;
+    el.classList.toggle('selected', isSelected);
+    el.setAttribute('aria-checked', isSelected ? 'true' : 'false');
   });
 }
 document.querySelectorAll('.rating-option').forEach(function(el) {

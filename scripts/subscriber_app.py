@@ -303,6 +303,11 @@ STATIC_FILES = {
 @app.route("/<path:filename>")
 def static_root_files(filename):
     if filename in STATIC_FILES:
+        # Fonts are immutable (a new font gets a new filename) and preloaded
+        # on every page — cache them for a year instead of Flask's default
+        # no-cache revalidation.
+        if filename.startswith("fonts/"):
+            return send_from_directory(STATIC_DIR, filename, max_age=31536000)
         return send_from_directory(STATIC_DIR, filename)
     # Real 404 (previously the landing page body with a 404 status — a
     # soft-404). abort() routes through the errorhandler below, keeping a
@@ -745,17 +750,24 @@ def find_edition_by_date(edition_date):
 @app.route("/archive")
 def archive():
     editions = get_editions()
-    # Format dates for display
+    # Format dates for display. month_label/short_date are computed here from
+    # the parsed datetime — the template must never reverse-parse the
+    # presentation string (a malformed Baserow date falls back to the raw
+    # value for display_date and simply gets no month header).
     for ed in editions:
         raw = ed.get("edition_date", "")
+        ed["display_date"] = ""
+        ed["month_label"] = ""
+        ed["short_date"] = ""
         if raw:
             try:
                 dt = datetime.strptime(raw, "%Y-%m-%d")
                 ed["display_date"] = dt.strftime("%B %d, %Y")
+                ed["month_label"] = dt.strftime("%B %Y")
+                ed["short_date"] = dt.strftime("%B %d")
             except ValueError:
                 ed["display_date"] = raw
-        else:
-            ed["display_date"] = ""
+                ed["short_date"] = raw
     return render_template("archive.html", editions=editions, canonical_url=BASE_URL + "/archive")
 
 

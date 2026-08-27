@@ -14,8 +14,11 @@
   /* Reserve the widget's height up front so the form doesn't jump when
      Turnstile pops in after load (audit finding 07). */
   .turnstile-slot { min-height: 65px; }
+  /* Stacked with a gap on mobile (two 3px borders must not butt into a
+     6px seam); one row with a 3px border overlap on desktop. */
+  .sub-row { display: flex; flex-direction: column; gap: 12px; }
   @media (min-width: 880px) {
-    .sub-row { display: flex; }
+    .sub-row { flex-direction: row; gap: 0; }
     .sub-row input[type="email"] { flex: 1; }
     .sub-row .btn { width: auto; margin-left: -3px; }
   }

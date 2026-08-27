@@ -1,5 +1,22 @@
 # Next steps
 
+# Site redesign (feature/site-redesign, 2026-08-27)
+
+The "Placard / Rammetto One" site redesign (design canvas:
+https://claude.ai/code/artifact/23f1a203-1074-4bfd-a08d-888dad3489bf) is
+implemented on `feature/site-redesign`: new `base.html` design system (real
+dark mode, desktop nav + mobile drawer), all 15 web templates restyled,
+self-hosted fonts. Awaiting merge/deploy/push approvals.
+
+**DEPLOY NOTE — new directory:** this branch adds
+`scripts/static/fonts/` with four `.woff2` files that `base.html`
+preloads. The deploy MUST create `/opt/musemaniac/scripts/static/fonts/`
+on the VPS and scp all four files along with `subscriber_app.py` and
+`scripts/templates/web/*` — otherwise every page 404s its fonts and
+silently falls back to Arial. Then restart `musemaniac-subscriber.service`.
+The email templates (`newsletter.html.j2`, confirmation/reminder emails)
+are deliberately untouched — the email redesign is a separate branch.
+
 # Code review round 2: fix plan (August 2026)
 
 A second multi-agent code review (2026-08-26, three parallel reviewers:

@@ -128,6 +128,10 @@
     h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
     p { font-size: 16px; line-height: 1.7; margin-bottom: 16px; max-width: 68ch; }
     .lede { font-size: 18px; color: var(--muted); }
+    /* Shared page-title block for the inner pages (archive/sources/about/feedback) */
+    .page-head { padding-top: clamp(48px, 6vw, 96px); padding-bottom: clamp(24px, 3vw, 48px); }
+    .page-head h1 { margin-bottom: 12px; }
+    .page-head p { color: var(--muted); font-size: 18px; margin: 0; max-width: 62ch; }
     .eyebrow {
       font-size: 13px; font-weight: 700; letter-spacing: 3px;
       text-transform: uppercase; color: var(--muted);
@@ -136,9 +140,7 @@
     a:hover { color: var(--hover); }
 
     /* ============ Rules & dividers ============ */
-    .perf { border: none; border-top: 4px dotted var(--ink); }
     .dotline { height: 0; border-top: 1px solid var(--hairline); margin: 32px 0; }
-    .rule-solid { border-bottom: 4px solid var(--ink); }
 
     /* ============ Ticket-punch link underline ============ */
     .punch { position: relative; padding-bottom: 7px; text-decoration: none; }
@@ -178,7 +180,7 @@
     }
     input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
     input:focus-visible, textarea:focus-visible { outline: 3px solid var(--dots); outline-offset: 2px; }
-    label { font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 8px; }
+    label, .field-label { font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 8px; }
     .error { color: var(--error); font-size: 15px; font-weight: 600; margin-bottom: 16px; }
     .fineprint-sm { font-size: 14px; color: var(--muted); }
     .fineprint-sm a { color: var(--muted); }
@@ -190,7 +192,7 @@
       transition: border-color 140ms ease-out, box-shadow 140ms ease-out, transform 140ms ease-out;
     }
     a.card { text-decoration: none; display: block; }
-    .card-hover:hover, a.card:hover {
+    a.card:hover {
       border-color: var(--ink); color: var(--ink);
       box-shadow: 0 0 0 2px var(--ink), 5px 5px 0 var(--ink);
       transform: translate(-2px, -2px);
@@ -246,7 +248,7 @@
 
     /* ============ Mobile drawer ============ */
     .nav-menu {
-      position: fixed; inset: 0; top: 105px;
+      position: fixed; inset: 0; top: var(--header-h, 88px);
       background: var(--paper); z-index: 999;
       display: flex; flex-direction: column;
       overflow-y: auto;
@@ -292,6 +294,11 @@
 
     /* ============ Responsive ============ */
     @media (max-width: 879px) {
+      /* --header-h = 18px padding x2 + 48px menu button + 4px border.
+         The drawer's top offset derives from it, and sticky keeps the
+         nav reachable on long pages without a scroll back to the top. */
+      :root { --header-h: 88px; }
+      .site-header { position: sticky; top: 0; z-index: 998; background-color: var(--paper); }
       .site-nav { display: none; }
       .menu-btn { display: flex; }
       .site-header .wrap { padding-top: 18px; padding-bottom: 18px; }
@@ -303,8 +310,11 @@
 
     /* ============ Reduced motion ============ */
     @media (prefers-reduced-motion: reduce) {
-      a, .btn, .nav-cta, .menu-btn, .card, .punch::after, .nav-menu { transition: none; }
-      .btn:hover, .nav-cta:hover, .card-hover:hover, a.card:hover { transform: none; }
+      /* .nav-menu.is-open must be listed: it declares its own transition
+         at higher specificity than a bare .nav-menu override. */
+      a, .btn, .nav-cta, .menu-btn, .card, .punch::after,
+      .nav-menu, .nav-menu.is-open { transition: none; }
+      .btn:hover, .nav-cta:hover, a.card:hover { transform: none; }
       .nav-menu { transform: none; }
     }
   </style>
@@ -373,8 +383,11 @@
 
   <script>
     (function () {
-      var btn  = document.getElementById('menuBtn');
-      var menu = document.getElementById('navMenu');
+      var btn      = document.getElementById('menuBtn');
+      var menu     = document.getElementById('navMenu');
+      var wordmark = document.querySelector('.wordmark');
+      var mainEl   = document.querySelector('main');
+      var footEl   = document.querySelector('footer.footer');
       var FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
       function openMenu() {
@@ -383,6 +396,9 @@
         btn.setAttribute('aria-label', 'Close menu');
         menu.setAttribute('aria-hidden', 'false');
         document.body.classList.add('menu-open');
+        // Content behind the drawer is neither focusable nor clickable
+        mainEl.setAttribute('inert', '');
+        footEl.setAttribute('inert', '');
         var first = menu.querySelector(FOCUSABLE);
         if (first) { setTimeout(function(){ first.focus(); }, 50); }
       }
@@ -393,6 +409,8 @@
         btn.setAttribute('aria-label', 'Open menu');
         menu.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('menu-open');
+        mainEl.removeAttribute('inert');
+        footEl.removeAttribute('inert');
         btn.focus();
       }
 
@@ -406,13 +424,18 @@
         }
       });
 
-      // Focus trap: keep Tab inside burger + drawer while open
+      // Focus trap: keep Tab inside the visible chrome (wordmark + burger +
+      // drawer) while open. Content behind the drawer is inert, so the trap
+      // only needs to wrap focus at the ends — and if focus is outside the
+      // trap entirely (e.g. body after a stray click), pull it back in.
       document.addEventListener('keydown', function (e) {
         if (e.key !== 'Tab' || btn.getAttribute('aria-expanded') !== 'true') return;
-        var focusable = [btn].concat(Array.prototype.slice.call(menu.querySelectorAll(FOCUSABLE)));
+        var focusable = [wordmark, btn].concat(Array.prototype.slice.call(menu.querySelectorAll(FOCUSABLE)));
         var first = focusable[0];
         var last  = focusable[focusable.length - 1];
-        if (e.shiftKey) {
+        if (focusable.indexOf(document.activeElement) === -1) {
+          e.preventDefault(); first.focus();
+        } else if (e.shiftKey) {
           if (document.activeElement === first) { e.preventDefault(); last.focus(); }
         } else {
           if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
