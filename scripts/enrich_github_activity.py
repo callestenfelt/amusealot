@@ -146,9 +146,13 @@ def enrich_new_repo(event):
 
 def enrich_release(event):
     """Fetch full release body if it was truncated."""
-    description = event.get("description", "")
-    # Only fetch if description was truncated (exactly 300 chars from collector)
-    if len(description) != 300:
+    details = event.get("details", {})
+    if "description_truncated" in details:
+        # Collector says explicitly whether its 300-char slice cut anything.
+        if not details["description_truncated"]:
+            return None
+    elif len(event.get("description", "")) != 300:
+        # Legacy heuristic for JSON produced before the flag existed.
         return None
 
     repo = event["repo"]
@@ -250,9 +254,8 @@ def main():
     print(f"Releases with full body: {enriched_count['release']}")
     print(f"API calls made: {api_calls}")
 
-    remaining = GITHUB_HEADERS.copy()
     try:
-        resp = requests.get(f"{GITHUB_API}/rate_limit", headers=remaining, timeout=10)
+        resp = requests.get(f"{GITHUB_API}/rate_limit", headers=GITHUB_HEADERS, timeout=10)
         if resp.status_code == 200:
             rate = resp.json().get("rate", {})
             print(f"Rate limit: {rate.get('remaining', '?')}/{rate.get('limit', '?')} remaining")

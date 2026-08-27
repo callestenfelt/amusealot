@@ -16,21 +16,11 @@ from collections import defaultdict
 # Fix Windows console encoding
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
+from baserow_config import SOURCES_TABLE_ID as TABLE_ID, SOURCES_FIELDS as FIELDS
+
 # Configuration
 BASEROW_URL = os.environ["BASEROW_URL"]
 BASEROW_TOKEN = os.environ["BASEROW_TOKEN"]
-TABLE_ID = 745
-
-# Field mappings (Baserow field IDs)
-FIELDS = {
-    "name": "field_7191",
-    "museum_uri": "field_7189",
-    "qid": "field_7190",
-    "country": "field_7192",
-    "website": "field_7193",
-    "github": "field_7222",
-    "github_url": "field_7223",
-}
 
 
 def query_wikidata():
@@ -51,7 +41,8 @@ def query_wikidata():
     response = requests.get(
         "https://query.wikidata.org/sparql",
         params={"query": query},
-        headers={"Accept": "application/json", "User-Agent": "MusemaniacBot/1.0"}
+        headers={"Accept": "application/json", "User-Agent": "MusemaniacBot/1.0"},
+        timeout=120,  # worldwide SPARQL query — slow, but must not hang forever
     )
     response.raise_for_status()
 
@@ -89,7 +80,8 @@ def get_all_baserow_qids():
         response = requests.get(
             f"{BASEROW_URL}/api/database/rows/table/{TABLE_ID}/",
             params={"size": 200, "page": page},
-            headers={"Authorization": f"Token {BASEROW_TOKEN}"}
+            headers={"Authorization": f"Token {BASEROW_TOKEN}"},
+            timeout=30,
         )
         response.raise_for_status()
         data = response.json()
@@ -167,7 +159,8 @@ def apply_updates(to_update, dry_run=True):
                 headers={
                     "Authorization": f"Token {BASEROW_TOKEN}",
                     "Content-Type": "application/json"
-                }
+                },
+                timeout=30,
             )
             response.raise_for_status()
             success += 1
@@ -215,7 +208,8 @@ def apply_additions(to_add, dry_run=True):
                 headers={
                     "Authorization": f"Token {BASEROW_TOKEN}",
                     "Content-Type": "application/json"
-                }
+                },
+                timeout=30,
             )
             response.raise_for_status()
             success += 1

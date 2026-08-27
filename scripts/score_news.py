@@ -44,20 +44,10 @@ BATCH_SIZE = 10  # Smaller than GitHub batches due to longer text
 MAX_AI_TITLE_CHARS = 200
 MAX_AI_SUMMARY_CHARS = 600
 
-# Field IDs for News Articles table (752)
-ARTICLES_FIELDS = {
-    "relevance_score": "field_7281",
-    "tier": "field_7282",
-    "ai_summary": "field_7283",
-    # Read fields (same table, used when recovering unscored rows)
-    "title": "field_7271",
-    "url": "field_7274",
-    "source_name": "field_7275",
-    "published_date": "field_7276",
-    "collected_date": "field_7277",
-    "summary": "field_7278",
-    "language": "field_7279",
-}
+# Field-id map lives in baserow_config (single source across all scripts).
+# Copied because resolve_ai_title_field() adds an "ai_title" entry at runtime.
+from baserow_config import NEWS_ARTICLES_FIELDS
+ARTICLES_FIELDS = dict(NEWS_ARTICLES_FIELDS)
 
 # Unscored rows older than this are left alone (stale; next edition won't use them)
 RECOVERY_WINDOW_DAYS = 14

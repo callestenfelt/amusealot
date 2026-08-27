@@ -21,16 +21,9 @@ import sys
 import os
 from datetime import date, datetime, timedelta
 
-import requests
+import baserow_client
 
-BASEROW_URL = os.environ["BASEROW_URL"]
-BASEROW_TOKEN = os.environ["BASEROW_TOKEN"]
 SUBSCRIBER_TABLE_ID = os.environ["SUBSCRIBER_TABLE_ID"]
-
-BASEROW_HEADERS = {
-    "Authorization": f"Token {BASEROW_TOKEN}",
-    "Content-Type": "application/json",
-}
 
 DEFAULT_DAYS = 30
 
@@ -41,30 +34,12 @@ def _status_value(row):
 
 
 def fetch_all_rows():
-    """Fetch every subscriber row (paginated)."""
-    url = f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/"
-    rows = []
-    page = 1
-    while True:
-        resp = requests.get(
-            url,
-            params={"size": 200, "page": page, "user_field_names": "true"},
-            headers=BASEROW_HEADERS,
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        rows.extend(data.get("results", []))
-        if not data.get("next"):
-            break
-        page += 1
-    return rows
+    """Fetch every subscriber row (paginated, via the shared client)."""
+    return baserow_client.list_rows(SUBSCRIBER_TABLE_ID, timeout=30)
 
 
 def delete_row(row_id):
-    url = f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/{row_id}/"
-    resp = requests.delete(url, headers=BASEROW_HEADERS, timeout=30)
-    resp.raise_for_status()
+    baserow_client.delete_row(SUBSCRIBER_TABLE_ID, row_id, timeout=30)
 
 
 def parse_arg_days(argv):

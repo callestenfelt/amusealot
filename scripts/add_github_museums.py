@@ -14,19 +14,10 @@ import requests
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 
+from baserow_config import SOURCES_TABLE_ID as TABLE_ID, SOURCES_FIELDS as FIELDS
+
 BASEROW_URL = os.environ["BASEROW_URL"]
 BASEROW_TOKEN = os.environ["BASEROW_TOKEN"]
-TABLE_ID = 745
-
-FIELDS = {
-    "name": "field_7191",
-    "museum_uri": "field_7189",
-    "qid": "field_7190",
-    "country": "field_7192",
-    "website": "field_7193",
-    "github": "field_7222",
-    "github_url": "field_7223",
-}
 
 CURATED_FILE = os.path.join(os.path.dirname(__file__), "github_museums_curated.json")
 
@@ -100,7 +91,8 @@ def get_existing_github_logins():
         response = requests.get(
             f"{BASEROW_URL}/api/database/rows/table/{TABLE_ID}/",
             params={"size": 200, "page": page},
-            headers={"Authorization": f"Token {BASEROW_TOKEN}"}
+            headers={"Authorization": f"Token {BASEROW_TOKEN}"},
+            timeout=30,
         )
         response.raise_for_status()
         data = response.json()
@@ -185,7 +177,8 @@ def main():
                 headers={
                     "Authorization": f"Token {BASEROW_TOKEN}",
                     "Content-Type": "application/json"
-                }
+                },
+                timeout=30,
             )
             response.raise_for_status()
             success += 1

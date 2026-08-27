@@ -46,7 +46,10 @@ try:
         field_id = field['id']
         field_name = field['name']
         field_type = field['type']
-        print(f"{field_name:20s} field_{field_id:4d}  ({field_type})")
+        # NB: don't pad the id itself ("field_{id:4d}" printed "field_ 123"
+        # for short ids — not a real field name); pad the whole token instead.
+        token = f"field_{field_id}"
+        print(f"{field_name:20s} {token:12s}  ({field_type})")
 
     print("=" * 60)
     print(f"\nTotal: {len(fields)} fields\n")

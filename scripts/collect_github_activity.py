@@ -27,6 +27,7 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 from json_cache import load_json_cache, save_json_cache
+from baserow_config import SOURCES_TABLE_ID as TABLE_ID, SOURCES_FIELDS as FIELDS
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 
@@ -34,28 +35,12 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='repla
 BASEROW_URL = os.environ["BASEROW_URL"]
 BASEROW_TOKEN = os.environ["BASEROW_TOKEN"]
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
-TABLE_ID = 745
 TECHNOLOGIES_TABLE_ID = os.environ.get("TECHNOLOGIES_TABLE_ID")  # Optional
 
 GITHUB_API = "https://api.github.com"
 GITHUB_HEADERS = {
     "Accept": "application/vnd.github.v3+json",
     "Authorization": f"Bearer {GITHUB_TOKEN}",
-}
-
-FIELDS = {
-    "name": "field_7191",
-    "github": "field_7222",
-    "tracked_repos": "field_7261",
-    "entity_type": "field_7225",
-}
-
-# Technology table field names (to be mapped to field IDs once table is created)
-TECH_FIELDS = {
-    "name": None,  # Will be set once table is created
-    "parent": None,
-    "tracked_repos": None,
-    "active": None,
 }
 
 # Bot authors to skip
@@ -228,7 +213,7 @@ def get_sources():
             params={
                 "size": 200,
                 "page": page,
-                "filter__field_7222__not_empty": "true",
+                f"filter__{FIELDS['github']}__not_empty": "true",
             },
             headers={"Authorization": f"Token {BASEROW_TOKEN}"},
             timeout=30,
@@ -415,17 +400,22 @@ def _extract_event(event, org_label, cutoff_date, repo_override=None):
 
     if event_type == "ReleaseEvent" and payload.get("action") == "published":
         release = payload.get("release", {})
+        body = release.get("body") or ""
         return {
             "org": org_label,
             "event_type": "release",
             "repo": repo_name,
             "title": release.get("name") or release.get("tag_name", ""),
-            "description": (release.get("body") or "")[:300],
+            "description": body[:300],
             "url": release.get("html_url", ""),
             "date": event_date[:10],
             "details": {
                 "tag": release.get("tag_name"),
                 "prerelease": release.get("prerelease", False),
+                # Explicit flag for the enricher — a body of exactly 300
+                # chars must not be mistaken for a truncated one (and vice
+                # versa the enricher shouldn't guess from length).
+                "description_truncated": len(body) > 300,
             }
         }
 

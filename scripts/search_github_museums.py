@@ -24,6 +24,11 @@ HEADERS = {
 CANDIDATES_FILE = os.path.join(os.path.dirname(__file__), "github_museum_candidates.json")
 DETAILS_FILE = os.path.join(os.path.dirname(__file__), "github_museum_details.json")
 
+# Static snapshot of logins that were already in Baserow when this list was
+# written — it WILL drift as sources are added/removed there. Drift is
+# harmless: it only pre-filters the candidate list, and add_github_museums.py
+# dedups against live Baserow before writing anything. Refresh it (or ignore
+# the extra candidates) rather than trusting it as current.
 KNOWN_GITHUB = {x.lower() for x in [
     "agnsw", "museumofappliedartsandsciences", "museumsvictoria", "nla",
     "NationalMuseumAustralia", "wamuseum", "ONB-RD", "CCA-Public",
@@ -45,13 +50,13 @@ KNOWN_GITHUB = {x.lower() for x in [
 
 def api_get(url, params=None):
     """Make a GitHub API request with rate limit handling."""
-    resp = requests.get(url, params=params, headers=HEADERS)
+    resp = requests.get(url, params=params, headers=HEADERS, timeout=30)
     if resp.status_code == 403:
         reset = int(resp.headers.get("X-RateLimit-Reset", 0))
         wait = max(reset - time.time(), 0) + 2
         print(f"  Rate limited! Waiting {wait:.0f}s...")
         time.sleep(wait)
-        resp = requests.get(url, params=params, headers=HEADERS)
+        resp = requests.get(url, params=params, headers=HEADERS, timeout=30)
     return resp
 
 

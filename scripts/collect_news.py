@@ -47,30 +47,9 @@ if not all([BASEROW_URL, BASEROW_TOKEN, NEWS_SOURCES_TABLE_ID, NEWS_ARTICLES_TAB
     print("Required: BASEROW_URL, BASEROW_TOKEN, NEWS_SOURCES_TABLE_ID, NEWS_ARTICLES_TABLE_ID")
     sys.exit(1)
 
-# Field IDs from Baserow
-# News Sources table (753)
-SOURCES_FIELDS = {
-    "name": "field_7285",
-    "country": "field_7288",
-    "source_type": "field_7289",
-    "rss_url": "field_7290",
-    "language": "field_7291",
-    "active": "field_7292",
-    "last_collected": "field_7294",
-}
-
-# News Articles table (752)
-ARTICLES_FIELDS = {
-    "title": "field_7271",
-    "url": "field_7274",
-    "source_name": "field_7275",
-    "source_id": "field_7296",
-    "published_date": "field_7276",
-    "collected_date": "field_7277",
-    "summary": "field_7278",
-    "language": "field_7279",
-    "content_hash": "field_7280",
-}
+# Field-id maps live in baserow_config (single source across all scripts)
+from baserow_config import (NEWS_SOURCES_FIELDS as SOURCES_FIELDS,
+                            NEWS_ARTICLES_FIELDS as ARTICLES_FIELDS)
 
 from json_cache import load_json_cache, save_json_cache
 

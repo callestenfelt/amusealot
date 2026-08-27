@@ -22,6 +22,8 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='repla
 
 import requests
 
+from baserow_client import mask_email
+
 # --- Config from environment ---
 BASEROW_URL = os.environ["BASEROW_URL"]
 BASEROW_TOKEN = os.environ["BASEROW_TOKEN"]
@@ -88,7 +90,7 @@ def get_pending_needing_reminder():
             # only assume UTC for naive values.
             sub_date = datetime.fromisoformat(subscribed_at.replace("Z", "+00:00"))
         except ValueError:
-            print(f"  WARNING: Cannot parse subscribed_at '{subscribed_at}' for {sub.get('email')}")
+            print(f"  WARNING: Cannot parse subscribed_at '{subscribed_at}' for {mask_email(sub.get('email'))} (row {sub.get('id')})")
             continue
         if sub_date.tzinfo is None:
             sub_date = sub_date.replace(tzinfo=timezone.utc)
@@ -176,7 +178,7 @@ def main():
         for sub in eligible:
             email = sub.get("email", "?")
             subscribed = sub.get("subscribed_at", "?")
-            print(f"  Would remind: {email}  (subscribed: {subscribed})")
+            print(f"  Would remind: {mask_email(email)} (row {sub.get('id')}, subscribed: {subscribed})")
         print(f"\nTotal: {len(eligible)} reminder(s) would be sent")
         print("Pass --apply to actually send.")
         return
@@ -206,21 +208,21 @@ def main():
         try:
             result = send_reminder_email(email, html)
             email_id = result.get("id", "?")
-            print(f"  [{i+1}/{len(eligible)}] Sent reminder to {email} (id: {email_id})")
+            print(f"  [{i+1}/{len(eligible)}] Sent reminder to {mask_email(email)} (row {row_id}, id: {email_id})")
             sent += 1
             send_ok = True
         except requests.exceptions.HTTPError as e:
             errors += 1
-            print(f"  ERROR sending to {email}: {e}")
+            print(f"  ERROR sending to {mask_email(email)} (row {row_id}): {e}")
             if hasattr(e, 'response') and e.response is not None:
                 print(f"    Response: {e.response.text[:200]}")
         except Exception as e:
             errors += 1
-            print(f"  ERROR sending to {email}: {e}")
+            print(f"  ERROR sending to {mask_email(email)} (row {row_id}): {e}")
 
         if send_ok and not update_reminder_sent(row_id):
             errors += 1
-            print(f"  ERROR: {email} (row {row_id}) was reminded but could not be marked — "
+            print(f"  ERROR: {mask_email(email)} (row {row_id}) was reminded but could not be marked — "
                   f"set reminder_sent_at manually in Baserow or the next run re-sends")
 
         # Rate limit delay (skip after last)

@@ -117,6 +117,8 @@ def get_source_stats():
         if not all([baserow_url, baserow_token, sources_table_id]):
             return {"total_sources": 0, "total_countries": 0}
 
+        from baserow_config import SOURCES_FIELDS
+
         headers = {"Authorization": f"Token {baserow_token}"}
         total_sources = 0
         countries = set()
@@ -124,7 +126,8 @@ def get_source_stats():
         while True:
             response = requests.get(
                 f"{baserow_url}/api/database/rows/table/{sources_table_id}/",
-                params={"size": 200, "page": page, "filter__field_7222__not_empty": "true"},
+                params={"size": 200, "page": page,
+                        f"filter__{SOURCES_FIELDS['github']}__not_empty": "true"},
                 headers=headers,
                 timeout=10
             )
@@ -132,7 +135,7 @@ def get_source_stats():
             data = response.json()
             total_sources += len(data["results"])
             for row in data["results"]:
-                country = row.get("field_7192") or ""
+                country = row.get(SOURCES_FIELDS["country"]) or ""
                 if isinstance(country, dict):
                     country = country.get("value", "")
                 if country:

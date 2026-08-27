@@ -37,6 +37,9 @@ import requests
 from flask import Flask, request, render_template, redirect, url_for, Response, send_from_directory, abort
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+import baserow_client
+from baserow_config import SOURCES_FIELDS
+
 try:
     from flask_limiter import Limiter
     from flask_limiter.util import get_remote_address
@@ -173,50 +176,28 @@ def verify_turnstile(token):
 
 # --- Baserow helpers ---
 
+# Thin wrappers around the shared baserow_client, pinned to the subscribers
+# table — routes call these; the pagination/CRUD mechanics live in one place
+# shared with the ops scripts (purge_pending_subscribers).
+
 def baserow_list_rows(filters=None):
     """Fetch rows from the subscribers table with optional filters (paginated)."""
-    url = f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/"
-    rows = []
-    page = 1
-    while True:
-        params = {"size": 200, "page": page, "user_field_names": "true"}
-        if filters:
-            # Never let a filters dict override the pagination keys — a stray
-            # "page" would pin every iteration to the same page and loop forever
-            params.update({k: v for k, v in filters.items()
-                           if k not in ("page", "size")})
-        resp = requests.get(url, params=params, headers=BASEROW_HEADERS, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-        rows.extend(data.get("results", []))
-        if not data.get("next"):
-            return rows
-        page += 1
+    return baserow_client.list_rows(SUBSCRIBER_TABLE_ID, filters=filters)
 
 
 def baserow_create_row(data):
     """Create a row in the subscribers table."""
-    url = f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/"
-    params = {"user_field_names": "true"}
-    resp = requests.post(url, json=data, params=params, headers=BASEROW_HEADERS, timeout=10)
-    resp.raise_for_status()
-    return resp.json()
+    return baserow_client.create_row(SUBSCRIBER_TABLE_ID, data)
 
 
 def baserow_update_row(row_id, data):
     """Update a row in the subscribers table."""
-    url = f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/{row_id}/"
-    params = {"user_field_names": "true"}
-    resp = requests.patch(url, json=data, params=params, headers=BASEROW_HEADERS, timeout=10)
-    resp.raise_for_status()
-    return resp.json()
+    return baserow_client.update_row(SUBSCRIBER_TABLE_ID, row_id, data)
 
 
 def baserow_delete_row(row_id):
     """Delete a row from the subscribers table."""
-    url = f"{BASEROW_URL}/api/database/rows/table/{SUBSCRIBER_TABLE_ID}/{row_id}/"
-    resp = requests.delete(url, headers=BASEROW_HEADERS, timeout=10)
-    resp.raise_for_status()
+    return baserow_client.delete_row(SUBSCRIBER_TABLE_ID, row_id)
 
 
 def find_row_by_token(field_name, token):
@@ -654,7 +635,7 @@ def get_sources():
                 params={
                     "size": 200,
                     "page": page,
-                    "filter__field_7222__not_empty": "true",
+                    f"filter__{SOURCES_FIELDS['github']}__not_empty": "true",
                 },
                 headers=BASEROW_HEADERS,
                 timeout=10,
@@ -662,15 +643,15 @@ def get_sources():
             resp.raise_for_status()
             data = resp.json()
             for row in data.get("results", []):
-                entity_type = row.get("field_7225")
+                entity_type = row.get(SOURCES_FIELDS["entity_type"])
                 if isinstance(entity_type, dict):
                     entity_type = entity_type.get("value", "")
                 sources.append({
-                    "name": row.get("field_7191") or "",
-                    "github": row.get("field_7222") or "",
-                    "github_url": row.get("field_7223") or "",
+                    "name": row.get(SOURCES_FIELDS["name"]) or "",
+                    "github": row.get(SOURCES_FIELDS["github"]) or "",
+                    "github_url": row.get(SOURCES_FIELDS["github_url"]) or "",
                     "entity_type": entity_type or "",
-                    "country": row.get("field_7192") or "",
+                    "country": row.get(SOURCES_FIELDS["country"]) or "",
                 })
             if not data.get("next"):
                 break

@@ -12,7 +12,9 @@
 # GROQ_API_KEY, RESEND_API_KEY, RESEND_FROM, MUSEMANIAC_BASE_URL, SUBSCRIBER_TABLE_ID,
 # NEWS_SOURCES_TABLE_ID, NEWS_ARTICLES_TABLE_ID)
 
-set -euo pipefail
+# -E makes the ERR trap fire inside functions/subshells too, so a future
+# refactor into functions can't silently detach the failure email.
+set -euo pipefail -E
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -26,9 +28,13 @@ if [[ -f "$ENV_FILE" ]]; then
     set +o allexport
 fi
 
-# Log file — keeps the last 30 days of output
+# Log files — pruned to the last 30 days below (they contain per-recipient
+# lines; addresses are masked in the scripts, but bounded retention is the
+# real PII guarantee). Covers both this script's hyphen logs and
+# cron_newsletter.sh's underscore logs.
 LOG_DIR="$(dirname "$SCRIPT_DIR")/logs"
 mkdir -p "$LOG_DIR"
+find "$LOG_DIR" -maxdepth 1 -name 'newsletter*.log' -mtime +30 -delete 2>/dev/null || true
 LOG_FILE="$LOG_DIR/newsletter-$(date '+%Y-%m-%d').log"
 
 # Tee all output to the log file
@@ -38,6 +44,9 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 _on_failure() {
     local exit_code=$?
     local tail
+    # The tee feeding LOG_FILE is asynchronous — the lines describing the
+    # failure may not have hit the file yet. Give it a moment before reading.
+    sleep 2
     tail=$(tail -30 "$LOG_FILE" 2>/dev/null || echo "(log unavailable)")
     python3 "$SCRIPT_DIR/notify_admin.py" \
         --status failure \

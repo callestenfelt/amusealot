@@ -25,6 +25,8 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='repla
 
 import requests
 
+from baserow_client import mask_email
+
 # --- Config from environment ---
 BASEROW_URL = os.environ["BASEROW_URL"]
 BASEROW_TOKEN = os.environ["BASEROW_TOKEN"]
@@ -220,7 +222,7 @@ def main():
         for sub in subscribers:
             email = sub.get("email", "?")
             token = (sub.get("unsubscribe_token") or "")[:8]
-            print(f"  Would send to: {email}  (unsub token: {token}...)")
+            print(f"  Would send to: {mask_email(email)} (row {sub.get('id')}, unsub token: {token}...)")
         print(f"\nTotal: {len(subscribers)} email(s) would be sent")
         print("Pass --apply to actually send.")
         return
@@ -255,7 +257,7 @@ def main():
             # manual Baserow fix, not a send failure: don't fail the whole run
             # (that would also skip reminders and the success email every week).
             skipped_no_token += 1
-            print(f"  WARNING: row {sub.get('id')} ({email}) has no unsubscribe_token — "
+            print(f"  WARNING: row {sub.get('id')} ({mask_email(email)}) has no unsubscribe_token — "
                   f"skipping recipient (fix the row in Baserow)")
             continue
         unsub_url = f"{BASE_URL}/unsubscribe?token={unsub_token}"
@@ -265,15 +267,15 @@ def main():
             result = send_email(email, personalized, unsub_url, subject)
             sent += 1
             email_id = result.get("id", "?")
-            print(f"  [{sent}/{len(subscribers)}] Sent to {email} (id: {email_id})")
+            print(f"  [{sent}/{len(subscribers)}] Sent to {mask_email(email)} (row {sub.get('id')}, id: {email_id})")
         except requests.exceptions.HTTPError as e:
             errors += 1
-            print(f"  ERROR sending to {email}: {e}")
+            print(f"  ERROR sending to {mask_email(email)} (row {sub.get('id')}): {e}")
             if hasattr(e, 'response') and e.response is not None:
                 print(f"    Response: {e.response.text[:200]}")
         except Exception as e:
             errors += 1
-            print(f"  ERROR sending to {email}: {e}")
+            print(f"  ERROR sending to {mask_email(email)} (row {sub.get('id')}): {e}")
 
         # Rate limit delay (skip after last email)
         if i < len(subscribers) - 1:
