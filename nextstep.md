@@ -1,26 +1,56 @@
 # Next steps
 
-# Redesign 2026-08-27 — site + newsletter
+# Redesign 2026-08-28 — site + newsletter — LIVE
 
-Both halves of the "Placard / Rammetto One" redesign (design canvas:
-https://claude.ai/code/artifact/23f1a203-1074-4bfd-a08d-888dad3489bf).
+The "Placard / Rammetto One" redesign (design canvas:
+https://claude.ai/code/artifact/23f1a203-1074-4bfd-a08d-888dad3489bf) is
+**merged, deployed, and live** as of 2026-08-28.
 
-**Site** (`feature/site-redesign`): new `base.html` design system (real
-dark mode, desktop nav + mobile drawer, perforation rules, ticket-punch
-link underlines), all 15 web templates restyled, self-hosted fonts.
+**Site** (`feature/site-redesign`, `2d8e50e` + `e0f29da` + `7f529de`):
+new `base.html` design system — Rammetto One display + Archivo body,
+warm paper `#F7F5F1` / card `#FAF9F6` / ink `#080229`, real dark mode
+via `prefers-color-scheme`, visible desktop nav with a mobile-only
+hamburger drawer, dotted-ink perforation rules framing header and
+footer, ticket-punch link underlines, hard-shadow button hovers. All 15
+web templates restyled; the old 520px email-width column is gone.
 
-**Email** (`feature/email-redesign`): numbered small-caps section headers
-replace the emoji, warm palette (body/footer `#F7F5F1`, panels
-`#FAF9F6`), weekly-first numbers with the corpus size as a footnote,
-compact one-row rating, light ruled footer, and the
-confirmation/reminder CTA is now an OUTLINED ink-on-paper button (not a
-dark filled block). CLAUDE.md's palette line is updated to match.
+**Email** (`feature/email-redesign`, `6c677aa` + `eb17346`): numbered
+small-caps section headers replace the emoji, same warm palette,
+weekly-first numbers with the corpus size demoted to a footnote,
+compact one-row rating, light ruled footer instead of the dark block,
+and the confirmation/reminder CTA is now an OUTLINED ink-on-paper
+button. CLAUDE.md's newsletter palette line is updated to match.
 
-**DEPLOY NOTE — new directory:** the site half adds
-`scripts/static/fonts/` with four `.woff2` files that `base.html`
-preloads. The deploy MUST create `/opt/musemaniac/scripts/static/fonts/`
-on the VPS and scp all four files — otherwise every page 404s its fonts
-and silently falls back to Arial.
+Both branches were `/code-review high`'d and all 20 findings fixed
+before merge (two follow-up commits, one per branch).
+
+**Design system rules that now bind future work:**
+- No inverted text in either theme — light never puts light text on a
+  dark ground, dark never the reverse. Buttons are outlined, not filled.
+- Perforation (4px dotted ink) frames the page; solid rules structure
+  content within it.
+- The wordmark is Arial bold, `-2px` tracking, identical on site and in
+  email. Rammetto One is display-only (headlines, numerals, section
+  heads) and never used for UI or body text.
+
+**Deployed 2026-08-28** to `/opt/musemaniac/scripts/`: `subscriber_app.py`,
+`generate_newsletter.py`, `templates/{newsletter.html.j2,
+confirmation_email.html, reminder_email.html}`, all of `templates/web/`,
+and the **new** `static/fonts/` directory with four `.woff2` files.
+Originals backed up to `.bak-20260828-redesign/`. 28 files verified by
+checksum against local, compiled on the server's Python 3.10, service
+restarted, and all routes smoke-tested (200s, fonts served with
+`max-age=31536000`, 404 page intact).
+
+**Fonts are self-hosted deliberately** — a Google Fonts `<link>` would
+send every visitor's IP to Google and quietly break the site's "no
+tracking" promise. Any future font change must ship the `.woff2` files
+to `static/fonts/` AND add them to the `STATIC_FILES` whitelist in
+`subscriber_app.py`, or the page silently falls back to Arial.
+
+**Still open:** the Outlook-on-Windows dark-mode eyeball test for the new
+email palette — see item 2 below, which now carries the updated
+confirmation-button expectation.
 
 # Code review round 2: fix plan (August 2026)
 
@@ -48,7 +78,11 @@ manual items below remain, each with its full step-by-step guide.
 - [ ] After the next send, spot-check a non-English tier 1/2 article row:
       it should have an English title in `ai_title` next to `ai_summary`.
 
-### 2. Phase 5 Outlook dark-mode eyeball test (needs the Windows machine)
+### 2. Outlook dark-mode eyeball test (needs the Windows machine)
+
+**Now covers the 2026-08-28 redesign palette**, not just the Phase 5
+pairing work — the whole email changed colour, so this test matters more
+than it did before. Checklist below updated accordingly.
 
 - [ ] Generate and send the test edition from the VPS:
   ```
@@ -61,12 +95,21 @@ manual items below remain, each with its full step-by-step guide.
   not the test file.
 - [ ] View in **Outlook desktop on Windows with dark mode on** (webmail /
       Apple Mail won't exercise the Word-engine path). Checklist:
-      - No white-on-white or dark-on-dark anywhere — especially the stats
-        bar numbers, most-active list, tool watch, and the footer (light
-        text on dark).
-      - Rating boxes: borders visible AND clicking a row opens the
-        feedback page (was broken in Word-engine Outlook before).
-      - "What's new" box links readable on the lavender panel (if shown).
+      - No white-on-white or dark-on-dark anywhere — especially the
+        weekly numbers, most-active list, tool watch, and the footer
+        (which is now LIGHT with a ruled top, not a dark block).
+      - Numbered section headers (`01  SPOTLIGHT`): both the number and
+        the label readable, and the 3px rule under them visible.
+      - Rating row: the five bordered number cells must still read as
+        boxes (their borders are on the `<td>`s), and tapping one opens
+        the feedback page with that rating prefilled.
+      - "What's new" box: readable on the `#FAF9F6` card, including any
+        links inside it (those get their background inlined by
+        `generate_newsletter.py`, so a mismatch shows up here first).
+- [ ] Also check **Outlook.com / Outlook mobile** dark mode (the
+      `[data-ogsc]` path, different from the desktop Word engine): the
+      rating borders, the masthead/footer rules, and the hairlines all
+      have their own overrides now — confirm none of them vanish.
 - [ ] Optional: subscribe on amusealot.com with a test address and view
       the **confirmation email** in the same Outlook — the "Confirm
       Subscription" button must be clearly visible and clickable.
