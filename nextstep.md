@@ -48,9 +48,23 @@ tracking" promise. Any future font change must ship the `.woff2` files
 to `static/fonts/` AND add them to the `STATIC_FILES` whitelist in
 `subscriber_app.py`, or the page silently falls back to Arial.
 
+**Dark-mode regression check (2026-08-28):** the redesign was audited
+against the invariants from `fddc485` / `979bdce` / `b804a20` by
+rendering the pre-redesign and post-redesign templates from the same
+fixture and diffing background/colour pairing per element type. Result:
+`<td>` 0 unpaired before and after, `<span>` 0 before and after,
+`mso-color-alt` absent in both, rating anchors still inside their cells
+with padding on the `<td>`. **Nothing was undone.** The audit did
+surface a pre-existing gap — 21 rendered `<a>` tags had never been
+paired — which was then fixed (`2f3fe28`), so the template now has zero
+unpaired elements of any type. Verified against the real server render
+(190 styled elements) after deploy.
+
 **Still open:** the Outlook-on-Windows dark-mode eyeball test for the new
 email palette — see item 2 below, which now carries the updated
-confirmation-button expectation.
+confirmation-button expectation. Note this is the FIRST time the anchors
+will be exercised in the Word engine, since the Phase 5 test was never
+run either.
 
 # Code review round 2: fix plan (August 2026)
 
